@@ -672,9 +672,12 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (youtubeUrl) {
       if (reactPlayerRef.current) {
         try {
-          if (typeof reactPlayerRef.current.seekTo === 'function') {
+          if ('currentTime' in reactPlayerRef.current) {
+            reactPlayerRef.current.currentTime = clamped;
+          } else if (typeof reactPlayerRef.current.seekTo === 'function') {
             reactPlayerRef.current.seekTo(clamped, 'seconds');
           }
+          
           if (typeof reactPlayerRef.current.getInternalPlayer === 'function') {
             const internal = reactPlayerRef.current.getInternalPlayer();
             if (internal && typeof internal.seekTo === 'function') {
@@ -881,13 +884,13 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         >
           <ReactPlayerComponent
             ref={reactPlayerRef}
-            url={youtubeUrl}
+            src={youtubeUrl}
             playing={isPlaying}
             volume={isMuted ? 0 : volume}
             playbackRate={playbackRate}
             width="100%"
             height="100%"
-            playsinline
+            playsInline
             config={
               {
                 youtube: {
@@ -902,22 +905,20 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 },
               } as any
             }
-            onProgress={(state: { playedSeconds: number; loadedSeconds: number }) => {
+            onTimeUpdate={(e: any) => {
               if (Date.now() - lastSeekTimestampRef.current >= 900) {
-                if (typeof state?.playedSeconds === 'number' && !isNaN(state.playedSeconds) && state.playedSeconds >= 0) {
-                  if (seekTargetRef.current !== null && seekTargetRef.current > 5 && state.playedSeconds < 1) {
+                if (e && e.currentTarget && typeof e.currentTarget.currentTime === 'number') {
+                  const playedSeconds = e.currentTarget.currentTime;
+                  if (seekTargetRef.current !== null && seekTargetRef.current > 5 && playedSeconds < 1) {
                     return;
                   }
-                  setPosition(state.playedSeconds);
-                }
-                if (typeof state?.loadedSeconds === 'number' && !isNaN(state.loadedSeconds) && state.loadedSeconds >= 0) {
-                  setBufferedPosition(state.loadedSeconds);
+                  setPosition(playedSeconds);
                 }
               }
             }}
-            onDuration={(dur: number) => {
-              if (typeof dur === 'number' && dur > 5 && !isNaN(dur)) {
-                setDuration(dur);
+            onDurationChange={(e: any) => {
+              if (e && e.currentTarget && typeof e.currentTarget.duration === 'number' && e.currentTarget.duration > 5) {
+                setDuration(e.currentTarget.duration);
               }
             }}
             onEnded={() => {

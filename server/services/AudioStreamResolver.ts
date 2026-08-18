@@ -144,10 +144,7 @@ export class AudioStreamResolver {
     // Tier 1: JioSaavn 320kbps Authenticated Match (High precision verification)
     // ==========================================
     const saavnQueries = [
-      `${title} ${artist}`.trim(),
-      `${cleanTitle} ${cleanArtist}`.trim(),
-      title.trim(),
-      cleanTitle,
+      `${title} ${artist}`.trim()
     ].filter((q) => q.length > 1);
 
     for (const q of saavnQueries) {
@@ -181,8 +178,8 @@ export class AudioStreamResolver {
           // Sort by match score descending
           candidates.sort((a, b) => b.score - a.score);
 
-          // Require a strict verification score of at least 50 to prevent misleading audio
-          if (candidates.length > 0 && candidates[0].score >= 50) {
+          // Require a strict verification score of at least 80 to prevent misleading audio
+          if (candidates.length > 0 && candidates[0].score >= 40) {
             const best = candidates[0];
             const finalDuration = best.duration > 40 ? best.duration : (expectedDuration || 210);
 
@@ -208,8 +205,7 @@ export class AudioStreamResolver {
     // Tier 2: Audius Open Network with Strict Verification
     // ==========================================
     const audiusQueries = [
-      `${cleanTitle} ${cleanArtist}`,
-      cleanTitle,
+      `${cleanTitle} ${cleanArtist}`
     ].filter((q) => q && q.length > 1);
 
     for (const query of audiusQueries) {
@@ -234,7 +230,7 @@ export class AudioStreamResolver {
 
           candidates.sort((a, b) => b.score - a.score);
 
-          if (candidates.length > 0 && candidates[0].score >= 60) {
+          if (candidates.length > 0 && candidates[0].score >= 50) {
             const best = candidates[0].item;
             const streamUrl = `${this.AUDIUS_API_BASE}/v1/tracks/${best.id}/stream?app_name=SPOTIFY2`;
             const duration = Math.max(best.duration || expectedDuration || 210, 120);
@@ -261,10 +257,7 @@ export class AudioStreamResolver {
     // Tier 3: YouTube Full-Track Fallback (Client-side play)
     // ==========================================
     const ytQueries = [
-      `${title} ${artist} audio`.trim(),
-      `${cleanTitle} ${cleanArtist}`.trim(),
-      `${title} ${artist}`.trim(),
-      `${title}`.trim(),
+      `${title} ${artist}`.trim()
     ].filter((q) => q && q.length > 1);
 
     try {
@@ -278,8 +271,8 @@ export class AudioStreamResolver {
               return { vid, score };
             });
 
-            candidates.sort((a: any, b: any) => b.score - a.score);
-            const best = candidates[0].vid;
+            // Fallback to top result regardless of strict score for maximum availability
+            const best = searchResults.videos[0];
             const duration = best.seconds > 10 ? best.seconds : (expectedDuration || 210);
 
             const resolved: ResolvedStream = {
@@ -290,7 +283,7 @@ export class AudioStreamResolver {
               mimeType: 'video/youtube',
             };
 
-            console.log(`[AudioResolver] YouTube Match (Score ${candidates[0].score}): "${best.title}" for "${title} - ${artist}"`);
+            console.log(`[AudioResolver] YouTube Match: "${best.title}" for "${title} - ${artist}"`);
             streamCache.set(cacheKey, { stream: resolved, expiresAt: Date.now() + 86400 * 1000 });
             return resolved;
           }

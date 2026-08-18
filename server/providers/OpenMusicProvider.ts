@@ -165,7 +165,7 @@ export class OpenMusicProvider implements IMusicProvider {
       explicit: item.trackExplicitness === 'explicit',
       releaseYear,
       genre: item.primaryGenreName || 'Music',
-      plays: Math.floor(Math.random() * 80000000 + 5000000),
+      plays: item.playCount ? item.playCount : Math.floor(Math.random() * 500000 + 10000), // Avoid outranking real Saavn tracks
       color: '#1DB954',
     };
   }
@@ -483,18 +483,30 @@ export class OpenMusicProvider implements IMusicProvider {
         });
       }
 
+      // Sort songs to prioritize exact title matches, then by popularity (plays)
+      const lowerQ = q.toLowerCase().trim();
+      songs.sort((a, b) => {
+        const aExact = a.title.toLowerCase() === lowerQ;
+        const bExact = b.title.toLowerCase() === lowerQ;
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+
+        const aStarts = a.title.toLowerCase().startsWith(lowerQ);
+        const bStarts = b.title.toLowerCase().startsWith(lowerQ);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+
+        // If both are exact or both are startsWith, sort by plays (popularity)
+        return (b.plays || 0) - (a.plays || 0);
+      });
+
       // Top Result: Prioritize requested Music Track (Song) at the top
       let topResult: SearchResults['topResult'] = null;
-      const lowerQ = q.toLowerCase().trim();
 
-      const exactSong = songs.find(
-        (s) => s.title.toLowerCase() === lowerQ || s.title.toLowerCase().startsWith(lowerQ) || s.title.toLowerCase().includes(lowerQ)
-      );
+      const exactSong = songs.length > 0 ? songs[0] : null;
 
       if (exactSong) {
         topResult = { type: 'track', data: exactSong };
-      } else if (songs.length > 0) {
-        topResult = { type: 'track', data: songs[0] };
       } else if (albums.length > 0) {
         topResult = { type: 'album', data: albums[0] };
       } else if (artists.length > 0) {
