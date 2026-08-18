@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script type="module" src="/@vite/client"></script>
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Spotify 2.0 - Music & Podcasts</title>
+    <meta name="description" content="Stream high-fidelity music, curated playlists, synchronized lyrics, and podcasts anywhere." />
+    
+    <!-- PWA & Mobile Web App Meta Tags -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" type="image/svg+xml" href="/icon-192.svg" />
+    <link rel="apple-touch-icon" href="/icon-192.svg" />
+    
+    <meta name="theme-color" content="#1DB954" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Spotify" />
+    <meta name="application-name" content="Spotify" />
+    <meta name="msapplication-TileColor" content="#121212" />
+
+    <!-- Open Graph & Social -->
+    <meta property="og:title" content="Spotify 2.0 - Music Streaming" />
+    <meta property="og:description" content="Stream high-fidelity music, synchronized lyrics, and personalized playlists." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/icon-512.svg" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Spotify 2.0" />
+    <meta name="twitter:image" content="/icon-512.svg" />
+  </head>
+  <body class="bg-black text-white selection:bg-emerald-500 selection:text-black">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Register PWA Service Worker with background update checks
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((reg) => {
+              console.log('[PWA] ServiceWorker registered with scope:', reg.scope);
+              // Periodic background update check
+              setInterval(() => {
+                reg.update().catch(() => {});
+              }, 30 * 60 * 1000); // Check every 30 minutes
+
+              // Check when window regains focus
+              window.addEventListener('focus', () => {
+                reg.update().catch(() => {});
+              });
+            })
+            .catch((err) => {
+              console.warn('[PWA] ServiceWorker registration failed:', err);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>
+

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="gm" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1ED760" />
+      <stop offset="50%" stop-color="#1DB954" />
+      <stop offset="100%" stop-color="#10893E" />
+    </linearGradient>
+  </defs>
+  <!-- Full bleed background for safe zone / maskable icon -->
+  <rect width="512" height="512" fill="#121212" />
+  <!-- Centered safe zone circle (within 80% inner box) -->
+  <circle cx="256" cy="256" r="160" fill="url(#gm)" />
+  <g stroke="#121212" stroke-linecap="round" fill="none">
+    <path d="M 162 212 C 210 176, 302 176, 350 212" stroke-width="30" />
+    <path d="M 175 260 C 218 233, 294 233, 337 260" stroke-width="28" />
+    <path d="M 192 308 C 228 287, 284 287, 320 308" stroke-width="25" />
+  </g>
+  <circle cx="256" cy="256" r="8" fill="#121212" />
+</svg>
