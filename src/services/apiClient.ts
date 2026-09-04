@@ -3,7 +3,10 @@ import { ApiResponse } from '../types';
 class ApiClient {
   private baseUrl = '/api';
   private searchCache = new Map<string, { data: any; timestamp: number }>();
+  private suggestionsCache = new Map<string, { data: any; timestamp: number }>();
   private activeSearchController: AbortController | null = null;
+  private activeSuggestionsController: AbortController | null = null;
+  private sessionId: string = Math.random().toString(36).substring(2);
 
   // Exponential backoff retry utility
   async fetchWithRetry<T>(
@@ -15,13 +18,20 @@ class ApiClient {
     let attempt = 0;
     while (attempt <= maxRetries) {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+
         const res = await fetch(`${this.baseUrl}${endpoint}`, {
           ...options,
+          signal: options.signal || controller.signal,
           headers: {
+            'x-session-id': this.sessionId,
             'Content-Type': 'application/json',
             ...(options.headers || {}),
           },
         });
+        
+        clearTimeout(timeoutId);
 
         if (!res.ok) {
           const errorJson = await res.json().catch(() => null);
@@ -76,6 +86,7 @@ class ApiClient {
   }
 
   // Search with client caching and in-flight cancellation
+
   async search(query: string, bypassCache = false) {
     const normalized = query.trim().toLowerCase().replace(/\s+/g, ' ');
     if (!normalized) {
@@ -85,7 +96,7 @@ class ApiClient {
     // Check client-side memory cache (valid for 5 minutes)
     if (!bypassCache) {
       const cached = this.searchCache.get(normalized);
-      if (cached && Date.now() - cached.timestamp < 300000) {
+      if (cached && Date.now() - cached.timestamp < 30000) {
         return { success: true, data: cached.data };
       }
     }
@@ -99,8 +110,8 @@ class ApiClient {
     const response = await this.fetchWithRetry<any>(
       `/search?q=${encodeURIComponent(normalized)}`,
       { signal: this.activeSearchController.signal },
-      1,
-      300
+      0, // Fast 0-retry for search to prevent blocking queues
+      0
     );
 
     if (response.success && response.data) {
@@ -114,18 +125,39 @@ class ApiClient {
   }
 
   // Search Suggestions (Fast, title-filtered song suggestions while typing)
-  async getSuggestions(query: string) {
+  async getSuggestions(query: string, bypassCache = false) {
     const normalized = query.trim().toLowerCase().replace(/\s+/g, ' ');
     if (!normalized) {
       return { success: true, data: [] };
     }
 
-    return this.fetchWithRetry<any>(
+    if (!bypassCache) {
+      const cached = this.suggestionsCache.get(normalized);
+      if (cached && Date.now() - cached.timestamp < 30000) {
+        return { success: true, data: cached.data };
+      }
+    }
+
+    if (this.activeSuggestionsController) {
+      this.activeSuggestionsController.abort();
+    }
+    this.activeSuggestionsController = new AbortController();
+
+    const response = await this.fetchWithRetry<any>(
       `/search/suggestions?q=${encodeURIComponent(normalized)}`,
-      {},
-      1,
-      200
+      { signal: this.activeSuggestionsController.signal },
+      0, // Fast suggestions don't need retry delays
+      0
     );
+
+    if (response.success && Array.isArray(response.data)) {
+      this.suggestionsCache.set(normalized, {
+        data: response.data,
+        timestamp: Date.now(),
+      });
+    }
+
+    return response;
   }
 
   // Track Details
@@ -149,10 +181,10 @@ class ApiClient {
   }
 
   // Create Playlist
-  async createPlaylist(title: string, description?: string, coverImage?: string) {
+  async createPlaylist(title: string, description?: string, coverImage?: string, id?: string) {
     return this.fetchWithRetry<any>('/playlist', {
       method: 'POST',
-      body: JSON.stringify({ title, description, coverImage }),
+      body: JSON.stringify({ title, description, coverImage, id }),
     });
   }
 
@@ -172,10 +204,10 @@ class ApiClient {
   }
 
   // Add Track to Playlist
-  async addTrackToPlaylist(playlistId: string, trackId: string) {
+  async addTrackToPlaylist(playlistId: string, trackId: string, track?: any) {
     return this.fetchWithRetry<any>(`/playlist/${playlistId}/tracks`, {
       method: 'POST',
-      body: JSON.stringify({ trackId }),
+      body: JSON.stringify({ trackId, track }),
     });
   }
 
@@ -205,10 +237,23 @@ class ApiClient {
   }
 
   // Playback Resolve
-  async resolvePlayback(trackId: string, title?: string, artist?: string, duration?: number) {
+  async resolvePlayback(
+    trackId: string,
+    title?: string,
+    artist?: string,
+    duration?: number,
+    options?: { forceFresh?: boolean; discardUrl?: string }
+  ) {
     return this.fetchWithRetry<any>('/playback/resolve', {
       method: 'POST',
-      body: JSON.stringify({ trackId, title, artist, duration }),
+      body: JSON.stringify({
+        trackId,
+        title,
+        artist,
+        duration,
+        forceFresh: options?.forceFresh,
+        discardUrl: options?.discardUrl,
+      }),
     });
   }
 
@@ -235,10 +280,16 @@ class ApiClient {
 
   // Like / Unlike Track
   async toggleLikeTrack(trackId: string) {
+    this.logAnalyticsEvent('like', trackId);
     return this.fetchWithRetry<any>('/like-track', {
       method: 'POST',
       body: JSON.stringify({ trackId }),
     });
+  }
+
+  // Get Liked Tracks
+  async getLikedTracks() {
+    return this.fetchWithRetry<any>('/liked-tracks');
   }
 
   // Follow / Unfollow Artist
@@ -258,11 +309,21 @@ class ApiClient {
   }
 
   // Record History
-  async logHistory(trackId: string) {
+    async logHistory(trackId: string) {
+    this.logAnalyticsEvent('play', trackId);
     return this.fetchWithRetry<any>('/history', {
       method: 'POST',
       body: JSON.stringify({ trackId }),
     });
+  }
+
+  // Smart Ranking Analytics
+  async logAnalyticsEvent(event_type: 'search' | 'play' | 'play_completed' | 'click' | 'like', song_id: string) {
+    if (!song_id) return;
+    return this.fetchWithRetry<any>('/analytics/event', {
+      method: 'POST',
+      body: JSON.stringify({ event_type, song_id }),
+    }).catch(() => {}); // fire and forget
   }
 }
 

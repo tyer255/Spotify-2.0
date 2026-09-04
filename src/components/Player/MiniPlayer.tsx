@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePlayer } from '../../context/PlayerContext';
 import { useUser } from '../../context/UserContext';
+import { CanvasService } from '../../services/CanvasService';
 import {
   Play,
   Pause,
@@ -17,6 +18,8 @@ import {
   VolumeX,
   Laptop2,
   Check,
+  Video,
+  Sparkle,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -41,6 +44,7 @@ export const MiniPlayer: React.FC = () => {
     setIsFullscreenOpen,
     setIsLyricsOpen,
     setIsQueueOpen,
+    setIsAmbientModeOpen,
     isLyricsOpen,
     isQueueOpen,
     isLoading,
@@ -51,12 +55,34 @@ export const MiniPlayer: React.FC = () => {
   const seekPosRef = React.useRef(0);
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekPos, setSeekPos] = useState(0);
+  const [hasCanvas, setHasCanvas] = useState(false);
 
-  if (!track) return null;
+  useEffect(() => {
+    if (!track?.id) {
+      setHasCanvas(false);
+      return;
+    }
+    let active = true;
+    CanvasService.getCanvasForTrack(track)
+      .then((res) => {
+        if (active) {
+          setHasCanvas(Boolean(res?.verified && res?.canvasUrl));
+        }
+      })
+      .catch(() => {
+        if (active) setHasCanvas(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [track?.id]);
+
+  if (!track || isLyricsOpen) return null;
 
   const isLiked = isTrackLiked(track.id);
-  const currentPos = isSeeking ? seekPos : position;
-  const progressPercent = duration > 0 ? (currentPos / duration) * 100 : 0;
+  const safeDuration = duration > 0 && isFinite(duration) ? duration : (track?.duration && track.duration > 0 ? track.duration : 210);
+  const currentPos = isSeeking ? seekPos : (typeof position === 'number' && !isNaN(position) ? position : 0);
+  const progressPercent = safeDuration > 0 ? Math.min(100, Math.max(0, (currentPos / safeDuration) * 100)) : 0;
 
   const formatTime = (sec: number) => {
     if (isNaN(sec) || sec < 0) return '0:00';
@@ -65,44 +91,25 @@ export const MiniPlayer: React.FC = () => {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const handleSeekStart = (e: React.SyntheticEvent<HTMLInputElement>) => {
+  const handleSeekStart = () => {
     isSeekingRef.current = true;
     setIsSeeking(true);
+  };
+
+  const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    if (!isNaN(val) && val >= 0) {
+      seekPosRef.current = val;
+      setSeekPos(val);
+    }
+  };
+
+  const handleSeekCommit = (e: React.SyntheticEvent<HTMLInputElement>) => {
     const val = parseFloat((e.currentTarget as HTMLInputElement).value);
-    if (!isNaN(val) && val >= 0) {
-      seekPosRef.current = val;
-      setSeekPos(val);
-    } else {
-      seekPosRef.current = position;
-      setSeekPos(position);
-    }
-  };
-
-  const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement> | React.FormEvent<HTMLInputElement>) => {
-    isSeekingRef.current = true;
-    setIsSeeking(true);
-    const val = parseFloat((e.target as HTMLInputElement).value);
-    if (!isNaN(val) && val >= 0) {
-      seekPosRef.current = val;
-      setSeekPos(val);
-    }
-  };
-
-  const handleSeekCommit = (e?: React.SyntheticEvent<HTMLInputElement>) => {
-    let targetTime = seekPosRef.current;
-    if (e && (e.currentTarget as HTMLInputElement)?.value) {
-      const val = parseFloat((e.currentTarget as HTMLInputElement).value);
-      if (!isNaN(val) && val >= 0) {
-        targetTime = val;
-        seekPosRef.current = val;
-        setSeekPos(val);
-      }
-    }
-    seek(targetTime);
-    setTimeout(() => {
-      isSeekingRef.current = false;
-      setIsSeeking(false);
-    }, 450);
+    const targetVal = !isNaN(val) && val >= 0 ? val : seekPosRef.current;
+    seek(targetVal);
+    isSeekingRef.current = false;
+    setIsSeeking(false);
   };
 
   return (
@@ -120,8 +127,8 @@ export const MiniPlayer: React.FC = () => {
           {/* Continuous top thin progress bar indicator with glass glow */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)] transition-all duration-200"
-              style={{ width: `${progressPercent}%` }}
+              className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)] transition-transform duration-200"
+              style={{ transform: `scaleX(${progressPercent / 100})`, transformOrigin: 'left' }}
             />
           </div>
 
@@ -146,6 +153,7 @@ export const MiniPlayer: React.FC = () => {
                 <h4 className="font-semibold text-xs truncate text-neutral-100 group-hover:text-emerald-400 transition-colors">
                   {track.title}
                 </h4>
+
                 {isPlaying && (
                   <div className="flex items-end space-x-[2px] h-3 opacity-90 flex-shrink-0 eq-playing">
                     <div className="eq-bar w-[2px] bg-emerald-400" />
@@ -165,15 +173,27 @@ export const MiniPlayer: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-1 flex-shrink-0 pr-1"
           >
-            {/* Device / Connect indicator (Spotify Connect) */}
+            {/* Device / Connect indicator (Spotiz Connect) */}
             <div
               className="p-1.5 text-neutral-300 hover:text-white rounded-full cursor-pointer hover:bg-white/10 transition-colors"
-              title="Spotify Connect"
+              title="Spotiz Connect"
             >
               <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current text-neutral-300">
                 <path d="M6 3h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm0 2v10h12V5H6zm4 14h4v2h-4v-2z" />
               </svg>
             </div>
+
+            {/* Ambient Mode (Standby) toggle on mobile */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsAmbientModeOpen(true);
+              }}
+              title="Ambient Mode (Always-on / Gestures)"
+              className="p-1.5 text-neutral-400 hover:text-white rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              <Sparkle className="w-5 h-5" strokeWidth={1.5} />
+            </button>
 
             {/* Lyrics toggle button on mobile */}
             <button
@@ -230,7 +250,7 @@ export const MiniPlayer: React.FC = () => {
         </motion.div>
       </div>
 
-      {/* 2. Desktop & Tablet Spotify Docked Bottom Player Bar (>= md screens) */}
+      {/* 2. Desktop & Tablet Spotiz Docked Bottom Player Bar (>= md screens) */}
       <div className="hidden md:flex items-center justify-between h-[90px] liquid-glass-bar px-6 select-none z-40 flex-shrink-0">
         {/* Left Column: Track Info, Like Button, Details */}
         <div className="flex items-center gap-4 w-1/4 min-w-[220px]">
@@ -250,12 +270,15 @@ export const MiniPlayer: React.FC = () => {
           </div>
 
           <div className="min-w-0 pr-2">
-            <h4
-              onClick={() => setIsFullscreenOpen(true)}
-              className="text-base font-semibold text-white truncate hover:underline cursor-pointer"
-            >
-              {track.title}
-            </h4>
+            <div className="flex items-center gap-2 min-w-0">
+              <h4
+                onClick={() => setIsFullscreenOpen(true)}
+                className="text-base font-semibold text-white truncate hover:underline cursor-pointer"
+              >
+                {track.title}
+              </h4>
+
+            </div>
             <p className="text-sm text-neutral-400 truncate mt-0.5 hover:text-white cursor-pointer">
               {track.artist}
             </p>
@@ -332,27 +355,44 @@ export const MiniPlayer: React.FC = () => {
 
           {/* Timeline seekbar with timestamps */}
           <div className="w-full flex items-center gap-3 text-xs font-medium text-neutral-400">
-            <span className="w-10 text-right">{formatTime(currentPos)}</span>
-            <div className="relative flex-1 flex items-center group py-2">
+            <span className="w-10 text-right text-[11px] text-neutral-400">{formatTime(currentPos)}</span>
+            <div className="relative flex-1 flex items-center h-4 group cursor-pointer select-none">
+              {/* Background Track (Visible remaining unplayed portion) */}
+              <div className="absolute inset-x-0 h-1 bg-white/20 rounded-full group-hover:h-1.5 transition-all overflow-hidden">
+                <div 
+                  className="h-full bg-white group-hover:bg-emerald-500 rounded-full transition-[transform] duration-75 ease-out"
+                  style={{ transform: `scaleX(${Math.min(100, Math.max(0, progressPercent)) / 100})`, transformOrigin: 'left' }}
+                />
+              </div>
+
+              {/* Scrubber thumb knob on hover */}
+              <div 
+                className="absolute w-3 h-3 bg-white rounded-full shadow-md -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                style={{ left: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+              />
+
+              {/* Transparent input slider */}
               <input
                 id="miniplayer-seek-slider"
                 type="range"
                 min={0}
-                max={duration > 0 ? duration : (track?.duration || 100)}
+                max={safeDuration}
                 step={0.1}
-                value={currentPos}
+                value={Math.min(safeDuration, Math.max(0, typeof currentPos === 'number' && !Number.isNaN(currentPos) ? currentPos : 0))}
                 onPointerDown={handleSeekStart}
-                onTouchStart={handleSeekStart}
-                onMouseDown={handleSeekStart}
                 onChange={handleSeekChange}
-                onInput={handleSeekChange}
                 onPointerUp={handleSeekCommit}
-                onMouseUp={handleSeekCommit}
-                onTouchEnd={handleSeekCommit}
-                className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer group-hover:h-2 transition-all accent-emerald-500"
+                onPointerCancel={handleSeekCommit}
+                onPointerLeave={(e) => {
+                  if (isSeeking) {
+                    handleSeekCommit(e);
+                  }
+                }}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                aria-label="Seek track"
               />
             </div>
-            <span className="w-10 text-left">{formatTime(duration)}</span>
+            <span className="w-10 text-left text-[11px] text-neutral-400">{formatTime(safeDuration)}</span>
           </div>
         </div>
 
@@ -398,11 +438,21 @@ export const MiniPlayer: React.FC = () => {
               min={0}
               max={1}
               step={0.01}
-              value={isMuted ? 0 : volume}
+              value={isMuted ? 0 : (typeof volume === 'number' && !Number.isNaN(volume) ? volume : 1)}
               onChange={(e) => setVolume(parseFloat(e.target.value))}
               className="w-24 h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-emerald-500 hover:h-2 transition-all"
             />
           </div>
+
+          {/* Ambient Mode (Standby) toggle */}
+          <button
+            id="miniplayer-ambient-mode-btn"
+            onClick={() => setIsAmbientModeOpen(true)}
+            className="p-2 text-neutral-400 hover:text-white rounded-full hover:bg-white/5 transition-colors"
+            title="Ambient Mode (Always-on / Gestures)"
+          >
+            <Sparkle className="w-5 h-5" strokeWidth={1.5} />
+          </button>
 
           {/* Fullscreen Player toggle */}
           <button

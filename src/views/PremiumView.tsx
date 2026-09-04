@@ -61,7 +61,7 @@ export const PremiumView: React.FC<PremiumViewProps> = ({ onNavigate }) => {
     <div className="min-h-full bg-black text-white select-none antialiased pb-24 overflow-x-hidden">
       {/* 1. TOP HERO SECTION WITH SPOTIFY ALBUM COLLAGE BACKGROUND */}
       <div className="relative overflow-hidden w-full bg-gradient-to-b from-[#311042] via-[#1a0f2b] to-black pt-6 pb-8 px-5 sm:px-7">
-        {/* Artistic collage album tiles resembling the Spotify screenshot */}
+        {/* Artistic collage album tiles resembling the Spotiz screenshot */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40 mix-blend-screen">
           {/* Tile 1: Purple PHONK */}
           <div className="absolute -top-6 -left-6 w-36 h-48 bg-gradient-to-br from-purple-600 via-fuchsia-800 to-indigo-950 rounded-2xl transform -rotate-12 border border-white/20 p-3 shadow-2xl flex flex-col justify-between">
@@ -102,7 +102,7 @@ export const PremiumView: React.FC<PremiumViewProps> = ({ onNavigate }) => {
 
         {/* Hero Content */}
         <div className="relative z-10 max-w-xl mx-auto space-y-4 pt-4">
-          {/* Spotify Premium Logo Header */}
+          {/* Spotiz Premium Logo Header */}
           <div className="flex items-center gap-2">
             <SpotifyLogo size={28} />
             <span className="text-xl font-black tracking-tight text-white">
@@ -112,7 +112,7 @@ export const PremiumView: React.FC<PremiumViewProps> = ({ onNavigate }) => {
 
           {/* Main Large Bold Headline */}
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
-            Listen without limits. Unlimited Lifetime Access with Spotify.
+            Listen without limits. Unlimited Lifetime Access with Spotiz.
           </h1>
 
           {/* Notification Pill (Limited time offer style -> Permanent Active) */}
@@ -130,7 +130,7 @@ export const PremiumView: React.FC<PremiumViewProps> = ({ onNavigate }) => {
               Unlimited Lifetime Access
             </button>
             <p className="text-[11px] text-neutral-400 text-center mt-2.5 leading-relaxed">
-              Permanent Unlimited Access. Your account has lifetime Spotify Premium enabled with no expiration date. All features unlocked.
+              Permanent Unlimited Access. Your account has lifetime Spotiz Premium enabled with no expiration date. All features unlocked.
             </p>
           </div>
         </div>
@@ -148,7 +148,7 @@ export const PremiumView: React.FC<PremiumViewProps> = ({ onNavigate }) => {
           {/* Animated Gradient Sweep */}
           <motion.div 
             className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-500/10 to-transparent skew-x-12"
-            animate={{ left: ['-100%', '200%'] }}
+            animate={{ x: ['-100%', '300%'] }}
             transition={{ duration: 2.5, ease: "easeInOut", repeat: Infinity, repeatDelay: 1.5 }}
           />
 
@@ -311,7 +311,7 @@ export const PremiumView: React.FC<PremiumViewProps> = ({ onNavigate }) => {
             </div>
 
             <p className="text-[10px] text-neutral-400 text-center leading-relaxed">
-              Your Spotify Premium account is active permanently. Terms apply.
+              Your Spotiz Premium account is active permanently. Terms apply.
             </p>
           </motion.div>
 

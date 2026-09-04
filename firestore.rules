@@ -1,0 +1,156 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitive Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.keys().hasAll(['id', 'name', 'email', 'createdAt', 'updatedAt'])
+          && data.id is string && data.id == request.auth.uid
+          && data.name is string && data.name.size() <= 100
+          && data.email is string && data.email == request.auth.token.email
+          && data.createdAt is string
+          && data.updatedAt is string;
+      }
+      function isValidUserUpdate(data) {
+        return data.name is string && data.name.size() <= 100
+          && data.updatedAt is string;
+      }
+
+      // Users can only read their own profile
+      allow get: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+      allow list: if false; // No blanket listing of users
+      
+      allow create: if isSignedIn() 
+        && request.auth.uid == userId 
+        && isValidId(userId)
+        && request.auth.token.email_verified == true
+        && isValidUser(incoming());
+        
+      allow update: if isSignedIn() 
+        && request.auth.uid == userId
+        && isValidId(userId)
+        && incoming().diff(existing()).affectedKeys().hasAny(['name', 'username', 'avatar', 'settings', 'updatedAt', 'recentHistory', 'recentSearches', 'interactionStats'])
+        && (!('id' in incoming().diff(existing()).affectedKeys()))
+        && (!('email' in incoming().diff(existing()).affectedKeys()))
+        && (!('createdAt' in incoming().diff(existing()).affectedKeys()))
+        && incoming().updatedAt is string;
+        
+      allow delete: if false;
+
+      // Liked Tracks Subcollection
+      match /likedTracks/{trackId} {
+        function isValidLikedTrack(data) {
+          return data.keys().hasAll(['trackId', 'trackData', 'createdAt'])
+            && data.trackId is string
+            && data.createdAt is string;
+        }
+
+        allow read: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(trackId);
+        allow list: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+        allow create: if isSignedIn() 
+          && request.auth.uid == userId 
+          && isValidId(userId) 
+          && isValidId(trackId)
+          && isValidLikedTrack(incoming());
+        allow update: if false;
+        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(trackId);
+      }
+
+      // Followed Artists Subcollection
+      match /followedArtists/{artistId} {
+        function isValidFollowedArtist(data) {
+          return data.keys().hasAll(['artistId', 'artistData', 'createdAt'])
+            && data.artistId is string
+            && data.createdAt is string;
+        }
+
+        allow read: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(artistId);
+        allow list: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+        allow create: if isSignedIn() 
+          && request.auth.uid == userId 
+          && isValidId(userId) 
+          && isValidId(artistId)
+          && isValidFollowedArtist(incoming());
+        allow update: if false;
+        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(artistId);
+      }
+
+      // Downloads Subcollection
+      match /downloads/{trackId} {
+        function isValidDownloadedTrack(data) {
+          return data.keys().hasAll(['trackId', 'trackData', 'createdAt'])
+            && data.trackId is string
+            && data.createdAt is string;
+        }
+
+        allow read: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(trackId);
+        allow list: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+        allow create: if isSignedIn() 
+          && request.auth.uid == userId 
+          && isValidId(userId) 
+          && isValidId(trackId)
+          && isValidDownloadedTrack(incoming());
+        allow update: if false;
+        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(trackId);
+      }
+    }
+
+    // Playlists Collection
+    match /playlists/{playlistId} {
+      function isValidPlaylist(data) {
+        return data.keys().hasAll(['id', 'title', 'userId', 'createdAt', 'updatedAt'])
+          && data.id is string
+          && data.title is string && data.title.size() <= 100
+          && data.userId is string && data.userId == request.auth.uid
+          && data.createdAt is string
+          && data.updatedAt is string;
+      }
+
+      allow get: if isSignedIn() && isValidId(playlistId) && (existing().userId == request.auth.uid || existing().isPublic == true || ('participantIds' in existing() && request.auth.uid in existing().participantIds));
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.isPublic == true || ('participantIds' in resource.data && request.auth.uid in resource.data.participantIds));
+      
+      allow create: if isSignedIn() 
+        && isValidId(playlistId)
+        && isValidPlaylist(incoming());
+        
+      allow update: if isSignedIn()
+        && isValidId(playlistId)
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt is string
+        && (existing().userId == request.auth.uid || existing().isBlend == true);
+        
+      allow delete: if isSignedIn() && isValidId(playlistId) && existing().userId == request.auth.uid;
+    }
+
+    match /music_events/{eventId} {
+      allow read: if true; // Backend needs to read this to calculate ranking
+      allow create: if true; // Any client can log events
+      allow update, delete: if false;
+    }
+
+  }
+}

@@ -39,12 +39,13 @@ export const TopBar: React.FC<TopBarProps> = ({
   const { theme, toggleTheme } = useTheme();
   const { profile } = useUser();
 
+  const isHome = currentView.type === 'home';
   const isSearch = currentView.type === 'search';
   const isLibrary = currentView.type === 'library';
 
   return (
     <header className={`sticky top-0 z-30 items-center justify-between px-3 sm:px-6 md:px-8 py-3 liquid-glass-topbar select-none ${
-      isSearch || isLibrary ? 'hidden md:flex' : 'flex'
+      isHome || isSearch || isLibrary || currentView.type === 'playlist' || currentView.type === 'album' || currentView.type === 'artist' || currentView.type === 'blend-setup' || currentView.type === 'blend-invite' ? 'hidden md:flex' : 'flex'
     }`}>
       {/* Left: Mobile Brand Logo + Navigation Buttons */}
       <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">

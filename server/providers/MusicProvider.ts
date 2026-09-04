@@ -13,7 +13,13 @@ export interface IMusicProvider {
   getPlaylist(id: string): Promise<Playlist | null>;
   getRecommendations(seedTrackId?: string, genre?: string): Promise<Track[]>;
   getLyrics(trackId: string, trackTitle?: string, artistName?: string, duration?: number): Promise<LyricsData>;
-  resolvePlayback(trackId: string, title?: string, artist?: string, duration?: number): Promise<{
+  resolvePlayback(
+    trackId: string,
+    title?: string,
+    artist?: string,
+    duration?: number,
+    options?: { forceFresh?: boolean; discardUrl?: string }
+  ): Promise<{
     id: string;
     title: string;
     artist: string;
@@ -24,6 +30,12 @@ export interface IMusicProvider {
       url: string;
       mimeType: string;
       bitrate: string;
+      fallbackUrls?: string[];
+      isFullLength?: boolean;
+      isDirectAudio?: boolean;
+      isMediaDescriptor?: boolean;
+      descriptorType?: string;
+      mediaUri?: string;
     };
   } | null>;
   getHomeFeed(): Promise<HomeFeedData>;

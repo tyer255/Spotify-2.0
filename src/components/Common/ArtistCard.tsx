@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Artist, ViewState } from '../../types';
 import { useUser } from '../../context/UserContext';
-import { Check, Plus, User } from 'lucide-react';
+import { Check, Plus } from 'lucide-react';
+import { ArtistAvatar } from './ArtistAvatar';
 
 interface ArtistCardProps {
   artist: Artist;
@@ -10,23 +11,18 @@ interface ArtistCardProps {
 
 export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onNavigate }) => {
   const { isArtistFollowed, toggleFollowArtist } = useUser();
-  const isFollowed = isArtistFollowed(artist.id);
-  const [imgError, setImgError] = useState(false);
+  const isFollowed = isArtistFollowed(artist.id) || isArtistFollowed(artist.name);
 
   const handleClick = () => {
     if (onNavigate) {
-      onNavigate({ type: 'artist', artistId: artist.id });
+      onNavigate({ 
+        type: 'artist', 
+        artistId: artist.id,
+        expectedName: artist.name,
+        initialImage: artist.image 
+      });
     }
   };
-
-  const initials = artist.name
-    ? artist.name
-        .split(' ')
-        .map((w) => w[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase()
-    : 'AR';
 
   return (
     <div
@@ -34,20 +30,13 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onNavigate }) =>
       className="group relative flex-shrink-0 w-36 sm:w-40 p-3 rounded-2xl liquid-glass-card transition-all duration-300 cursor-pointer flex flex-col items-center text-center"
     >
       <div className="relative aspect-square w-28 sm:w-32 rounded-full overflow-hidden mb-3 shadow-lg bg-neutral-800 flex items-center justify-center">
-        {!imgError && artist.image ? (
-          <img
-            src={artist.image}
-            alt={artist.name}
-            loading="lazy"
-            onError={() => setImgError(true)}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-emerald-700 to-neutral-900 text-white select-none">
-            <span className="text-xl font-bold tracking-wider">{initials}</span>
-            <User className="w-4 h-4 text-white/50 mt-1" />
-          </div>
-        )}
+        <ArtistAvatar
+          id={artist.id}
+          name={artist.name}
+          image={artist.image}
+          sizeClassName="w-full h-full"
+          showHoverEffect={true}
+        />
       </div>
 
       <h4 className="font-semibold text-sm truncate w-full text-neutral-100 group-hover:text-white">
@@ -81,4 +70,5 @@ export const ArtistCard: React.FC<ArtistCardProps> = ({ artist, onNavigate }) =>
     </div>
   );
 };
+
 

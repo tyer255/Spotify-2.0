@@ -1,0 +1,6 @@
+https://open.spotifycdn.com/cdn/generated/manifest-mobile-web-player.02f34395.js
+https://open.spotifycdn.com/cdn/generated-locales/mobile-web-player/en.a30f3a2a.js
+https://open.spotifycdn.com/cdn/js/gtm.96d60fd6.js
+https://open.spotifycdn.com/cdn/js/retargeting-pixels.02346b5d.js
+https://open.spotifycdn.com/cdn/build/mobile-web-player/mobile-web-player.c7c3b09c.js
+https://open.spotifycdn.com/cdn/build/mobile-web-player/vendor~mobile-web-player.d880fbef.js

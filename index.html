@@ -3,59 +3,54 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Spotify 2.0 - Music & Podcasts</title>
+    <title>Spotiz - Music & Podcasts</title>
     <meta name="description" content="Stream high-fidelity music, curated playlists, synchronized lyrics, and podcasts anywhere." />
     
     <!-- PWA & Mobile Web App Meta Tags -->
-    <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="alternate icon" type="image/svg+xml" href="/icon-192.svg" />
-    <link rel="apple-touch-icon" href="/icon-192.svg" />
+    <link rel="alternate icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
     
     <meta name="theme-color" content="#1DB954" />
     <meta name="color-scheme" content="dark light" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Spotify" />
-    <meta name="application-name" content="Spotify" />
+    <meta name="apple-mobile-web-app-title" content="Spotiz" />
+    <meta name="application-name" content="Spotiz" />
     <meta name="msapplication-TileColor" content="#121212" />
 
     <!-- Open Graph & Social -->
-    <meta property="og:title" content="Spotify 2.0 - Music Streaming" />
+    <meta property="og:title" content="Spotiz - Music Streaming" />
     <meta property="og:description" content="Stream high-fidelity music, synchronized lyrics, and personalized playlists." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/icon-512.svg" />
     <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Spotify 2.0" />
+    <meta name="twitter:title" content="Spotiz" />
     <meta name="twitter:image" content="/icon-512.svg" />
   </head>
   <body class="bg-black text-white selection:bg-emerald-500 selection:text-black">
-    <div id="root"></div>
+    <div id="root">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;width:100vw;background-color:#0a0a0a;color:#ffffff;font-family:system-ui,-apple-system,sans-serif;">
+        <div style="position:relative;width:64px;height:64px;margin-bottom:24px;">
+          <svg viewBox="0 0 24 24" width="64" height="64" fill="#1DB954">
+            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.503 17.308c-.216.353-.674.468-1.027.252-2.812-1.718-6.352-2.107-10.522-1.155-.404.092-.806-.157-.899-.561-.092-.404.157-.806.561-.899 4.568-1.044 8.487-.601 11.635 1.336.353.216.468.674.252 1.027zm1.47-3.267c-.272.443-.852.585-1.295.313-3.219-1.979-8.127-2.551-11.935-1.394-.499.152-1.028-.133-1.18-.632-.152-.499.133-1.028.632-1.18 4.357-1.322 9.773-.687 13.465 1.598.443.272.585.852.313 1.295zm.126-3.41c-3.86-2.292-10.231-2.503-13.918-1.383-.593.18-1.222-.154-1.402-.747-.18-.593.154-1.222.747-1.402 4.238-1.286 11.278-1.042 15.728 1.597.534.317.708 1.008.391 1.542-.317.534-1.008.708-1.546.393z"/>
+          </svg>
+        </div>
+        <div style="width:140px;height:4px;background:rgba(255,255,255,0.1);border-radius:999px;overflow:hidden;">
+          <div style="width:40%;height:100%;background:#1DB954;border-radius:999px;animation:spotizLoader 1.2s infinite ease-in-out;"></div>
+        </div>
+        <style>
+          @keyframes spotizLoader {
+            0% { transform: translateX(-100%); width: 30%; }
+            50% { transform: translateX(100%); width: 60%; }
+            100% { transform: translateX(300%); width: 30%; }
+          }
+        </style>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      // Register PWA Service Worker with background update checks
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((reg) => {
-              console.log('[PWA] ServiceWorker registered with scope:', reg.scope);
-              // Periodic background update check
-              setInterval(() => {
-                reg.update().catch(() => {});
-              }, 30 * 60 * 1000); // Check every 30 minutes
-
-              // Check when window regains focus
-              window.addEventListener('focus', () => {
-                reg.update().catch(() => {});
-              });
-            })
-            .catch((err) => {
-              console.warn('[PWA] ServiceWorker registration failed:', err);
-            });
-        });
-      }
-    </script>
   </body>
 </html>
 

@@ -1,3 +1,4 @@
+import { ReloadPrompt } from './components/ReloadPrompt';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -16,10 +17,12 @@ import { MiniPlayer } from './components/Player/MiniPlayer';
 import { FullscreenPlayer } from './components/Player/FullscreenPlayer';
 import { LyricsDrawer } from './components/Player/LyricsDrawer';
 import { QueueDrawer } from './components/Player/QueueDrawer';
+import { AmbientMode } from './components/Player/AmbientMode';
 import { OfflineBanner } from './components/Common/OfflineBanner';
 import { Toast } from './components/Common/Toast';
 import { CreatePlaylistModal } from './components/Common/CreatePlaylistModal';
 import { CreateActionMenu } from './components/Navigation/CreateActionMenu';
+import { ComingSoonModal } from './components/Common/ComingSoonModal';
 
 import { HomeView } from './views/HomeView';
 import { SearchView } from './views/SearchView';
@@ -30,19 +33,33 @@ import { LibraryView } from './views/LibraryView';
 import { ProfileView } from './views/ProfileView';
 import { SettingsView } from './views/SettingsView';
 import { PremiumView } from './views/PremiumView';
+import { BlendSetupView } from './views/BlendSetupView';
+import { BlendInviteView } from './views/BlendInviteView';
+import { InfoView } from './views/InfoView';
+import { LoginPopup } from './components/Auth/LoginPopup';
 
 function AppContent() {
+  const { isComingSoonOpen, comingSoonTitle, comingSoonDesc, closeComingSoon } = useUser();
   // Navigation stack state
   const [history, setHistory] = useState<ViewState[]>([{ type: 'home' }]);
   const [historyIndex, setHistoryIndex] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
+  const [createPlaylistType, setCreatePlaylistType] = useState<'playlist' | 'collaborative' | 'blend'>('playlist');
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
 
   const currentView = history[historyIndex] || { type: 'home' };
   const mainRef = useRef<HTMLElement>(null);
   const scrollPositionsRef = useRef<Record<string, number>>({});
   const prevViewKeyRef = useRef<string>('home');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const blendId = params.get('blend');
+    if (blendId) {
+      setHistory([{ type: 'blend-invite', blendId }]);
+    }
+  }, []);
 
   const getViewKey = (view: ViewState): string => {
     if (view.type === 'album') return `album-${view.albumId}`;
@@ -121,20 +138,13 @@ function AppContent() {
 
   return (
     <div className="flex flex-col h-[100dvh] w-screen overflow-hidden bg-neutral-950 text-neutral-100 font-sans select-none antialiased relative">
-      {/* Dynamic Ambient Background & Refraction Orbs for Liquid Glass Depth */}
-      <div className="ambient-bg pointer-events-none -z-10" aria-hidden="true">
-        <div className="ambient-orb orb-1" />
-        <div className="ambient-orb orb-2" />
-      </div>
-      <div className="noise-overlay pointer-events-none -z-10" aria-hidden="true" />
-
       {/* Top Workspace Area: Sidebar + Scrollable View */}
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
         {/* Sidebar for Desktop & Tablet */}
         <Sidebar
           currentView={currentView}
           onNavigate={navigateTo}
-          onOpenCreatePlaylist={() => setIsCreatePlaylistOpen(true)}
+          onOpenCreatePlaylist={() => setIsCreateMenuOpen(true)}
         />
 
         {/* Main Content Area */}
@@ -163,19 +173,25 @@ function AppContent() {
             {currentView.type === 'home' && <HomeView onNavigate={navigateTo} />}
             {currentView.type === 'search' && (
               <SearchView
-                searchQuery={searchQuery || currentView.initialQuery}
+                searchQuery={searchQuery || currentView.initialQuery || ''}
                 onSearchChange={setSearchQuery}
                 onNavigate={navigateTo}
               />
             )}
             {currentView.type === 'artist' && (
-              <ArtistView artistId={currentView.artistId} onNavigate={navigateTo} />
+              <ArtistView key={currentView.artistId} 
+                artistId={currentView.artistId} 
+                expectedName={currentView.expectedName} 
+                initialImage={currentView.initialImage}
+                onNavigate={navigateTo} 
+                onGoBack={handleGoBack}
+              />
             )}
             {currentView.type === 'album' && (
-              <AlbumView albumId={currentView.albumId} onNavigate={navigateTo} />
+              <AlbumView albumId={currentView.albumId} onNavigate={navigateTo} onGoBack={handleGoBack} />
             )}
             {currentView.type === 'playlist' && (
-              <PlaylistView playlistId={currentView.playlistId} onNavigate={navigateTo} />
+              <PlaylistView playlistId={currentView.playlistId} onNavigate={navigateTo} onGoBack={handleGoBack} />
             )}
             {currentView.type === 'library' && (
               <LibraryView
@@ -187,6 +203,9 @@ function AppContent() {
             {currentView.type === 'premium' && <PremiumView onNavigate={navigateTo} />}
             {currentView.type === 'profile' && <ProfileView onNavigate={navigateTo} />}
             {currentView.type === 'settings' && <SettingsView onNavigate={navigateTo} />}
+            {currentView.type === 'blend-setup' && <BlendSetupView onNavigate={navigateTo} onBack={handleGoBack} />}
+            {currentView.type === 'blend-invite' && <BlendInviteView blendId={currentView.blendId} onNavigate={navigateTo} onBack={handleGoBack} />}
+            {currentView.type === 'info' && <InfoView pageId={currentView.pageId} onNavigate={navigateTo} onGoBack={handleGoBack} />}
           </main>
         </div>
       </div>
@@ -198,25 +217,39 @@ function AppContent() {
       <BottomNav
         currentView={currentView}
         onNavigate={navigateTo}
-        onOpenCreatePlaylist={() => setIsCreatePlaylistOpen(true)}
+        onOpenCreatePlaylist={() => setIsCreateMenuOpen(true)}
         isCreateMenuOpen={isCreateMenuOpen}
         onToggleCreateMenu={() => setIsCreateMenuOpen(!isCreateMenuOpen)}
       />
 
+      <LoginPopup onNavigate={navigateTo} />
+
       {/* Global Overlays & Modals */}
       <FullscreenPlayer onNavigate={navigateTo} />
+      <AmbientMode onNavigate={navigateTo} />
       <LyricsDrawer />
       <QueueDrawer />
       <CreateActionMenu
         isOpen={isCreateMenuOpen}
         onClose={() => setIsCreateMenuOpen(false)}
-        onSelectCreatePlaylist={() => setIsCreatePlaylistOpen(true)}
+        onSelectCreatePlaylist={(type = 'playlist') => {
+          setCreatePlaylistType(type);
+          setIsCreatePlaylistOpen(true);
+        }}
         onNavigate={navigateTo}
       />
+      
       <CreatePlaylistModal
         isOpen={isCreatePlaylistOpen}
         onClose={() => setIsCreatePlaylistOpen(false)}
         onNavigate={navigateTo}
+        type={createPlaylistType}
+      />
+      <ComingSoonModal
+        isOpen={isComingSoonOpen}
+        onClose={closeComingSoon}
+        title={comingSoonTitle}
+        description={comingSoonDesc}
       />
       <Toast />
     </div>
@@ -229,6 +262,7 @@ export default function App() {
       <UserProvider>
         <PlayerProvider>
           <AppContent />
+          <ReloadPrompt />
         </PlayerProvider>
       </UserProvider>
     </ThemeProvider>

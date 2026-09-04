@@ -1,0 +1,30 @@
+Checking https://embed-cdn.spotifycdn.com/_next/static/chunks/polyfills-42372ed130431b0a.js
+no
+Checking https://embed-cdn.spotifycdn.com/_next/static/chunks/webpack-472dee3ff84e78c2.js
+no
+Checking https://embed-cdn.spotifycdn.com/_next/static/chunks/framework-6f473f6ede4ec4c4.js
+no
+Checking https://embed-cdn.spotifycdn.com/_next/static/chunks/main-1d685525d65f283e.js
+no
+Checking https://embed-cdn.spotifycdn.com/_next/static/chunks/pages/_app-11249fdacedc20f8.js
+no
+Checking https://embed-cdn.spotifycdn.com/_next/static/chunks/69bd4b51-865e1672b6809701.js
+no
+Checking https://embed-cdn.spotifycdn.com/_next/static/chunks/1df930d7-c3c84ee0b3e2843b.js
+no
+Checking https://embed-cdn.spotifycdn.com/_next/static/chunks/8494-228b98ef7673b262.js
+no
+Checking https://embed-cdn.spotifycdn.com/_next/static/chunks/4504-40052219cc17b3fe.js
+no
+Checking https://embed-cdn.spotifycdn.com/_next/static/chunks/8914-bbf5d87850f61402.js
+no
+Checking https://embed-cdn.spotifycdn.com/_next/static/chunks/8939-ff1c9565dad5e8a6.js
+no
+Checking https://embed-cdn.spotifycdn.com/_next/static/chunks/759-2fc00e49a1454cde.js
+no
+Checking https://embed-cdn.spotifycdn.com/_next/static/chunks/pages/track/%5Bid%5D-f6554ebbae8c6192.js
+no
+Checking https://embed-cdn.spotifycdn.com/_next/static/6add6ac9-93d2-4c85-b971-dd55e6cbf084/_buildManifest.js
+no
+Checking https://embed-cdn.spotifycdn.com/_next/static/6add6ac9-93d2-4c85-b971-dd55e6cbf084/_ssgManifest.js
+no

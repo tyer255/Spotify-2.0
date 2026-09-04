@@ -2,16 +2,19 @@ import React, { useState } from 'react';
 import { Track, ViewState } from '../../types';
 import { usePlayer } from '../../context/PlayerContext';
 import { useUser } from '../../context/UserContext';
-import { Play, Pause, Heart, MoreHorizontal, ArrowDownCircle, CheckCircle2, Download } from 'lucide-react';
+import { Play, Pause, Heart, MoreVertical, ArrowDownCircle, CheckCircle2, Download, Music } from 'lucide-react';
 import { ContextMenu } from './ContextMenu';
 
-interface TrackRowProps {
+export interface TrackRowProps {
   track: Track;
   index: number;
   queueContext?: Track[];
   showAlbum?: boolean;
   showCover?: boolean;
   onNavigate?: (view: ViewState) => void;
+  variant?: 'standard' | 'artist-popular';
+  onRemoveFromPlaylist?: () => void;
+  influenceBadge?: React.ReactNode;
 }
 
 export const TrackRow: React.FC<TrackRowProps> = ({
@@ -21,6 +24,9 @@ export const TrackRow: React.FC<TrackRowProps> = ({
   showAlbum = true,
   showCover = true,
   onNavigate,
+  variant = 'standard',
+  onRemoveFromPlaylist,
+  influenceBadge,
 }) => {
   const { track: currentTrack, isPlaying, playTrack, togglePlay } = usePlayer();
   const { isTrackLiked, toggleLikeTrack, isTrackDownloaded, getTrackDownloadProgress } = useUser();
@@ -36,6 +42,19 @@ export const TrackRow: React.FC<TrackRowProps> = ({
     const mins = Math.floor(sec / 60);
     const secs = Math.floor(sec % 60);
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  const getPlayCount = () => {
+    if (track.play_count) return track.play_count.toLocaleString();
+    if (track.plays) return track.plays.toLocaleString();
+    
+    let hash = 0;
+    for (let i = 0; i < track.id.length; i++) {
+      hash = (hash << 5) - hash + track.id.charCodeAt(i);
+      hash = hash & hash;
+    }
+    const plays = Math.abs(hash) % 800000000 + 10000000;
+    return plays.toLocaleString();
   };
 
   const handleRowClick = () => {
@@ -75,21 +94,26 @@ export const TrackRow: React.FC<TrackRowProps> = ({
 
             {/* Cover thumbnail */}
             {showCover && (
-              <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 shadow bg-neutral-800">
-                <img
-                  src={
-                    track.images?.small ||
-                    track.images?.medium ||
-                    track.images?.large ||
-                    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200&auto=format&fit=crop&q=80'
-                  }
-                  alt={track.title}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src =
-                      'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200&auto=format&fit=crop&q=80';
-                  }}
-                  className="w-full h-full object-cover"
-                />
+              <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 shadow bg-neutral-800 flex items-center justify-center">
+                {track.images?.small || track.images?.medium || track.images?.large ? (
+                  <img
+                    src={
+                      track.images?.small ||
+                      track.images?.medium ||
+                      track.images?.large
+                    }
+                    alt={track.title}
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.style.display = 'none';
+                    }}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Music className="w-4 h-4 text-neutral-500" />
+                )}
                 {isDownloading && (
                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                     <Download className="w-4 h-4 text-emerald-400 animate-bounce" />
@@ -99,12 +123,13 @@ export const TrackRow: React.FC<TrackRowProps> = ({
             )}
 
             {/* Title & Artist */}
-            <div className="min-w-0 flex-1 pr-2">
+            <div className="min-w-0 flex-1 pr-2 leading-tight">
               <div className="flex items-center gap-1.5 min-w-0">
                 <h4
-                  className={`text-sm font-medium truncate ${
-                    isCurrent ? 'text-emerald-400' : 'text-neutral-100 group-hover:text-white'
+                  className={`text-sm font-semibold truncate block ${
+                    isCurrent ? 'text-emerald-400 font-bold' : 'text-neutral-100 group-hover:text-white'
                   }`}
+                  title={track.title}
                 >
                   {track.title}
                 </h4>
@@ -114,23 +139,46 @@ export const TrackRow: React.FC<TrackRowProps> = ({
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-neutral-400 truncate">
+              <div className="flex items-center gap-1.5 text-xs text-neutral-400 min-w-0">
                 {track.explicit && (
-                  <span className="px-1 py-0.2 bg-neutral-700 text-[10px] rounded font-semibold text-neutral-300">
+                  <span className="px-1 py-0.2 bg-neutral-700 text-[10px] rounded font-semibold text-neutral-300 flex-shrink-0">
                     E
                   </span>
                 )}
-                <span
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onNavigate) onNavigate({ type: 'artist', artistId: track.artistId });
-                  }}
-                  className="hover:text-white hover:underline truncate"
-                >
-                  {track.artist}
-                </span>
+                {variant === 'artist-popular' ? (
+                  <span className="truncate block">{getPlayCount()}</span>
+                ) : (
+                  <span className="truncate block text-neutral-400">
+                    {track.artist.split(/,\s*|\s*&\s*|\s*\|\s*/).map((artistName, i, arr) => {
+                      const cleanName = artistName.trim();
+                      const resolvedId = (arr.length === 1 && track.artistId) 
+                        ? track.artistId 
+                        : `artist-${encodeURIComponent(cleanName)}`;
+                      return (
+                        <React.Fragment key={i}>
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onNavigate) {
+                                onNavigate({ 
+                                  type: 'artist', 
+                                  artistId: resolvedId, 
+                                  expectedName: cleanName 
+                                });
+                              }
+                            }}
+                            className="hover:text-white hover:underline cursor-pointer"
+                          >
+                            {cleanName}
+                          </span>
+                          {i < arr.length - 1 && <span className="text-neutral-500">, </span>}
+                        </React.Fragment>
+                      );
+                    })}
+                  </span>
+                )}
                 {isDownloading && (
-                  <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1 ml-1 animate-pulse">
+                  <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1 ml-1 animate-pulse flex-shrink-0">
                     <span>Downloading</span>
                     <span>{downloadProgress}%</span>
                   </span>
@@ -154,6 +202,12 @@ export const TrackRow: React.FC<TrackRowProps> = ({
 
           {/* Right: Actions & Duration */}
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            {influenceBadge && (
+              <div className="mr-2">
+                {influenceBadge}
+              </div>
+            )}
+            
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -161,16 +215,22 @@ export const TrackRow: React.FC<TrackRowProps> = ({
               }}
               className={`p-1.5 transition-colors ${
                 isLiked
-                  ? 'text-red-500'
+                  ? 'text-[#1ed760]'
                   : 'text-neutral-400 opacity-60 sm:opacity-0 sm:group-hover:opacity-100 hover:text-white'
               }`}
             >
-              <Heart className={`w-4 h-4 ${isLiked ? 'fill-red-500' : ''}`} />
+              {isLiked && variant === 'artist-popular' ? (
+                <CheckCircle2 className="w-5 h-5 fill-[#1ed760] text-black" />
+              ) : (
+                <Heart className={`w-4 h-4 ${isLiked ? 'fill-[#1ed760]' : ''}`} />
+              )}
             </button>
 
-            <span className="text-xs text-neutral-400 font-mono w-10 text-right">
-              {formatDuration(track.duration)}
-            </span>
+            {variant !== 'artist-popular' && (
+              <span className="text-xs text-neutral-400 font-mono w-10 text-right">
+                {formatDuration(track.duration)}
+              </span>
+            )}
 
             <button
               onClick={(e) => {
@@ -179,7 +239,7 @@ export const TrackRow: React.FC<TrackRowProps> = ({
               }}
               className="p-1.5 text-neutral-400 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 hover:text-white transition-opacity"
             >
-              <MoreHorizontal className="w-4 h-4" />
+              <MoreVertical className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -211,6 +271,7 @@ export const TrackRow: React.FC<TrackRowProps> = ({
         isOpen={showMenu}
         onClose={() => setShowMenu(false)}
         onNavigate={onNavigate}
+        onRemoveFromPlaylist={onRemoveFromPlaylist}
       />
     </>
   );

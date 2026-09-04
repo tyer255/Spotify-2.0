@@ -12,6 +12,7 @@ import {
   Heart,
   Download,
   Settings,
+  Radio,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -21,7 +22,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onOpenCreatePlaylist }) => {
-  const { playlists, likedTrackIds, downloadedTrackIds } = useUser();
+  const { playlists, likedTrackIds, downloadedTrackIds, showComingSoon } = useUser();
 
   const isHome = currentView.type === 'home';
   const isSearch = currentView.type === 'search';
@@ -33,7 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onOpe
 
   return (
     <aside className="hidden md:flex flex-col w-64 h-full liquid-glass-sidebar p-4 text-neutral-300 select-none flex-shrink-0 relative z-20">
-      {/* Brand Logo - Custom Spotify Sonic Wave Emblem */}
+      {/* Brand Logo - Custom Spotiz Sonic Wave Emblem */}
       <div
         onClick={() => onNavigate({ type: 'home' })}
         className="flex items-center px-2 py-3 mb-3 cursor-pointer group"
@@ -77,6 +78,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onOpe
         >
           <Library className={`w-5 h-5 ${isLibrary ? 'text-emerald-400' : ''}`} />
           <span>Your Library</span>
+        </button>
+
+        <button
+          onClick={() => showComingSoon('Coming Soon', 'Radio stations and live personalized streaming are coming soon.')}
+          className="w-full flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer hover:text-white hover:bg-white/5 border border-transparent group"
+        >
+          <Radio className="w-5 h-5 text-neutral-400 group-hover:text-emerald-400 transition-colors" />
+          <span>Radio</span>
         </button>
 
         <button

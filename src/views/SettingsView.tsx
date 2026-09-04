@@ -16,7 +16,9 @@ import {
   Trash2,
   Zap,
   SunMoon, 
-  Crown 
+  Crown,
+  Video,
+  Wifi
 } from 'lucide-react';
 
 interface SettingsViewProps {
@@ -26,13 +28,20 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
   const { theme, setTheme, accentColor, setAccentColor } = useTheme();
   const { showToast, downloadedTracksList, clearAllDownloads } = useUser();
-  const { audioQuality, setAudioQuality, crossfadeSeconds, setCrossfadeSeconds, gapless, setGapless, normalizeVolume, setNormalizeVolume } = usePlayer();
+  const { 
+    audioQuality, setAudioQuality, 
+    crossfadeSeconds, setCrossfadeSeconds, 
+    gapless, setGapless, 
+    normalizeVolume, setNormalizeVolume,
+    canvasEnabled, setCanvasEnabled,
+    dataSaver, setDataSaver
+  } = usePlayer();
 
         
   
   
   const accentOptions = [
-    { name: 'Emerald (Spotify Green)', hex: '#10B981' },
+    { name: 'Emerald (Spotiz Green)', hex: '#10B981' },
     { name: 'Electric Purple', hex: '#8B5CF6' },
     { name: 'Sunset Pink', hex: '#EC4899' },
     { name: 'Cyan Wave', hex: '#06B6D4' },
@@ -64,7 +73,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
         {/* Animated Sweep */}
         <motion.div 
           className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-500/10 to-transparent skew-x-12 pointer-events-none"
-          animate={{ left: ['-100%', '200%'] }}
+          animate={{ x: ['-100%', '300%'] }}
           transition={{ duration: 3, ease: "easeInOut", repeat: Infinity, repeatDelay: 2 }}
         />
 
@@ -172,7 +181,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
               type="range"
               min={0}
               max={12}
-              value={crossfadeSeconds}
+              value={typeof crossfadeSeconds === 'number' && !Number.isNaN(crossfadeSeconds) ? crossfadeSeconds : 3}
               onChange={(e) => setCrossfadeSeconds(parseInt(e.target.value))}
               className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
             />
@@ -213,6 +222,64 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
               <div
                 className={`w-5 h-5 rounded-full bg-white transition-transform absolute top-0.5 ${
                   normalizeVolume ? 'left-6.5' : 'left-0.5'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Data Saver & Canvas */}
+      <section className="p-5 sm:p-6 rounded-3xl liquid-glass-card space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-neutral-800/80 text-neutral-300 border border-white/5">
+            <Wifi className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-base">Data Saver & Video</h3>
+            <p className="text-xs text-neutral-400">Control data usage and visual experience</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-white">Data Saver</p>
+              <p className="text-xs text-neutral-400 mt-1 max-w-[250px]">
+                Sets your audio quality to low and disables Canvas looping videos to save data.
+              </p>
+            </div>
+            <button
+              onClick={() => setDataSaver(!dataSaver)}
+              className={`w-12 h-6 rounded-full transition-colors relative ${
+                dataSaver ? 'bg-emerald-500' : 'bg-neutral-700'
+              }`}
+            >
+              <div
+                className={`w-5 h-5 rounded-full bg-white transition-transform absolute top-0.5 ${
+                  dataSaver ? 'left-6.5' : 'left-0.5'
+                }`}
+              />
+            </button>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-white">Canvas Visuals</p>
+              <p className="text-xs text-neutral-400 mt-1 max-w-[250px]">
+                Show short, looping visual videos on tracks in the player.
+              </p>
+            </div>
+            <button
+              onClick={() => setCanvasEnabled(!canvasEnabled)}
+              disabled={dataSaver}
+              className={`w-12 h-6 rounded-full transition-colors relative ${
+                canvasEnabled && !dataSaver ? 'bg-emerald-500' : 'bg-neutral-700'
+              } ${dataSaver ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <div
+                className={`w-5 h-5 rounded-full bg-white transition-transform absolute top-0.5 ${
+                  canvasEnabled && !dataSaver ? 'left-6.5' : 'left-0.5'
                 }`}
               />
             </button>
@@ -293,7 +360,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onNavigate }) => {
             <SpotifyLogo size={48} />
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-lg text-white">Spotify 2.0 PWA</h3>
+                <h3 className="font-extrabold text-lg text-white">Spotiz PWA</h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-800/80 text-neutral-300 border border-emerald-500/30">
                   Offline Ready
                 </span>

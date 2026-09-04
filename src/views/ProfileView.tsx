@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ViewState } from '../types';
 import { useUser } from '../context/UserContext';
+import { usePlayer } from '../context/PlayerContext';
+import { AuthModal } from '../components/Auth/AuthModal';
 import { PlaylistCard } from '../components/Common/PlaylistCard';
 import { UserAvatar } from '../components/Common/UserAvatar';
+import { ArtistAvatar } from '../components/Common/ArtistAvatar';
+import { CompactTrackRow } from '../components/Common/CompactTrackRow';
 import { compressImageToDataUrl } from '../utils/imageHelper';
 import {
   Crown,
@@ -15,6 +19,13 @@ import {
   Upload,
   Check,
   Loader2,
+  History,
+  Play,
+  Pause,
+  Clock,
+  Users,
+  UserCheck,
+  Sparkles,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -26,11 +37,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
   const {
     profile,
     playlists,
+    followedArtistIds,
+    followedArtistsList,
+    toggleFollowArtist,
+    isArtistFollowed,
     updateProfileName,
     updateProfileAvatar,
     removeProfileAvatar,
+    removeTrackFromHistory,
+    clearListeningHistory,
     showToast,
+    firebaseUser,
+    login,
+    logoutUser,
+    savedAccounts,
+    switchAccount,
+    addAccount,
+    removeSavedAccount,
   } = useUser();
+  const { track: currentTrack, isPlaying, playTrack, togglePlay } = usePlayer();
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
@@ -81,10 +106,27 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
     await removeProfileAvatar();
   };
 
+  
+  if (!firebaseUser) {
+    return (
+      <div className="pb-32 w-full max-w-6xl mx-auto flex flex-col justify-start sm:justify-center items-center min-h-[calc(100vh-80px)] pt-4 sm:pt-8 px-4">
+        <AuthModal />
+      </div>
+    );
+  }
   if (!profile) return null;
+
 
   const currentName = profile.name || 'Your Name';
   const hasCustomAvatar = Boolean(profile.avatar && profile.avatar.trim() !== '');
+  const followingCount = followedArtistIds.size;
+
+  const scrollToFollowing = () => {
+    const el = document.getElementById('profile-following-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
     <div id="profile-view-container" className="p-4 md:p-8 pb-32 space-y-8 text-white max-w-6xl mx-auto select-none">
@@ -111,24 +153,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
             className="w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden shadow-2xl border-4 border-white/10 relative group hover:border-[#1ed760]/50 transition-all cursor-pointer block"
             title="Change profile photo"
           >
-            {hasCustomAvatar ? (
-              <img
-                src={profile.avatar}
-                alt={currentName}
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full bg-[#282828] flex items-center justify-center text-neutral-400">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="w-20 h-20 text-neutral-400"
-                >
-                  <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-                </svg>
-              </div>
-            )}
+            <UserAvatar
+              avatarUrl={profile.avatar}
+              name={currentName}
+              sizeClassName="w-full h-full"
+              iconClassName="w-20 h-20 text-neutral-400"
+            />
 
             {/* Hover / Overlay Indicator */}
             <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-1 transition-opacity text-white text-xs font-semibold">
@@ -163,7 +193,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
               title="View Premium Status"
             >
               <Crown className="w-3.5 h-3.5 fill-[#1ed760] text-[#1ed760]" />
-              <span>{profile?.subscription && profile.subscription !== 'Spotify Free' ? profile.subscription : 'Spotify Premium'}</span>
+              <span>{profile?.subscription && profile.subscription !== 'Spotiz Free' ? profile.subscription : 'Spotiz Premium'}</span>
             </button>
           </div>
 
@@ -173,7 +203,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
               <input
                 id="profile-name-input"
                 type="text"
-                value={nameInput}
+                value={nameInput || ''}
                 onChange={(e) => setNameInput(e.target.value)}
                 autoFocus
                 placeholder="Enter your name"
@@ -228,13 +258,29 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
               <strong className="text-white font-bold">{profile.followersCount || 0}</strong> Followers
             </span>
             <span>•</span>
-            <span>
-              <strong className="text-white font-bold">{profile.followingCount || 0}</strong> Following
-            </span>
+            <button
+              id="profile-following-stat-btn"
+              onClick={scrollToFollowing}
+              className="hover:text-white transition-colors cursor-pointer"
+              title="View followed artists"
+            >
+              <strong id="profile-following-count" className="text-white font-bold">{followingCount}</strong> Following
+            </button>
           </div>
         </div>
 
+        {/* Actions */}
+        <div className="flex flex-col gap-2 items-center sm:items-end mt-4 sm:mt-0">
+          <button
+            onClick={logoutUser}
+            className="bg-zinc-800 text-white border border-white/10 p-2.5 rounded-full hover:bg-zinc-700 hover:scale-105 transition-all text-sm font-semibold px-4"
+          >
+            Log out
+          </button>
+        </div>
+
         {/* Settings button */}
+
         <button
           id="profile-settings-btn"
           onClick={() => onNavigate({ type: 'settings' })}
@@ -244,6 +290,97 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
           <span>Settings</span>
         </button>
       </div>
+
+      {/* Followed Artists Section */}
+      <section id="profile-following-section" className="space-y-4 pt-2">
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              <Users className="w-5 h-5 text-[#1ed760]" />
+              <span>Following ({followingCount})</span>
+            </h3>
+            <p className="text-xs text-neutral-400">
+              Artists you follow receive top priority in your music searches and recommendations.
+            </p>
+          </div>
+        </div>
+
+        {followedArtistsList.length === 0 ? (
+          <div className="p-8 rounded-2xl bg-neutral-900/40 border border-white/5 text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-neutral-800 mx-auto flex items-center justify-center text-neutral-400">
+              <Users className="w-6 h-6" />
+            </div>
+            <p className="text-sm text-neutral-300 font-medium">You aren&apos;t following any artists yet.</p>
+            <p className="text-xs text-neutral-500 max-w-md mx-auto">
+              Follow artists to keep up with their latest releases and automatically boost their songs to the top of your search results.
+            </p>
+            <button
+              onClick={() => onNavigate({ type: 'search' })}
+              className="px-5 py-2 rounded-full bg-white text-black text-xs font-bold hover:scale-105 active:scale-95 transition-all cursor-pointer inline-flex items-center gap-1.5 shadow"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Explore & Follow Artists</span>
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {followedArtistsList.map((artist) => {
+              const isFollowed = isArtistFollowed(artist.id) || isArtistFollowed(artist.name);
+              return (
+                <div
+                  key={`followed-art-${artist.id}`}
+                  onClick={() => onNavigate({ type: 'artist', artistId: artist.id })}
+                  className="group relative p-4 rounded-2xl bg-neutral-900/50 hover:bg-neutral-800/80 border border-white/5 hover:border-white/10 transition-all duration-200 cursor-pointer flex flex-col items-center text-center space-y-3"
+                >
+                  {/* Artist Avatar */}
+                  <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-neutral-800 shadow-lg border-2 border-white/5 group-hover:border-[#1ed760]/30 transition-all flex-shrink-0">
+                    <ArtistAvatar
+                      id={artist.id}
+                      name={artist.name}
+                      image={artist.image}
+                      sizeClassName="w-full h-full"
+                      showHoverEffect={true}
+                    />
+                  </div>
+
+                  {/* Artist Info */}
+                  <div className="w-full min-w-0 space-y-0.5">
+                    <h4 className="font-bold text-sm text-white group-hover:text-[#1ed760] transition-colors truncate">
+                      {artist.name}
+                    </h4>
+                    <p className="text-xs text-neutral-400 capitalize truncate">
+                      {artist.genres?.[0] || 'Artist'}
+                    </p>
+                  </div>
+
+                  {/* Following / Unfollow Toggle Button */}
+                  <button
+                    id={`profile-unfollow-btn-${artist.id}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFollowArtist(artist);
+                    }}
+                    className={`w-full py-1.5 px-3 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      isFollowed
+                        ? 'border border-white/30 text-white hover:border-red-500 hover:text-red-400 hover:bg-red-500/10'
+                        : 'bg-[#1ed760] text-black hover:bg-[#1db954]'
+                    }`}
+                  >
+                    {isFollowed ? (
+                      <>
+                        <UserCheck className="w-3.5 h-3.5 text-[#1ed760]" />
+                        <span>Following</span>
+                      </>
+                    ) : (
+                      <span>Follow</span>
+                    )}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {/* User Playlists Section */}
       <section id="profile-playlists-section" className="space-y-4">
@@ -264,6 +401,95 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
             {playlists.map((pl) => (
               <PlaylistCard key={pl.id} playlist={pl} onNavigate={onNavigate} />
             ))}
+          </div>
+        )}
+      </section>
+
+      {/* Recent Listening History Section */}
+      <section id="profile-history-section" className="space-y-4 pt-2">
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              <History className="w-5 h-5 text-[#1ed760]" />
+              <span>Recently Played</span>
+            </h3>
+            <p className="text-xs text-neutral-400">
+              Music you recently listened to. You can remove individual tracks below.
+            </p>
+          </div>
+          {profile?.recentHistory && profile.recentHistory.length > 0 && (
+            <button
+              onClick={clearListeningHistory}
+              className="text-xs font-semibold text-neutral-400 hover:text-red-400 transition-colors cursor-pointer px-3 py-1.5 rounded-full bg-neutral-900/80 hover:bg-red-500/10 border border-white/5 flex items-center gap-1.5"
+              title="Clear all recent history"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Clear History</span>
+            </button>
+          )}
+        </div>
+
+        {!profile?.recentHistory || profile.recentHistory.length === 0 ? (
+          <div className="p-8 rounded-2xl bg-neutral-900/40 border border-white/5 text-center space-y-2">
+            <p className="text-sm text-neutral-300 font-medium">No recent listening history</p>
+            <p className="text-xs text-neutral-500">Songs you play in the app will appear here with instant remove controls.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {profile.recentHistory.map((item, idx) => {
+              const playedDate = item.playedAt ? new Date(item.playedAt) : null;
+              const formattedTime = playedDate
+                ? playedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : '';
+
+              return (
+                <div
+                  key={`profile-hist-${item.track.id}-${idx}`}
+                  className="group flex items-center justify-between p-2.5 rounded-2xl bg-neutral-900/50 hover:bg-neutral-800/80 border border-white/5 transition-all duration-200"
+                >
+                  <div
+                    onClick={() => playTrack(item.track, profile.recentHistory.map((h) => h.track))}
+                    className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer pr-2"
+                  >
+                    <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-neutral-800 shadow">
+                      <img
+                        src={item.track.images?.small || item.track.images?.medium || 'https://i.scdn.co/image/ab67616d0000b273ba5db46f4b838ef6027e6f96'}
+                        alt={item.track.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      />
+                      {currentTrack?.id === item.track.id && isPlaying && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <div className="flex items-end gap-[2px] h-3.5">
+                            <span className="w-0.5 bg-[#1ed760] rounded-full h-full animate-pulse" />
+                            <span className="w-0.5 bg-[#1ed760] rounded-full h-2 animate-pulse delay-75" />
+                            <span className="w-0.5 bg-[#1ed760] rounded-full h-3 animate-pulse delay-150" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className={`font-bold text-sm truncate ${currentTrack?.id === item.track.id ? 'text-[#1ed760]' : 'text-white group-hover:text-[#1ed760]'} transition-colors`}>
+                        {item.track.title}
+                      </h4>
+                      <p className="text-xs text-neutral-400 truncate mt-0.5">
+                        {item.track.artist} {formattedTime ? `• ${formattedTime}` : ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Delete option on every music column */}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button
+                      onClick={() => removeTrackFromHistory(item.track.id)}
+                      className="p-2 text-neutral-400 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-all cursor-pointer"
+                      title={`Remove "${item.track.title}" from history`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
@@ -293,19 +519,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
               className="relative w-full max-w-sm bg-[#282828] rounded-2xl p-6 text-white shadow-2xl border border-white/10 space-y-5 z-10 text-center"
             >
               <div className="w-20 h-20 rounded-full mx-auto overflow-hidden bg-neutral-900 border-2 border-white/10 shadow-inner flex items-center justify-center">
-                {hasCustomAvatar ? (
-                  <img
-                    src={profile.avatar}
-                    alt="Preview"
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <UserAvatar
-                    sizeClassName="w-full h-full"
-                    iconClassName="w-10 h-10 text-neutral-400"
-                  />
-                )}
+                <UserAvatar
+                  avatarUrl={profile.avatar}
+                  name="Preview"
+                  sizeClassName="w-full h-full"
+                  iconClassName="w-10 h-10 text-neutral-400"
+                />
               </div>
 
               <div>

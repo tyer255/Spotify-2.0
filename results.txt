@@ -1,0 +1,171 @@
+Starting 30-track Canvas Runtime Verification...
+
+[TEST] Lookup started for Track ID: 0VjIjW4GlUZAMYd2vXMi3b
+       Status: CANVAS_AUTH_FAILED
+       Time: 19ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 7qiZfU4dY1lWllzX7mPBI3
+       Status: CANVAS_AUTH_FAILED
+       Time: 1ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 7MXVkk9YMqq6aaduvD2024
+       Status: CANVAS_AUTH_FAILED
+       Time: 1ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 4LRPiXqCikLlN15c3yImP7
+       Status: CANVAS_AUTH_FAILED
+       Time: 25105ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 2XU0oxnq2qxCpomAAuJY8K
+       Status: CANVAS_AUTH_FAILED
+       Time: 30209ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 3KkXRkHbMCARz0aVfEt68P
+       Status: CANVAS_AUTH_FAILED
+       Time: 57231ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 1zi7xx7UVEFkmKfv06H8x0
+       Status: CANVAS_AUTH_FAILED
+       Time: 2ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 5HCyWlXZPP0y6Gqq8TgA20
+       Status: CANVAS_AUTH_FAILED
+       Time: 30717ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 0pqnGHJpmpxLKifKRmU6WP
+       Status: CANVAS_AUTH_FAILED
+       Time: 27020ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 7BKLCZ1jbUBVqRi2FVlTVw
+       Status: CANVAS_AUTH_FAILED
+       Time: 30362ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 3USxtqRwSYz57Ewm6wJQO2
+       Status: CANVAS_AUTH_FAILED
+       Time: 27159ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 0tgVpDi06FyKpA1z0VMD4v
+       Status: CANVAS_AUTH_FAILED
+       Time: 28726ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 7qEHsqek33rTcFNT9PFqLf
+       Status: CANVAS_AUTH_FAILED
+       Time: 28398ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 6UelLqGl00O0Whe5a7GZ7s
+       Status: CANVAS_AUTH_FAILED
+       Time: 29053ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 2Fxmhks0bxGSBdJ92vM42m
+       Status: CANVAS_AUTH_FAILED
+       Time: 28919ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 34gCuhDGsG4bcljXN1Xb1T
+       Status: CANVAS_AUTH_FAILED
+       Time: 28792ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 1HNkqx9AhhCBhAW09y1i3g
+       Status: CANVAS_AUTH_FAILED
+       Time: 26159ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 0TK2YIli7K1leLovkQiNik
+       Status: CANVAS_AUTH_FAILED
+       Time: 29125ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 0u2P5u6ljzUftK40T9vTIf
+       Status: CANVAS_AUTH_FAILED
+       Time: 30981ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 5uCax9HTNlzGheyHmcm8eD
+       Status: CANVAS_AUTH_FAILED
+       Time: 30960ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 3z8h0Tu7iuOUriLau8z3Q4
+       Status: CANVAS_AUTH_FAILED
+       Time: 41551ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 5ghIbrs4ZzM388L5H08A1j
+       Status: CANVAS_AUTH_FAILED
+       Time: 32622ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 5ChkMS8OtdzJeqyybCc9R5
+       Status: UNKNOWN_ERROR
+       Time: 28952ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 2WfaOiMkCvy7F5fcp2zZ8L
+       Status: UNKNOWN_ERROR
+       Time: 4ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 5qqabIl2vWxoImAKMEawNc
+       Status: UNKNOWN_ERROR
+       Time: 2ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 40riOy7x9W7GXjyNdE5wD0
+       Status: UNKNOWN_ERROR
+       Time: 1ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 7snQQk1zcKl8gZ92AnueZW
+       Status: UNKNOWN_ERROR
+       Time: 2ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 0aym2IN2p77j2Ld52kU3oW
+       Status: UNKNOWN_ERROR
+       Time: 2ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 2fuCquhmjnoZxc6n0N88D0
+       Status: UNKNOWN_ERROR
+       Time: 1ms
+       Cache Hit: NO
+
+[TEST] Lookup started for Track ID: 7ouMYWcgJqbxEPqbOUhOaw
+       Status: UNKNOWN_ERROR
+       Time: 1ms
+       Cache Hit: NO
+
+=============================================
+RUNTIME VERIFICATION RESULTS
+=============================================
+TOTAL TRACKS TESTED:  30
+CANVAS FOUND:         0
+CANVAS NOT AVAILABLE: 0
+FETCH FAILED:         0
+AUTH FAILED:          22
+SUCCESSFULLY DISPLAYED: 0 (simulated video load)
+Resolution Success Rate: 0.00%
+=============================================
+
+Testing Rapid Playback Switches (Race Condition check)...
+[RACE TEST] Track 0VjIjW4GlUZAMYd2vXMi3b returned status undefined in 1ms (Cache: NO)
+[RACE TEST] Track 7qiZfU4dY1lWllzX7mPBI3 returned status undefined in 1ms (Cache: NO)
+[RACE TEST] Track 7MXVkk9YMqq6aaduvD2024 returned status undefined in 1ms (Cache: NO)
+[RACE TEST] Track 4LRPiXqCikLlN15c3yImP7 returned status undefined in 0ms (Cache: NO)
+[RACE TEST] Track 0VjIjW4GlUZAMYd2vXMi3b returned status undefined in 1ms (Cache: NO)
+Rapid switch test complete.

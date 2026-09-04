@@ -28,7 +28,7 @@ export const QueueDrawer: React.FC = () => {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: '100%' }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="w-full sm:max-w-md h-[90vh] sm:h-full bg-neutral-900 border-l border-neutral-800 flex flex-col text-white shadow-2xl rounded-t-3xl sm:rounded-none"
+          className="w-full sm:max-w-md h-[90vh] sm:h-full bg-neutral-900 border-l border-neutral-800 flex flex-col text-white shadow-2xl rounded-t-3xl sm:rounded-none will-change-transform transform-gpu"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-800 flex-shrink-0">

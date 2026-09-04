@@ -4,6 +4,8 @@ import { useUser } from '../context/UserContext';
 import { usePlayer } from '../context/PlayerContext';
 import { api } from '../services/apiClient';
 import { UserAvatar } from '../components/Common/UserAvatar';
+import { ArtistAvatar } from '../components/Common/ArtistAvatar';
+import { PlaylistArtwork } from '../components/Common/PlaylistArtwork';
 import {
   Search,
   Plus,
@@ -28,18 +30,20 @@ interface LibraryViewProps {
   onOpenCreatePlaylist: () => void;
 }
 
-type LibraryFilter = 'all' | 'playlists' | 'artists' | 'albums' | 'podcasts' | 'downloaded';
+type LibraryFilter = 'all' | 'blends' | 'playlists' | 'artists' | 'albums' | 'podcasts' | 'downloaded';
 type ViewMode = 'list' | 'grid';
 type SortOption = 'recents' | 'recently_added' | 'alphabetical' | 'creator';
 
 interface DisplayItem {
   id: string;
-  type: 'playlist' | 'liked_songs' | 'artist' | 'album' | 'downloaded';
+  type: 'playlist' | 'blend' | 'liked_songs' | 'artist' | 'album' | 'downloaded';
   title: string;
   subtitle: string;
   isPinned?: boolean;
   coverImage?: string;
   collageImages?: string[];
+  isBlend?: boolean;
+  playlistObj?: Playlist;
   isCircular?: boolean;
   targetView: ViewState;
   updatedAt?: string;
@@ -51,7 +55,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
   onNavigate,
   onOpenCreatePlaylist,
 }) => {
-  const { profile, playlists, likedTrackIds, followedArtistIds, downloadedTrackIds, downloadedTracksList } = useUser();
+  const { profile, playlists, likedTrackIds, followedArtistIds, followedArtistsMap, downloadedTrackIds, downloadedTracksList } = useUser();
   const { playTrack } = usePlayer();
 
   // Active filter chip
@@ -139,29 +143,52 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       });
     }
 
-    // 2. User's Real Playlists
+    // 2. User's Real Playlists & Blends
     playlists.forEach((pl) => {
-      items.push({
-        id: pl.id,
-        type: 'playlist',
-        title: pl.title,
-        subtitle: `Playlist • ${currentUserName}`,
-        isPinned: false,
-        coverImage: pl.coverImage,
-        collageImages:
-          !pl.coverImage && pl.tracks.length >= 4
-            ? pl.tracks.slice(0, 4).map((t) => t.images.small || t.images.medium)
-            : undefined,
-        targetView: { type: 'playlist', playlistId: pl.id },
-        updatedAt: pl.updatedAt || pl.createdAt,
-        creator: currentUserName,
-      });
+      if (pl.isBlend) {
+        const participantCount = pl.blendParticipants?.length || 2;
+        items.push({
+          id: pl.id,
+          type: 'blend',
+          title: pl.title,
+          subtitle: `Blend • ${participantCount} members`,
+          isPinned: false,
+          isBlend: true,
+          playlistObj: pl,
+          coverImage: pl.coverImage,
+          collageImages:
+            !pl.coverImage && pl.tracks && pl.tracks.length > 0
+              ? pl.tracks.slice(0, 4).map((t) => t.images?.small || t.images?.medium || t.images?.large)
+              : undefined,
+          targetView: { type: 'playlist', playlistId: pl.id },
+          updatedAt: pl.updatedAt || pl.createdAt,
+          creator: currentUserName,
+        });
+      } else {
+        items.push({
+          id: pl.id,
+          type: 'playlist',
+          title: pl.title,
+          subtitle: `Playlist • ${currentUserName}`,
+          isPinned: false,
+          playlistObj: pl,
+          coverImage: pl.coverImage,
+          collageImages:
+            !pl.coverImage && pl.tracks && pl.tracks.length > 0
+              ? pl.tracks.slice(0, 4).map((t) => t.images?.small || t.images?.medium || t.images?.large)
+              : undefined,
+          targetView: { type: 'playlist', playlistId: pl.id },
+          updatedAt: pl.updatedAt || pl.createdAt,
+          creator: currentUserName,
+        });
+      }
     });
 
     // 3. User's Followed Artists
-    if (followedArtistIds.size > 0) {
-      followedArtistIds.forEach((artistId) => {
-        const found = knownArtists.find((a) => a.id === artistId);
+    const allArtistKeys = new Set([...Array.from(followedArtistIds), ...Object.keys(followedArtistsMap)]);
+    if (allArtistKeys.size > 0) {
+      allArtistKeys.forEach((artistId) => {
+        const found = followedArtistsMap[artistId] || knownArtists.find((a) => a.id === artistId);
         items.push({
           id: artistId,
           type: 'artist',
@@ -170,7 +197,12 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           isPinned: false,
           coverImage: found?.image,
           isCircular: true,
-          targetView: { type: 'artist', artistId },
+          targetView: { 
+            type: 'artist', 
+            artistId, 
+            expectedName: found?.name,
+            initialImage: found?.image 
+          },
           updatedAt: '2026-08-01',
           creator: 'Artist',
         });
@@ -179,8 +211,10 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
     // Apply Filter Chips
     let filtered = items;
-    if (activeFilter === 'playlists') {
-      filtered = items.filter((i) => i.type === 'playlist' || i.type === 'liked_songs' || i.type === 'downloaded');
+    if (activeFilter === 'blends') {
+      filtered = items.filter((i) => i.type === 'blend' || i.isBlend);
+    } else if (activeFilter === 'playlists') {
+      filtered = items.filter((i) => i.type === 'playlist' || i.type === 'blend' || i.type === 'liked_songs' || i.type === 'downloaded');
     } else if (activeFilter === 'artists') {
       filtered = items.filter((i) => i.type === 'artist');
     } else if (activeFilter === 'albums') {
@@ -243,7 +277,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 
   return (
     <div id="library-view-container" className="min-h-full text-white select-none pb-32">
-      {/* 1. Header (Spotify Library UI Layout) */}
+      {/* 1. Header (Spotiz Library UI Layout) */}
       <div id="library-header" className="sticky top-0 z-20 liquid-glass-topbar px-4 pt-3 pb-2 transition-all">
         <div className="flex items-center justify-between">
           {/* Left: User Profile Avatar + Title */}
@@ -301,7 +335,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
                 <input
                   id="library-search-input"
                   type="text"
-                  value={searchQuery}
+                  value={searchQuery || ''}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Find in Your Library"
                   autoFocus
@@ -334,6 +368,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
           )}
 
           {[
+            { id: 'blends', label: 'Blends' },
             { id: 'playlists', label: 'Playlists' },
             { id: 'artists', label: 'Artists' },
             { id: 'albums', label: 'Albums' },
@@ -387,7 +422,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
       </div>
 
       {/* 4. Library Content Layout */}
-      <div id="library-content-area" className="px-4 pt-2">
+      <div id="library-content-area" className="px-4 pt-2 pb-24">
         {libraryItems.length === 0 ? (
           /* Empty State */
           <div id="library-empty-state" className="py-20 text-center text-neutral-400 space-y-4 max-w-sm mx-auto">
@@ -421,88 +456,34 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
               </button>
             </div>
           </div>
-        ) : viewMode === 'list' ? (
-          /* ============================================================ */
-          /* LIST VIEW LAYOUT (Spotify Vertical List Layout)              */
-          /* ============================================================ */
-          <div id="library-list-view" className="space-y-3.5">
-            {libraryItems.map((item) => (
-              <div
-                key={item.id}
-                id={`library-list-item-${item.id}`}
-                onClick={() => onNavigate(item.targetView)}
-                className="flex items-center justify-between group cursor-pointer active:opacity-80 transition-opacity"
-              >
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  {/* Artwork Box (64x64) */}
-                  <div
-                    className={`w-16 h-16 rounded-md overflow-hidden relative flex-shrink-0 shadow-md ${
-                      item.isCircular ? 'rounded-full' : ''
-                    }`}
-                  >
-                    <ItemCover item={item} />
-                  </div>
-
-                  {/* Title & Subtitle */}
-                  <div className="min-w-0 flex-1 pr-2">
-                    <h3 className="text-base font-bold text-white truncate leading-tight group-hover:text-white">
-                      {item.title}
-                    </h3>
-                    <div className="flex items-center gap-1.5 text-xs text-neutral-400 truncate mt-1">
-                      {item.isPinned && (
-                        <span className="flex items-center text-[#1ed760] flex-shrink-0" title="Pinned">
-                          <Pin className="w-3 h-3 fill-[#1ed760] -rotate-45" />
-                        </span>
-                      )}
-                      <span className="truncate">{item.subtitle}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
         ) : (
-          /* ============================================================ */
-          /* GRID VIEW LAYOUT (Spotify 3-Column / Responsive Grid Layout) */
-          /* ============================================================ */
-          <div id="library-grid-view" className="grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-            {libraryItems.map((item) => (
-              <div
-                key={item.id}
-                id={`library-grid-item-${item.id}`}
-                onClick={() => onNavigate(item.targetView)}
-                className="flex flex-col group cursor-pointer active:opacity-80 transition-opacity"
-              >
-                {/* Artwork Box (Square) */}
-                <div
-                  className={`aspect-square w-full rounded-md overflow-hidden relative shadow-md bg-neutral-900 ${
-                    item.isCircular ? 'rounded-full' : ''
-                  }`}
-                >
-                  <ItemCover item={item} isGrid />
-                </div>
-
-                {/* Title */}
-                <h3 className="text-xs sm:text-sm font-bold text-white truncate mt-2 leading-snug">
-                  {item.title}
-                </h3>
-
-                {/* Subtitle */}
-                <div className="flex items-center gap-1 text-[11px] sm:text-xs text-neutral-400 truncate mt-0.5">
-                  {item.isPinned && (
-                    <span className="flex items-center text-[#1ed760] flex-shrink-0" title="Pinned">
-                      <Pin className="w-2.5 h-2.5 fill-[#1ed760] -rotate-45" />
-                    </span>
-                  )}
-                  <span className="truncate">{item.subtitle}</span>
+          <div className="space-y-6">
+            {activeFilter === 'all' && libraryItems.filter(i => i.isBlend).length > 0 && !searchQuery && (
+              <div className="space-y-3.5">
+                <h2 className="text-lg font-bold text-white mb-2">Your Blends</h2>
+                <div className={viewMode === 'list' ? 'space-y-3.5' : 'grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6'}>
+                  {libraryItems.filter(i => i.isBlend).map(item => (
+                    <LibraryItemCard key={item.id} item={item} viewMode={viewMode} onNavigate={onNavigate} />
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
+            
+            <div className="space-y-3.5">
+              {activeFilter === 'all' && libraryItems.filter(i => i.isBlend).length > 0 && !searchQuery && (
+                <h2 className="text-lg font-bold text-white mb-2 pt-2 border-t border-white/10">All Library</h2>
+              )}
+              <div className={viewMode === 'list' ? 'space-y-3.5' : 'grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6'}>
+                {libraryItems.filter(i => activeFilter !== 'all' || !!searchQuery || !i.isBlend).map(item => (
+                  <LibraryItemCard key={item.id} item={item} viewMode={viewMode} onNavigate={onNavigate} />
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </div>
 
-      {/* 5. Sort Sheet Modal (Spotify Bottom Sheet Drawer) */}
+      {/* 5. Sort Sheet Modal (Spotiz Bottom Sheet Drawer) */}
       <AnimatePresence>
         {isSortMenuOpen && (
           <div id="library-sort-modal" className="fixed inset-0 z-50 flex items-end justify-center">
@@ -568,6 +549,85 @@ export const LibraryView: React.FC<LibraryViewProps> = ({
 };
 
 // ============================================================================
+// Card Component for Library Items
+// ============================================================================
+interface LibraryItemCardProps {
+  item: DisplayItem;
+  viewMode: ViewMode;
+  onNavigate: (view: ViewState) => void;
+}
+
+const LibraryItemCard: React.FC<LibraryItemCardProps> = ({ item, viewMode, onNavigate }) => {
+  if (viewMode === 'list') {
+    return (
+      <div
+        id={`library-list-item-${item.id}`}
+        onClick={() => onNavigate(item.targetView)}
+        className="flex items-center justify-between group cursor-pointer active:opacity-80 transition-opacity"
+      >
+        <div className="flex items-center gap-3.5 min-w-0 flex-1">
+          {/* Artwork Box (64x64) */}
+          <div
+            className={`w-16 h-16 rounded-md overflow-hidden relative flex-shrink-0 shadow-md ${
+              item.isCircular ? 'rounded-full' : ''
+            }`}
+          >
+            <ItemCover item={item} />
+          </div>
+
+          {/* Title & Subtitle */}
+          <div className="min-w-0 flex-1 pr-2">
+            <h3 className="text-base font-bold text-white truncate leading-tight group-hover:text-white">
+              {item.title}
+            </h3>
+            <div className="flex items-center gap-1.5 text-xs text-neutral-400 truncate mt-1">
+              {item.isPinned && (
+                <span className="flex items-center text-[#1ed760] flex-shrink-0" title="Pinned">
+                  <Pin className="w-3 h-3 fill-[#1ed760] -rotate-45" />
+                </span>
+              )}
+              <span className="truncate">{item.subtitle}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      id={`library-grid-item-${item.id}`}
+      onClick={() => onNavigate(item.targetView)}
+      className="flex flex-col group cursor-pointer active:opacity-80 transition-opacity"
+    >
+      {/* Artwork Box (Square) */}
+      <div
+        className={`aspect-square w-full rounded-md overflow-hidden relative shadow-md bg-neutral-900 ${
+          item.isCircular ? 'rounded-full' : ''
+        }`}
+      >
+        <ItemCover item={item} isGrid />
+      </div>
+
+      {/* Title */}
+      <h3 className="text-xs sm:text-sm font-bold text-white truncate mt-2 leading-snug">
+        {item.title}
+      </h3>
+
+      {/* Subtitle */}
+      <div className="flex items-center gap-1 text-[11px] sm:text-xs text-neutral-400 truncate mt-0.5">
+        {item.isPinned && (
+          <span className="flex items-center text-[#1ed760] flex-shrink-0" title="Pinned">
+            <Pin className="w-2.5 h-2.5 fill-[#1ed760] -rotate-45" />
+          </span>
+        )}
+        <span className="truncate">{item.subtitle}</span>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
 // Cover Art Component for Real Library Items
 // ============================================================================
 interface ItemCoverProps {
@@ -594,31 +654,51 @@ const ItemCover: React.FC<ItemCoverProps> = ({ item, isGrid }) => {
     );
   }
 
-  // 4-track collage
+  // Blend cover or Track collage using PlaylistArtwork
+  if (item.isBlend) {
+    return <PlaylistArtwork tracks={item.playlistObj?.tracks || []} playlist={item.playlistObj} />;
+  }
+
   const validCollage = (item.collageImages || []).filter((img) => img && typeof img === 'string' && img.trim() !== '');
-  if (validCollage.length >= 4) {
+  if (validCollage.length > 0) {
+    const dummyTracks = validCollage.map(img => ({
+      id: img,
+      title: 'dummy',
+      artist: 'dummy',
+      album: 'dummy',
+      duration: 0,
+      url: '',
+      images: { small: img, medium: img, large: img }
+    } as unknown as Track));
+    return <PlaylistArtwork tracks={dummyTracks} playlist={item.playlistObj} />;
+  }
+
+  // Artist Avatar
+  if (item.type === 'artist') {
     return (
-      <div className="grid grid-cols-2 grid-rows-2 w-full h-full bg-neutral-900">
-        {validCollage.slice(0, 4).map((img, idx) => (
-          <img
-            key={idx}
-            src={img}
-            alt=""
-            referrerPolicy="no-referrer"
-            className="w-full h-full object-cover"
-          />
-        ))}
-      </div>
+      <ArtistAvatar
+        name={item.title}
+        image={item.coverImage}
+        sizeClassName="w-full h-full"
+        iconClassName="w-7 h-7 text-neutral-400"
+      />
     );
   }
 
-  // Single Image (Custom cover or artist avatar)
+  // Single Image (Custom cover or album artwork)
   if (item.coverImage && typeof item.coverImage === 'string' && item.coverImage.trim() !== '') {
     return (
       <img
         src={item.coverImage}
         alt={item.title}
         referrerPolicy="no-referrer"
+        onError={(e) => {
+          e.currentTarget.onerror = null;
+          e.currentTarget.style.display = 'none';
+          if (e.currentTarget.parentElement) {
+            e.currentTarget.parentElement.innerHTML = '<div class="w-full h-full bg-[#282828] flex items-center justify-center text-neutral-400"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path></svg></div>';
+          }
+        }}
         className="w-full h-full object-cover bg-neutral-900"
       />
     );

@@ -72,3 +72,29 @@ export const compressImageToDataUrl = (
     reader.readAsDataURL(file);
   });
 };
+
+export const isValidImageUrl = (url?: string): boolean => {
+  if (!url) return false;
+  const lurl = url.toLowerCase();
+  
+  // Filter out JioSaavn default placeholders
+  if (lurl.includes('default_image')) return false;
+  if (lurl.includes('default_artist')) return false;
+  if (lurl.includes('default_album')) return false;
+  if (lurl.includes('default_song')) return false;
+  if (lurl.includes('default_150')) return false;
+  if (lurl.includes('default_500')) return false;
+  if (lurl.includes('default.jpg')) return false;
+  if (lurl.includes('default-artist')) return false;
+  if (lurl.includes('share-image')) return false;
+  
+  // iTunes/Deezer/Spotiz defaults
+  if (lurl.includes('/default/') && (lurl.includes('artist') || lurl.includes('album'))) return false;
+  if (lurl.includes('placeholder')) return false;
+
+  return true;
+};
+
+export const getValidImageUrl = (url?: string): string | undefined => {
+  return isValidImageUrl(url) ? url : undefined;
+};

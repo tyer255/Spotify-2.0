@@ -4,14 +4,15 @@ import { api } from '../services/apiClient';
 import { usePlayer } from '../context/PlayerContext';
 import { TrackRow } from '../components/Common/TrackRow';
 import { HeroSkeleton } from '../components/Common/SkeletonLoaders';
-import { Play, Pause, Shuffle, Disc3, Clock } from 'lucide-react';
+import { Play, Pause, Shuffle, Disc3, Clock, ArrowLeft } from 'lucide-react';
 
 interface AlbumViewProps {
   albumId: string;
   onNavigate: (view: ViewState) => void;
+  onGoBack?: () => void;
 }
 
-export const AlbumView: React.FC<AlbumViewProps> = ({ albumId, onNavigate }) => {
+export const AlbumView: React.FC<AlbumViewProps> = ({ albumId, onNavigate, onGoBack }) => {
   const [album, setAlbum] = useState<Album | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,11 +26,11 @@ export const AlbumView: React.FC<AlbumViewProps> = ({ albumId, onNavigate }) => 
       if (res.success && res.data) {
         setAlbum(res.data);
       } else {
-        setError('Music data source unavailable');
+        setError('Cannot connect to music service');
       }
     } catch (e) {
       console.warn('Failed to load album:', e);
-      setError('Music data source unavailable');
+      setError('Cannot connect to music service');
     } finally {
       setLoading(false);
     }
@@ -53,7 +54,7 @@ export const AlbumView: React.FC<AlbumViewProps> = ({ albumId, onNavigate }) => 
         <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
           <Disc3 className="w-8 h-8" />
         </div>
-        <h3 className="text-xl font-bold text-white">Music data source unavailable</h3>
+        <h3 className="text-xl font-bold text-white">Cannot connect to music service</h3>
         <p className="text-sm text-neutral-400">
           Could not load album details from authorized music catalog.
         </p>
@@ -92,8 +93,29 @@ export const AlbumView: React.FC<AlbumViewProps> = ({ albumId, onNavigate }) => 
     return `${mins} min`;
   };
 
+  const handleBack = () => {
+    if (onGoBack) {
+      onGoBack();
+    } else if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      onNavigate({ type: 'home' });
+    }
+  };
+
   return (
     <div className="pb-32 text-white">
+      {/* Top Navigation Bar with Back Button */}
+      <div className="sticky top-0 z-20 px-4 sm:px-8 py-3 bg-[#121212]/80 backdrop-blur-md flex items-center justify-between border-b border-white/5">
+        <button
+          onClick={handleBack}
+          className="p-2 rounded-full bg-black/40 hover:bg-black/70 text-white transition-all active:scale-95 flex items-center justify-center cursor-pointer"
+          title="Go back"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+      </div>
+
       {/* Album Header Banner */}
       <div
         className="p-6 md:p-10 flex flex-col sm:flex-row items-center sm:items-end gap-6 sm:gap-8 rounded-b-3xl"
@@ -102,7 +124,7 @@ export const AlbumView: React.FC<AlbumViewProps> = ({ albumId, onNavigate }) => 
         }}
       >
         <img
-          src={album.images?.large || album.images?.medium || album.images?.small || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600&auto=format&fit=crop&q=80'}
+          src={album.images?.large || album.images?.medium || album.images?.small || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600&auto=format&fit=crop&q=80' || undefined}
           alt={album.name}
           className="w-48 h-48 sm:w-56 sm:h-56 rounded-2xl object-cover shadow-2xl flex-shrink-0"
         />

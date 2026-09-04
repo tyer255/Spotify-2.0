@@ -1,6 +1,9 @@
 {
-  "name": "Spotify 2.0",
+  "name": "Spotiz",
   "description": "A high-fidelity Progressive Web App (PWA) music streaming application with offline caching, installable home-screen experience, custom acoustic soundwave emblem logo, real audio playback, synchronized lyrics, global search, and personalized playlists.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -12,7 +12,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const THEME_ACCENTS = [
-  { name: 'Spotify Green', hex: '#1DB954' },
+  { name: 'Spotiz Green', hex: '#1DB954' },
   { name: 'Electric Cyan', hex: '#06B6D4' },
   { name: 'Neon Purple', hex: '#8B5CF6' },
   { name: 'Sunset Orange', hex: '#F97316' },

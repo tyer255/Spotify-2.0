@@ -54,8 +54,9 @@ export const LyricsDrawer: React.FC = () => {
 
   if (!isLyricsOpen || !track) return null;
 
-  const currentDisplayTime = isSeeking ? seekPos : position;
-  const progressPercent = duration > 0 ? (currentDisplayTime / duration) * 100 : 0;
+  const safeDuration = duration > 0 && isFinite(duration) ? duration : (track?.duration && track.duration > 0 ? track.duration : 210);
+  const currentDisplayTime = isSeeking ? seekPos : (typeof position === 'number' && !isNaN(position) ? position : 0);
+  const progressPercent = safeDuration > 0 ? Math.min(100, Math.max(0, (currentDisplayTime / safeDuration) * 100)) : 0;
 
   const formatTime = (seconds: number) => {
     if (isNaN(seconds) || seconds < 0) return '0:00';
@@ -111,7 +112,7 @@ export const LyricsDrawer: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 240 }}
-        className="fixed inset-0 z-50 flex flex-col items-center justify-between text-white overflow-hidden select-none bg-black"
+        className="fixed inset-0 z-50 flex flex-col items-center justify-between text-white overflow-hidden select-none bg-black will-change-transform transform-gpu"
       >
         {/* Noise overlay for cinematic texture */}
         <div className="noise-overlay" />
@@ -219,7 +220,7 @@ export const LyricsDrawer: React.FC = () => {
               >
                 {track.images?.medium || track.images?.large || track.images?.small ? (
                   <img
-                    src={track.images?.medium || track.images?.large || track.images?.small || ''}
+                    src={track.images?.medium || track.images?.large || track.images?.small || undefined}
                     alt={track.title}
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover rounded-full"
@@ -313,9 +314,9 @@ export const LyricsDrawer: React.FC = () => {
                 type="range"
                 id="progress-bar"
                 min={0}
-                max={duration > 0 ? duration : (track?.duration || 100)}
+                max={safeDuration}
                 step={0.1}
-                value={currentDisplayTime}
+                value={Math.min(safeDuration, Math.max(0, typeof currentDisplayTime === 'number' && !Number.isNaN(currentDisplayTime) ? currentDisplayTime : 0))}
                 onPointerDown={handleSeekStart}
                 onTouchStart={handleSeekStart}
                 onMouseDown={handleSeekStart}
@@ -329,15 +330,15 @@ export const LyricsDrawer: React.FC = () => {
               {/* Glowing Progress fill */}
               <div
                 id="progress-fill"
-                className="absolute left-0 h-1 bg-white rounded-full z-10 pointer-events-none transition-all duration-75 shadow-[0_0_8px_rgba(255,255,255,0.7)]"
-                style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+                className="absolute left-0 h-1 bg-white rounded-full z-10 pointer-events-none transition-transform duration-75 shadow-[0_0_8px_rgba(255,255,255,0.7)] w-full origin-left"
+                style={{ transform: `scaleX(${Math.min(100, Math.max(0, progressPercent)) / 100})` }}
               />
             </div>
             <span
               id="total-time"
               className="text-[11px] text-gray-400 font-semibold w-8 text-left tabular-nums opacity-70"
             >
-              {formatTime(duration)}
+              {formatTime(safeDuration)}
             </span>
           </div>
         </div>

@@ -19,10 +19,22 @@ export interface Track {
   mimeType: string;
   explicit?: boolean;
   releaseYear?: number;
+  releaseDate?: string;
+  release_date?: string;
+  createdAt?: string;
+  created_at?: string;
   genre?: string;
   plays?: number;
+  lyricsMatchScore?: number;
+  play_count?: number;
+  views?: number;
+  isOriginal?: boolean;
   color?: string; // Dominant hex color for backdrop gradient
   lyrics?: string;
+  isrc?: string;
+  spotifyUri?: string;
+  spotifyId?: string;
+  version?: string;
 }
 
 export interface Artist {
@@ -66,6 +78,14 @@ export interface Playlist {
   updatedAt: string;
   likesCount: number;
   color?: string;
+  
+  // Collaborative & Blend features
+  isCollaborative?: boolean;
+  collaborators?: { id: string; name: string; avatar?: string }[];
+  isBlend?: boolean;
+  blendParticipants?: { id: string; name: string; avatar?: string }[];
+  participantIds?: string[];
+  trackMetadata?: Record<string, { addedBy?: string; addedById?: string; addedAt?: number; influencedBy?: string[] }>;
 }
 
 export interface LyricsLine {
@@ -131,13 +151,25 @@ export interface SearchSuggestion {
   id: string;
   title: string;
   artist?: string;
-  type?: 'song' | 'history';
+  album?: string;
+  type?: 'song' | 'artist' | 'album' | 'playlist' | 'history';
   image?: string;
+  release_date?: string;
+  releaseDate?: string;
+  created_at?: string;
+  createdAt?: string;
+  releaseYear?: number;
+  plays?: number;
+  lyricsMatchScore?: number;
+  play_count?: number;
+  views?: number;
+  score?: number;
+  matchReason?: string;
 }
 
 export interface UserSettings {
   theme: 'dark' | 'light' | 'system';
-  accentColor: string; // e.g. '#1DB954' (Spotify Green), '#8B5CF6' (Purple), '#06B6D4' (Cyan), '#EC4899' (Pink), '#F59E0B' (Amber)
+  accentColor: string; // e.g. '#1DB954' (Spotiz Green), '#8B5CF6' (Purple), '#06B6D4' (Cyan), '#EC4899' (Pink), '#F59E0B' (Amber)
   audioQuality: 'low' | 'normal' | 'high' | 'very_high';
   crossfadeDuration: number; // 0 to 12s
   gaplessPlayback: boolean;
@@ -158,6 +190,24 @@ export interface UserProfileStats {
   followingCount: number;
 }
 
+export interface InteractionStats {
+  trackPlays: Record<string, number>;
+  artistPlays: Record<string, number>;
+  searchSelections: Record<string, Record<string, number>>; // query -> trackId -> count
+  skips: Record<string, number>;
+  replays: Record<string, number>;
+  trackCache?: Record<string, Track>;
+}
+
+export interface RecentSearchItem {
+  id: string;
+  type: 'track' | 'artist' | 'album' | 'playlist' | 'query' | string;
+  title: string;
+  subtitle: string;
+  image?: string;
+  query?: string;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -173,8 +223,10 @@ export interface UserProfile {
   playlists: Playlist[];
   downloadedTrackIds: string[];
   recentHistory: { track: Track; playedAt: string }[];
+  recentSearches?: RecentSearchItem[];
   settings: UserSettings;
   stats?: UserProfileStats;
+  interactionStats: InteractionStats;
 }
 
 export interface ApiResponse<T> {
@@ -193,7 +245,10 @@ export type ViewState =
   | { type: 'library'; subTab?: 'playlists' | 'liked' | 'downloaded' | 'artists' | 'history' }
   | { type: 'premium' }
   | { type: 'profile' }
-  | { type: 'artist'; artistId: string }
+  | { type: 'artist'; artistId: string; expectedName?: string; initialImage?: string }
   | { type: 'album'; albumId: string }
   | { type: 'playlist'; playlistId: string }
-  | { type: 'settings' };
+  | { type: 'settings' }
+  | { type: 'blend-setup' }
+  | { type: 'blend-invite'; blendId: string }
+  | { type: 'info'; pageId: string };

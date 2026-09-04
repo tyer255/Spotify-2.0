@@ -7,12 +7,14 @@ interface CreatePlaylistModalProps {
   isOpen: boolean;
   onClose: () => void;
   onNavigate?: (view: ViewState) => void;
+  type?: 'playlist' | 'collaborative' | 'blend';
 }
 
 export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
   isOpen,
   onClose,
   onNavigate,
+  type = 'playlist',
 }) => {
   const { playlists, createPlaylist } = useUser();
   const [title, setTitle] = useState('');
@@ -22,7 +24,13 @@ export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
   // Initialize title when opening
   useEffect(() => {
     if (isOpen) {
-      const defaultName = `My playlist #${playlists.length + 1}`;
+      let defaultName = `My playlist #${playlists.length + 1}`;
+      if (type === 'collaborative') {
+        defaultName = `Collaborative playlist #${playlists.length + 1}`;
+      } else if (type === 'blend') {
+        defaultName = `My Blend #${playlists.length + 1}`;
+      }
+
       setTitle(defaultName);
       setLoading(false);
 
@@ -49,7 +57,10 @@ export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
     if (!finalTitle || loading) return;
 
     setLoading(true);
-    const newPlaylist = await createPlaylist(finalTitle);
+    const newPlaylist = await createPlaylist(finalTitle, '', '', [], {
+      isCollaborative: type === 'collaborative',
+      isBlend: type === 'blend'
+    });
     setLoading(false);
 
     if (newPlaylist) {
@@ -78,19 +89,17 @@ export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
             onSubmit={handleSubmit}
             className="relative z-10 w-full max-w-lg flex flex-col items-center text-center"
           >
-            {/* Title / Heading */}
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-8 sm:mb-12">
-              Give your playlist a name
+              {type === 'collaborative' ? 'Name your collaborative playlist' : 'Give your playlist a name'}
             </h1>
-
-            {/* Prominent Playlist Name Input */}
+            
             <div className="w-full max-w-md mx-auto">
               <input
                 ref={inputRef}
                 type="text"
-                value={title}
+                value={title || ''}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="My playlist"
+                placeholder={type === 'collaborative' ? 'Collaborative playlist' : 'My playlist'}
                 required
                 className="w-full text-2xl sm:text-3xl md:text-4xl font-extrabold text-white text-center bg-transparent border-none outline-none focus:outline-none focus:ring-0 placeholder:text-neutral-500 px-2 py-1 tracking-tight"
                 onKeyDown={(e) => {
@@ -100,12 +109,11 @@ export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
                   }
                 }}
               />
-              {/* Thin horizontal input underline */}
               <div className="w-full h-[1.5px] bg-neutral-500/80 mt-3 mx-auto transition-colors" />
             </div>
 
             {/* Buttons: Cancel & Create */}
-            <div className="flex items-center justify-center gap-4 sm:gap-6 mt-10 sm:mt-14 w-full max-w-xs sm:max-w-sm">
+            <div className="flex items-center justify-center gap-4 sm:gap-6 mt-10 sm:mt-14 w-full max-w-xs sm:max-w-sm mx-auto">
               <button
                 type="button"
                 onClick={handleClose}
@@ -114,7 +122,6 @@ export const CreatePlaylistModal: React.FC<CreatePlaylistModalProps> = ({
               >
                 Cancel
               </button>
-
               <button
                 type="submit"
                 disabled={!title.trim() || loading}

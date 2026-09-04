@@ -29,7 +29,23 @@ export const PlaylistArtwork: React.FC<PlaylistArtworkProps> = ({
     return (url && url.trim()) ? url.trim() : '';
   };
 
-  // Case 0: 0 songs -> Normal empty playlist artwork (Spotify music note placeholder)
+  if (playlist?.isBlend) {
+    return (
+      <div className={`relative w-full h-full bg-[#1b1011] overflow-hidden select-none ${className}`}>
+        {/* Intersecting circles */}
+        <div className="absolute top-[20%] right-[10%] w-[55%] h-[55%] rounded-full bg-[#ffc4c4] opacity-90 mix-blend-screen"></div>
+        <div className="absolute top-[35%] left-[15%] w-[60%] h-[60%] rounded-full bg-[#ff0033] mix-blend-multiply opacity-90"></div>
+        
+        {/* Blend Text */}
+        <div className="absolute bottom-4 left-4 z-10 flex flex-col">
+          <span className="text-white font-bold text-lg leading-none tracking-tight">Blend</span>
+          <div className="h-1 w-8 bg-[#ff0033] mt-1.5"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Case 0: 0 songs -> Normal empty playlist artwork (Spotiz music note placeholder)
   if (songsCount === 0) {
     return (
       <div
@@ -58,7 +74,7 @@ export const PlaylistArtwork: React.FC<PlaylistArtworkProps> = ({
     return (
       <div className={`relative w-full h-full overflow-hidden bg-neutral-800 ${className}`}>
         <img
-          src={imgSrc}
+          src={imgSrc || undefined}
           alt={track.title}
           loading="lazy"
           onError={() => handleImageError(0)}
@@ -87,7 +103,7 @@ export const PlaylistArtwork: React.FC<PlaylistArtworkProps> = ({
           return (
             <img
               key={track.id || idx}
-              src={imgSrc}
+              src={imgSrc || undefined}
               alt={track.title}
               loading="lazy"
               onError={() => handleImageError(idx)}
@@ -114,7 +130,7 @@ export const PlaylistArtwork: React.FC<PlaylistArtworkProps> = ({
           </div>
         ) : (
           <img
-            src={img0}
+            src={img0 || undefined}
             alt={songs[0].title}
             loading="lazy"
             onError={() => handleImageError(0)}
@@ -130,7 +146,7 @@ export const PlaylistArtwork: React.FC<PlaylistArtworkProps> = ({
             </div>
           ) : (
             <img
-              src={img1}
+              src={img1 || undefined}
               alt={songs[1].title}
               loading="lazy"
               onError={() => handleImageError(1)}
@@ -144,7 +160,7 @@ export const PlaylistArtwork: React.FC<PlaylistArtworkProps> = ({
             </div>
           ) : (
             <img
-              src={img2}
+              src={img2 || undefined}
               alt={songs[2].title}
               loading="lazy"
               onError={() => handleImageError(2)}
@@ -174,7 +190,7 @@ export const PlaylistArtwork: React.FC<PlaylistArtworkProps> = ({
         return (
           <img
             key={track.id || idx}
-            src={imgSrc}
+            src={imgSrc || undefined}
             alt={track.title}
             loading="lazy"
             onError={() => handleImageError(idx)}

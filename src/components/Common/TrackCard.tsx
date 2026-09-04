@@ -2,19 +2,66 @@ import React, { useState } from 'react';
 import { Track, ViewState } from '../../types';
 import { usePlayer } from '../../context/PlayerContext';
 import { useUser } from '../../context/UserContext';
-import { Play, Pause, MoreVertical, Heart, ArrowDownCircle, Download } from 'lucide-react';
+import { Play, Pause, MoreVertical, Heart, ArrowDownCircle, Download, Trash2 } from 'lucide-react';
 import { ContextMenu } from './ContextMenu';
 
 interface TrackCardProps {
   track: Track;
   queueContext?: Track[];
   onNavigate?: (view: ViewState) => void;
+  contentType?: string;
+  subtitle?: string;
+  hideFooter?: boolean;
+  onDeleteFromHistory?: () => void;
+  showDeleteFromHistory?: boolean;
 }
 
-export const TrackCard: React.FC<TrackCardProps> = ({ track, queueContext, onNavigate }) => {
+export const TrackCard: React.FC<TrackCardProps> = ({
+  track,
+  queueContext,
+  onNavigate,
+  contentType,
+  subtitle,
+  hideFooter = false,
+  onDeleteFromHistory,
+  showDeleteFromHistory,
+}) => {
   const { track: currentTrack, isPlaying, playTrack, togglePlay } = usePlayer();
   const { isTrackLiked, toggleLikeTrack, isTrackDownloaded, getTrackDownloadProgress } = useUser();
   const [showMenu, setShowMenu] = useState(false);
+
+  const rawImage = track.images?.large || track.images?.medium || track.images?.small || '';
+  const [artworkSrc, setArtworkSrc] = useState<string>(rawImage || 'https://i.scdn.co/image/ab67616d0000b273ba5db46f4b838ef6027e6f96');
+
+  React.useEffect(() => {
+    if (!rawImage || rawImage.includes('placeholder') || rawImage.includes('d41d8cd98f00b204e9800998ecf8427e')) {
+      fetch(`/api/spotify/thumbnail?query=${encodeURIComponent(`${track.title} ${track.artist}`)}&type=track`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.data?.thumbnailUrl) {
+            setArtworkSrc(data.data.thumbnailUrl);
+          }
+        })
+        .catch(() => {});
+    } else {
+      setArtworkSrc(rawImage);
+    }
+  }, [rawImage, track.title, track.artist]);
+
+  const handleImageError = () => {
+    fetch(`/api/spotify/thumbnail?query=${encodeURIComponent(`${track.title} ${track.artist}`)}&type=track`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.data?.thumbnailUrl) {
+          setArtworkSrc(data.data.thumbnailUrl);
+        } else {
+          setArtworkSrc('https://i.scdn.co/image/ab67616d0000b273ba5db46f4b838ef6027e6f96');
+        }
+      })
+      .catch(() => {
+        setArtworkSrc('https://i.scdn.co/image/ab67616d0000b273ba5db46f4b838ef6027e6f96');
+      });
+  };
 
   const isCurrent = currentTrack?.id === track.id;
   const isLiked = isTrackLiked(track.id);
@@ -40,18 +87,11 @@ export const TrackCard: React.FC<TrackCardProps> = ({ track, queueContext, onNav
         {/* Cover Artwork */}
         <div className="relative aspect-square w-full rounded-xl overflow-hidden mb-3 bg-neutral-800 shadow-md">
           <img
-            src={
-              track.images?.large ||
-              track.images?.medium ||
-              track.images?.small ||
-              'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&auto=format&fit=crop&q=80'
-            }
+            src={artworkSrc || undefined}
             alt={track.title}
             loading="lazy"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src =
-                'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&auto=format&fit=crop&q=80';
-            }}
+            referrerPolicy="no-referrer"
+            onError={handleImageError}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
 
@@ -105,9 +145,14 @@ export const TrackCard: React.FC<TrackCardProps> = ({ track, queueContext, onNav
         {/* Title & Artist */}
         <div className="min-w-0 flex-1 flex flex-col justify-between">
           <div>
+            {contentType && (
+              <p className="text-[11px] text-neutral-400 font-medium tracking-wide mb-0.5">
+                {contentType}
+              </p>
+            )}
             <h4
               className={`font-semibold text-sm truncate ${
-                isCurrent ? 'text-emerald-400' : 'text-neutral-100'
+                isCurrent ? 'text-emerald-400' : 'text-neutral-100 group-hover:text-white'
               }`}
             >
               {track.title}
@@ -119,30 +164,48 @@ export const TrackCard: React.FC<TrackCardProps> = ({ track, queueContext, onNav
               }}
               className="text-xs text-neutral-400 truncate hover:text-white hover:underline mt-0.5"
             >
-              {track.artist}
+              {subtitle || track.artist}
             </p>
           </div>
 
-          <div className="flex items-center justify-between mt-2 pt-1 border-t border-white/5">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleLikeTrack(track);
-              }}
-              className="p-1 text-neutral-400 hover:text-white transition-colors"
-            >
-              <Heart className={`w-3.5 h-3.5 ${isLiked ? 'text-red-500 fill-red-500' : ''}`} />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMenu(true);
-              }}
-              className="p-1 text-neutral-400 hover:text-white transition-colors"
-            >
-              <MoreVertical className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          {!hideFooter && (
+            <div className="flex items-center justify-between mt-2 pt-1 border-t border-white/5">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleLikeTrack(track);
+                  }}
+                  className="p-1 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                  title={isLiked ? "Unlike" : "Like"}
+                >
+                  <Heart className={`w-3.5 h-3.5 ${isLiked ? 'text-red-500 fill-red-500' : ''}`} />
+                </button>
+                {(showDeleteFromHistory || onDeleteFromHistory) && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onDeleteFromHistory) onDeleteFromHistory();
+                    }}
+                    className="p-1 text-neutral-400 hover:text-red-400 transition-colors cursor-pointer"
+                    title="Remove from history"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(true);
+                }}
+                className="p-1 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                title="More"
+              >
+                <MoreVertical className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -151,6 +214,8 @@ export const TrackCard: React.FC<TrackCardProps> = ({ track, queueContext, onNav
         isOpen={showMenu}
         onClose={() => setShowMenu(false)}
         onNavigate={onNavigate}
+        onDeleteFromHistory={onDeleteFromHistory}
+        showRemoveFromHistory={showDeleteFromHistory}
       />
     </>
   );

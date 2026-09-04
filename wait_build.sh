@@ -1,0 +1,1 @@
+echo "Wait for build"

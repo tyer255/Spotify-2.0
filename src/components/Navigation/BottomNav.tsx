@@ -68,7 +68,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         <span className={`text-[10px] mt-1 font-medium tracking-tight ${isSearch ? 'text-white font-bold' : ''}`}>Search</span>
       </button>
 
-      {/* 3. Your Library (Spotify Style 3-bar icon) */}
+      {/* 3. Your Library (Spotiz Style 3-bar icon) */}
       <button
         onClick={() => onNavigate({ type: 'library' })}
         className={`relative flex flex-col items-center justify-center flex-1 py-1 rounded-xl transition-all duration-300 cursor-pointer ${
@@ -89,7 +89,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         <span className={`text-[10px] mt-1 font-medium truncate tracking-tight ${isLibrary ? 'text-white font-bold' : ''}`}>Your Library</span>
       </button>
 
-      {/* 4. Premium (Spotify Logo icon as shown in Spotify mobile screenshot) */}
+      {/* 4. Premium (Spotiz Logo icon as shown in Spotiz mobile screenshot) */}
       <button
         onClick={() => onNavigate({ type: 'premium' })}
         className={`relative flex flex-col items-center justify-center flex-1 py-1 rounded-xl transition-all duration-300 cursor-pointer ${

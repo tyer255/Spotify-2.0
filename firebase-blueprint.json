@@ -1,0 +1,132 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "username": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string" },
+        "avatar": { "type": "string" },
+        "subscription": { "type": "string" },
+        "followersCount": { "type": "number" },
+        "followingCount": { "type": "number" },
+        "settings": { "$ref": "#/entities/UserSettings" },
+        "recentHistory": {
+          "type": "array",
+          "items": { "type": "object" },
+          "description": "Recently played tracks history"
+        },
+        "recentSearches": {
+          "type": "array",
+          "items": { "type": "object" },
+          "description": "Recent search items for this specific user"
+        },
+        "interactionStats": {
+          "type": "object",
+          "description": "Personalized interaction statistics"
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "email", "createdAt", "updatedAt"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "User preferences",
+      "type": "object",
+      "properties": {
+        "theme": { "type": "string", "enum": ["dark", "light", "system"] },
+        "accentColor": { "type": "string" },
+        "audioQuality": { "type": "string" },
+        "crossfadeDuration": { "type": "number" },
+        "gaplessPlayback": { "type": "boolean" },
+        "normalizeVolume": { "type": "boolean" },
+        "equalizerPreset": { "type": "string" },
+        "downloadWifiOnly": { "type": "boolean" },
+        "privateSession": { "type": "boolean" },
+        "autoPlaySimilar": { "type": "boolean" }
+      }
+    },
+    "Playlist": {
+      "title": "Playlist",
+      "description": "User created playlist",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 },
+        "coverImage": { "type": "string" },
+        "userId": { "type": "string" },
+        "isPublic": { "type": "boolean" },
+        "tracks": {
+          "type": "array",
+          "items": { "type": "object" },
+          "maxLength": 1000
+        },
+        "likesCount": { "type": "number" },
+        "color": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "userId", "createdAt", "updatedAt"]
+    },
+    "LikedTrack": {
+      "title": "LikedTrack",
+      "description": "A track liked by a user",
+      "type": "object",
+      "properties": {
+        "trackId": { "type": "string" },
+        "trackData": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["trackId", "trackData", "createdAt"]
+    },
+    "FollowedArtist": {
+      "title": "FollowedArtist",
+      "description": "An artist followed by a user",
+      "type": "object",
+      "properties": {
+        "artistId": { "type": "string" },
+        "artistData": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["artistId", "artistData", "createdAt"]
+    },
+    "DownloadedTrack": {
+      "title": "DownloadedTrack",
+      "description": "A track downloaded by the user",
+      "type": "object",
+      "properties": {
+        "trackId": { "type": "string" },
+        "trackData": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["trackId", "trackData", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "#/entities/User",
+      "description": "User profiles, keyed by uid"
+    },
+    "users/{userId}/likedTracks/{trackId}": {
+      "schema": "#/entities/LikedTrack",
+      "description": "Tracks liked by the user"
+    },
+    "users/{userId}/followedArtists/{artistId}": {
+      "schema": "#/entities/FollowedArtist",
+      "description": "Artists followed by the user"
+    },
+    "users/{userId}/downloads/{trackId}": {
+      "schema": "#/entities/DownloadedTrack",
+      "description": "Tracks downloaded by the user"
+    },
+    "playlists/{playlistId}": {
+      "schema": "#/entities/Playlist",
+      "description": "Playlists created by users"
+    }
+  }
+}

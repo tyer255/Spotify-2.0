@@ -7,7 +7,8 @@ import { ViewState } from '../../types';
 interface CreateActionMenuProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectCreatePlaylist: () => void;
+  onSelectCreatePlaylist: (type?: 'playlist' | 'collaborative' | 'blend') => void;
+  onSelectClonePlaylist?: () => void;
   onNavigate?: (view: ViewState) => void;
 }
 
@@ -15,17 +16,31 @@ export const CreateActionMenu: React.FC<CreateActionMenuProps> = ({
   isOpen,
   onClose,
   onSelectCreatePlaylist,
+  onSelectClonePlaylist,
+  onNavigate,
 }) => {
-  const { showToast } = useUser();
+  const { showToast, firebaseUser } = useUser();
 
   const handleSelect = (action: 'playlist' | 'collaborative' | 'blend') => {
+    if (!firebaseUser && (action === 'collaborative' || action === 'blend')) {
+      onClose();
+      if (onNavigate) {
+        onNavigate({ type: 'profile' });
+      }
+      return;
+    }
+
     if (action === 'playlist') {
       onClose();
       onSelectCreatePlaylist();
     } else if (action === 'collaborative') {
-      showToast('Collaborative playlist feature is coming soon!');
+      onClose();
+      onSelectCreatePlaylist('collaborative');
     } else if (action === 'blend') {
-      showToast('Blend playlist feature is coming soon!');
+      onClose();
+      if (onNavigate) {
+        onNavigate({ type: 'blend-setup' });
+      }
     }
   };
 
@@ -51,8 +66,8 @@ export const CreateActionMenu: React.FC<CreateActionMenuProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.88, y: 25 }}
             transition={{ type: 'spring', damping: 24, stiffness: 320 }}
-            style={{ transformOrigin: 'bottom right' }}
-            className="fixed bottom-[74px] right-3 sm:right-6 left-3 sm:left-auto sm:w-[380px] z-50 rounded-3xl bg-[#1c1c1e] border border-white/10 p-3 shadow-2xl backdrop-blur-2xl space-y-1.5 select-none overflow-hidden"
+            style={{ transformOrigin: 'bottom left' }}
+            className="fixed bottom-[74px] left-3 right-3 md:bottom-6 md:left-[272px] md:right-auto w-auto md:w-[380px] z-50 rounded-3xl bg-[#1c1c1e] border border-white/10 p-3 shadow-2xl backdrop-blur-2xl space-y-1.5 select-none overflow-hidden will-change-transform transform-gpu"
           >
             {/* 1. Playlist Option (Fully functional) */}
             <motion.button
@@ -75,25 +90,23 @@ export const CreateActionMenu: React.FC<CreateActionMenuProps> = ({
               </div>
             </motion.button>
 
-            {/* 2. Collaborative Playlist Option (Disabled / Soon) */}
+            
+            {/* 2. Collaborative Playlist Option */}
             <motion.button
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08, duration: 0.2 }}
               onClick={() => handleSelect('collaborative')}
-              className="w-full flex items-center gap-3.5 p-3 rounded-2xl hover:bg-white/5 active:bg-white/10 transition-all text-left group cursor-pointer opacity-90 hover:opacity-100"
+              className="w-full flex items-center gap-3.5 p-3 rounded-2xl hover:bg-white/10 active:bg-white/15 transition-all text-left group cursor-pointer"
             >
-              <div className="w-12 h-12 rounded-full bg-neutral-800/90 border border-white/10 flex items-center justify-center text-neutral-300 group-hover:text-white transition-all flex-shrink-0 shadow-md">
+              <div className="w-12 h-12 rounded-full bg-neutral-800/90 border border-white/10 flex items-center justify-center text-neutral-200 group-hover:text-emerald-400 group-hover:border-emerald-500/30 group-hover:bg-neutral-800 transition-all flex-shrink-0 shadow-md">
                 <Users className="w-6 h-6 stroke-[2]" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <h4 className="text-base font-bold text-white group-hover:text-neutral-200 transition-colors truncate">
+                  <h4 className="text-base font-bold text-white group-hover:text-emerald-400 transition-colors truncate">
                     Collaborative playlist
                   </h4>
-                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white/10 text-neutral-300 border border-white/10 flex-shrink-0">
-                    Soon
-                  </span>
                 </div>
                 <p className="text-xs text-neutral-400 mt-0.5 leading-snug truncate">
                   Create a playlist together with friends
@@ -101,28 +114,25 @@ export const CreateActionMenu: React.FC<CreateActionMenuProps> = ({
               </div>
             </motion.button>
 
-            {/* 3. Blend Option (Disabled / Soon) */}
+            {/* 3. Blend Option */}
             <motion.button
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.12, duration: 0.2 }}
               onClick={() => handleSelect('blend')}
-              className="w-full flex items-center gap-3.5 p-3 rounded-2xl hover:bg-white/5 active:bg-white/10 transition-all text-left group cursor-pointer opacity-90 hover:opacity-100"
+              className="w-full flex items-center gap-3.5 p-3 rounded-2xl hover:bg-white/10 active:bg-white/15 transition-all text-left group cursor-pointer"
             >
-              <div className="w-12 h-12 rounded-full bg-neutral-800/90 border border-white/10 flex items-center justify-center text-neutral-300 group-hover:text-white transition-all flex-shrink-0 shadow-md">
-                <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current text-neutral-300 group-hover:text-white">
+              <div className="w-12 h-12 rounded-full bg-neutral-800/90 border border-white/10 flex items-center justify-center text-neutral-200 group-hover:text-emerald-400 group-hover:border-emerald-500/30 group-hover:bg-neutral-800 transition-all flex-shrink-0 shadow-md">
+                <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current text-neutral-200 group-hover:text-emerald-400">
                   <circle cx="9" cy="12" r="6" fillOpacity="0.8" />
                   <circle cx="15" cy="12" r="6" fillOpacity="0.8" />
                 </svg>
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
-                  <h4 className="text-base font-bold text-white group-hover:text-neutral-200 transition-colors truncate">
+                  <h4 className="text-base font-bold text-white group-hover:text-emerald-400 transition-colors truncate">
                     Blend
                   </h4>
-                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white/10 text-neutral-300 border border-white/10 flex-shrink-0">
-                    Soon
-                  </span>
                 </div>
                 <p className="text-xs text-neutral-400 mt-0.5 leading-snug truncate">
                   Combine your friends’ tastes into a playlist

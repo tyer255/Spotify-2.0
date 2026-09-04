@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spotify Code Decoder</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0a; --surface: #131313; --border: #1e1e1e;
+    --accent: #1DB954; --text: #f0f0f0; --muted: #4a4a4a;
+    --mono: 'DM Mono', monospace; --sans: 'Syne', sans-serif;
+  }
+  body {
+    background: var(--bg); color: var(--text); font-family: var(--sans);
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 2rem 1.5rem;
+  }
+  .wrap { width: 100%; max-width: 480px; }
+ 
+  h1 {
+    font-size: 1.9rem; font-weight: 800; letter-spacing: -0.03em;
+    line-height: 1.1; margin-bottom: 0.5rem;
+  }
+  h1 em { color: var(--accent); font-style: normal; }
+  .lead {
+    font-family: var(--mono); font-size: 12px; color: var(--muted);
+    line-height: 1.7; margin-bottom: 2.5rem;
+  }
+  .lead a { color: var(--accent); text-decoration: none; }
+  .lead a:hover { text-decoration: underline; }
+
+  /* Steps */
+  .steps { display: flex; flex-direction: column; gap: 0; margin-bottom: 2rem; }
+  .step { display: flex; gap: 1rem; align-items: flex-start; padding: 0.9rem 0; border-bottom: 1px solid var(--border); }
+  .step:last-child { border-bottom: none; }
+  .n {
+    font-family: var(--mono); font-size: 11px; color: var(--accent);
+    width: 18px; flex-shrink: 0; padding-top: 1px;
+  }
+  .step p { font-family: var(--mono); font-size: 13px; color: #777; line-height: 1.6; }
+  .step p strong { color: var(--text); font-weight: 500; }
+  .step p a { color: var(--accent); text-decoration: none; }
+  .step p a:hover { text-decoration: underline; }
+
+  /* Drop */
+  .drop {
+    border: 1px dashed var(--border); border-radius: 10px;
+    padding: 2.25rem 1.5rem; text-align: center; cursor: pointer;
+    background: var(--surface); position: relative;
+    transition: border-color .15s, background .15s;
+    margin-bottom: 1rem;
+  }
+  .drop:hover, .drop.over { border-color: var(--accent); background: #0d1f14; }
+  .drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .drop-title { font-size: 14px; font-weight: 700; margin-bottom: 0.25rem; }
+  .drop-sub { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+  /* Error */
+  .err {
+    display: none; font-family: var(--mono); font-size: 12px; color: #c0392b;
+    background: #1a0a0a; border: 1px solid #3a1010; border-radius: 8px;
+    padding: 0.9rem 1rem; margin-bottom: 1rem; line-height: 1.6; white-space: pre-line;
+  }
+
+  /* Result */
+  .result {
+    display: none; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem; margin-bottom: 1rem;
+  }
+  .result-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 0.75rem; }
+  .code {
+    font-family: var(--mono); font-size: clamp(1.4rem, 5vw, 1.9rem);
+    font-weight: 500; letter-spacing: 6px; color: var(--accent);
+    word-break: break-all; line-height: 1.4; margin-bottom: 1.25rem;
+  }
+  .copy-btn {
+    width: 100%; background: var(--accent); color: #000; border: none;
+    padding: 0.75rem; border-radius: 7px; font-family: var(--mono);
+    font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity .15s;
+  }
+  .copy-btn:hover { opacity: .85; }
+
+  .again-btn {
+    display: none; width: 100%; background: transparent; color: var(--muted);
+    border: 1px solid var(--border); padding: 0.6rem; border-radius: 7px;
+    font-family: var(--mono); font-size: 12px; cursor: pointer;
+    transition: color .15s, border-color .15s; margin-top: 0.5rem;
+  }
+  .again-btn:hover { color: var(--text); border-color: #333; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Tu canción,<br>en <em>3D.</em></h1>
+  <p class="lead">Genera el código de tu canción de Spotify<br>para personalizar tu marco de foto.</p>
+
+  <div class="steps">
+    <div class="step">
+      <span class="n">1</span>
+      <p>Ve a <a href="https://www.spotifycodes.com" target="_blank">spotifycodes.com</a>, pega el URI de tu canción, elige formato <strong>SVG</strong> y descárgalo.</p>
+    </div>
+    <div class="step">
+      <span class="n">2</span>
+      <p>Sube el archivo <strong>.svg</strong> aquí abajo.</p>
+    </div>
+    <div class="step">
+      <span class="n">3</span>
+      <p>Copia el número que aparece y pégalo en <strong>MakerWorld</strong> al personalizar el modelo.</p>
+    </div>
+  </div>
+
+  <div class="drop" id="drop">
+    <input type="file" accept=".svg,image/svg+xml" id="fileInput">
+    <p class="drop-title">Arrastra el .svg aquí</p>
+    <p class="drop-sub">o toca para seleccionar</p>
+  </div>
+
+  <div class="err" id="err"></div>
+
+  <div class="result" id="result">
+    <p class="result-label">Tu código</p>
+    <div class="code" id="code"></div>
+    <button class="copy-btn" id="copyBtn" onclick="copyCode()">Copiar</button>
+  </div>
+
+  <button class="again-btn" id="againBtn" onclick="reset()">← Otra canción</button>
+
+</div>
+<script>
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('fileInput');
+
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files[0]) run(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) run(fileInput.files[0]); });
+
+function run(file) {
+  clearErr();
+  if (!file.name.toLowerCase().endsWith('.svg') && file.type !== 'image/svg+xml') {
+    err('Sube un archivo .svg — no PNG ni JPEG.\nEn spotifycodes.com selecciona formato SVG antes de descargar.'); return;
+  }
+  const r = new FileReader();
+  r.onload = e => parse(e.target.result);
+  r.readAsText(file);
+}
+
+function parse(txt) {
+  const doc = new DOMParser().parseFromString(txt, 'image/svg+xml');
+  if (doc.querySelector('parsererror')) { err('El archivo SVG está dañado o incompleto.'); return; }
+
+  const svg = doc.querySelector('svg');
+  const vb = svg?.getAttribute('viewBox')?.trim().split(/\s+/).map(Number);
+  const W = vb ? vb[2] : parseFloat(svg?.getAttribute('width') || 400);
+
+  const bars = Array.from(doc.querySelectorAll('rect'))
+    .map(r => ({ x: +r.getAttribute('x')||0, w: +r.getAttribute('width')||0, h: +r.getAttribute('height')||0 }))
+    .filter(r => r.w > 0 && r.w < W * 0.08 && r.x > 0 && r.h > 0)
+    .sort((a, b) => a.x - b.x);
+
+  if (bars.length < 23) {
+    err(`Se detectaron ${bars.length} barras, se necesitan 23.\n¿Descargaste el SVG completo desde spotifycodes.com?`); return;
+  }
+
+  const b23 = bars.slice(0, 23);
+  const maxH = Math.max(...b23.map(b => b.h));
+  const levels = b23.map(b => Math.max(0, Math.min(7, Math.round(b.h / maxH * 8 - 1))));
+  show(levels.join(''));
+}
+
+function show(code) {
+  document.getElementById('code').textContent = code;
+  document.getElementById('result').style.display = 'block';
+  document.getElementById('againBtn').style.display = 'block';
+  drop.style.display = 'none';
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(document.getElementById('code').textContent).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = '✓ Copiado';
+    setTimeout(() => btn.textContent = 'Copiar', 2000);
+  });
+}
+
+function reset() {
+  drop.style.display = 'block';
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('againBtn').style.display = 'none';
+  fileInput.value = ''; clearErr();
+}
+
+function err(msg) { const e = document.getElementById('err'); e.style.display='block'; e.textContent=msg; }
+function clearErr() { document.getElementById('err').style.display='none'; }
+</script>
+</body>
+</html>

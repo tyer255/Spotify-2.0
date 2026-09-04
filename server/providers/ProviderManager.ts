@@ -12,13 +12,11 @@ class ProviderManager {
 
     this.providers = [spotify, openProvider];
 
-    // Select Spotify if credentials exist, otherwise default to Open Authorized Music Provider
+    // Always use OpenMusicProvider for the main app to avoid Spotify's 403 Premium restrictions on Web API
+    this.activeProvider = openProvider;
+    console.log('[ProviderManager] Initialized with Open Authorized Music Provider (Real iTunes, Deezer & LRCLIB Metadata)');
     if (spotify.isConfigured()) {
-      this.activeProvider = spotify;
-      console.log('[ProviderManager] Initialized with Spotify Web API Provider');
-    } else {
-      this.activeProvider = openProvider;
-      console.log('[ProviderManager] Initialized with Open Authorized Music Provider (Real iTunes, Deezer & LRCLIB Metadata)');
+      console.log('[ProviderManager] Spotify Web API configured for background tasks (Canvas/Lookup).');
     }
   }
 

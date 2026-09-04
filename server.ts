@@ -1,13 +1,23 @@
+
 import express from 'express';
 import path from 'path';
+import { Readable } from 'stream';
 import { createServer as createViteServer } from 'vite';
+
+import fetch from 'node-fetch';
+
+
 import { MusicService, userDatabase } from './server/services/musicService';
+import { smartRankingService } from './server/services/SmartRankingService';
 import { providerManager } from './server/providers/ProviderManager';
+import { extractSpotifyThumbnail, resolveMissingSpotifyThumbnails } from './server/services/spotifyThumbnailExtractor';
+import { SpotifyCanvasService } from './server/services/spotifyCanvasService';
 
 const app = express();
 const PORT = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Helper for standardized API responses
 function sendSuccess(res: express.Response, data: any, status = 200) {
@@ -55,17 +65,43 @@ app.get('/api/home', async (req, res) => {
   }
 });
 
+
 // 3. Search
+
 app.get('/api/search', async (req, res) => {
   try {
     const q = (req.query.q as string) || '';
-    const results = await MusicService.search(q);
+    const userId = (req.headers['x-user-id'] as string) || (req.headers['x-session-id'] as string) || 'anonymous';
+    const results = await MusicService.search(q, userId);
     sendSuccess(res, results);
   } catch (err: any) {
     console.error('[API] /api/search error:', err);
     sendError(res, 'SEARCH_FAILED', 'Failed to execute search query', 500);
   }
 });
+
+
+// Smart Ranking Analytics Event
+app.post('/api/analytics/event', (req, res) => {
+  try {
+    const { event_type, song_id } = req.body;
+    const userId = (req.headers['x-user-id'] as string) || (req.headers['x-session-id'] as string) || 'anonymous';
+    
+    if (event_type && song_id) {
+      smartRankingService.logEvent({
+        user_id: userId,
+        song_id,
+        event_type,
+        session_id: req.headers['x-session-id'] as string
+      });
+    }
+    sendSuccess(res, { logged: true });
+  } catch (err: any) {
+    console.error('[API] /api/analytics/event error:', err);
+    sendError(res, 'ANALYTICS_FAILED', 'Failed to log event', 500);
+  }
+});
+
 
 // 3b. Search Suggestions (Fast, title-matching song suggestions while typing)
 app.get('/api/search/suggestions', async (req, res) => {
@@ -137,15 +173,15 @@ app.get('/api/playlist/:id', async (req, res) => {
 
 // 8. Create Playlist
 app.post('/api/playlist', (req, res) => {
-  const { title, description, coverImage } = req.body;
+  const { title, description, coverImage, id } = req.body;
   if (!title || typeof title !== 'string') {
     return sendError(res, 'INVALID_INPUT', 'Playlist title is required', 400);
   }
 
   const newPlaylist = {
-    id: `user-pl-${Date.now()}`,
+    id: id || `user-pl-${Date.now()}`,
     title: title.trim(),
-    description: description ? String(description).trim() : 'Custom playlist created on Spotify 2.0',
+    description: description ? String(description).trim() : 'Custom playlist created on Spotiz',
     coverImage: coverImage || '',
     userId: userDatabase.id,
     isPublic: true,
@@ -179,28 +215,46 @@ app.put('/api/playlist/:id', (req, res) => {
 // 10. Delete Playlist
 app.delete('/api/playlist/:id', (req, res) => {
   const index = userDatabase.playlists.findIndex((p) => p.id === req.params.id);
-  if (index === -1) {
-    return sendError(res, 'PLAYLIST_NOT_FOUND', 'Playlist not found or cannot be deleted', 404);
+  if (index !== -1) {
+    userDatabase.playlists.splice(index, 1);
   }
-
-  const deleted = userDatabase.playlists.splice(index, 1)[0];
-  sendSuccess(res, { deletedId: deleted.id });
+  sendSuccess(res, { deletedId: req.params.id });
 });
 
 // 11. Add track to playlist
 app.post('/api/playlist/:id/tracks', async (req, res) => {
-  const { trackId } = req.body;
-  const pl = userDatabase.playlists.find((p) => p.id === req.params.id);
+  const { trackId, track: clientTrack } = req.body;
+  let pl = userDatabase.playlists.find((p) => p.id === req.params.id);
   if (!pl) {
-    return sendError(res, 'PLAYLIST_NOT_FOUND', 'Playlist not found', 404);
+    // If playlist was created locally or after server reload, register it on the fly
+    const newPlaylist = {
+      id: req.params.id,
+      title: 'My Playlist',
+      description: 'Custom playlist created on Spotiz',
+      coverImage: '',
+      userId: userDatabase.id,
+      isPublic: true,
+      tracks: [],
+      createdAt: new Date().toISOString().split('T')[0],
+      updatedAt: new Date().toISOString().split('T')[0],
+      likesCount: 0,
+      color: '#10B981',
+    };
+    userDatabase.playlists.unshift(newPlaylist);
+    pl = newPlaylist;
   }
 
-  const track = await MusicService.getTrack(trackId);
-  if (!track) {
+  let trackToPush = clientTrack;
+  if (!trackToPush && trackId) {
+    trackToPush = await MusicService.getTrack(trackId);
+  }
+  if (!trackToPush) {
     return sendError(res, 'TRACK_NOT_FOUND', 'Track to add was not found', 404);
   }
 
-  pl.tracks.push(track);
+  if (!pl.tracks.some((t: any) => t.id === trackToPush.id)) {
+    pl.tracks.push(trackToPush);
+  }
   pl.updatedAt = new Date().toISOString().split('T')[0];
   sendSuccess(res, pl);
 });
@@ -208,13 +262,11 @@ app.post('/api/playlist/:id/tracks', async (req, res) => {
 // 12. Remove track from playlist
 app.delete('/api/playlist/:id/tracks/:trackId', (req, res) => {
   const pl = userDatabase.playlists.find((p) => p.id === req.params.id);
-  if (!pl) {
-    return sendError(res, 'PLAYLIST_NOT_FOUND', 'Playlist not found', 404);
+  if (pl) {
+    pl.tracks = pl.tracks.filter((t) => t.id !== req.params.trackId);
+    pl.updatedAt = new Date().toISOString().split('T')[0];
   }
-
-  pl.tracks = pl.tracks.filter((t) => t.id !== req.params.trackId);
-  pl.updatedAt = new Date().toISOString().split('T')[0];
-  sendSuccess(res, pl);
+  sendSuccess(res, pl || { id: req.params.id, tracks: [] });
 });
 
 // 13. Reorder tracks in playlist
@@ -253,7 +305,7 @@ app.get('/api/lyrics/:id', async (req, res) => {
 
 // 15. Playback Resolve (Authorized Stream Resolution)
 app.post('/api/playback/resolve', async (req, res) => {
-  const { trackId, title, artist, duration } = req.body;
+  const { trackId, title, artist, duration, forceFresh, discardUrl } = req.body;
   if (!trackId) {
     return sendError(res, 'INVALID_INPUT', 'trackId is required', 400);
   }
@@ -263,7 +315,8 @@ app.post('/api/playback/resolve', async (req, res) => {
       trackId,
       title,
       artist,
-      duration ? parseInt(String(duration), 10) : undefined
+      duration ? parseInt(String(duration), 10) : undefined,
+      { forceFresh: Boolean(forceFresh), discardUrl }
     );
     if (!resolved) {
       return sendError(res, 'PLAYBACK_UNAVAILABLE', 'Playback unavailable for this track.', 404);
@@ -272,6 +325,146 @@ app.post('/api/playback/resolve', async (req, res) => {
   } catch (err: any) {
     console.error('[API] /api/playback/resolve error:', err);
     sendError(res, 'PLAYBACK_UNAVAILABLE', 'Playback unavailable for this track.', 500);
+  }
+});
+
+// 15b. Audio Download Proxy (Fetches full audio buffer for reliable offline caching)
+app.get('/api/audio-download', async (req, res) => {
+  const audioUrl = req.query.url as string;
+  if (!audioUrl) {
+    return sendError(res, 'INVALID_INPUT', 'Audio url is required', 400);
+  }
+
+  try {
+    const audioRes = await fetch(audioUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Referer': 'https://www.jiosaavn.com/',
+      },
+    });
+
+    if (!audioRes.ok) {
+      return res.status(audioRes.status).send(`Failed to fetch audio stream: ${audioRes.statusText}`);
+    }
+
+    const contentType = audioRes.headers.get('content-type') || 'audio/mp4';
+    const contentLength = audioRes.headers.get('content-length');
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    if (contentLength) {
+      res.setHeader('Content-Length', contentLength);
+    }
+
+    const arrayBuffer = await audioRes.arrayBuffer();
+    res.send(Buffer.from(arrayBuffer));
+  } catch (err: any) {
+    console.error('[API] /api/audio-download error:', err);
+    sendError(res, 'DOWNLOAD_FAILED', 'Failed to retrieve audio stream', 500);
+  }
+});
+
+// 15c. Real-Time Audio Streaming Range Proxy
+app.get('/api/playback/stream', async (req, res) => {
+  const streamUrl = req.query.url as string;
+  if (!streamUrl) {
+    return sendError(res, 'INVALID_INPUT', 'url is required', 400);
+  }
+
+  try {
+    const rangeHeader = req.headers.range;
+    const fetchHeaders: Record<string, string> = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': '*/*',
+      'Referer': streamUrl.includes('jiosaavn') || streamUrl.includes('saavncdn') ? 'https://www.jiosaavn.com/' : 'https://audius.co/',
+    };
+
+    if (rangeHeader) {
+      fetchHeaders['Range'] = rangeHeader;
+    }
+
+    let upstreamRes = await fetch(streamUrl, {
+      headers: fetchHeaders,
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!upstreamRes.ok && upstreamRes.status !== 206) {
+      // Automatic failover for JioSaavn CDN formats: try different bitrate qualities
+      const base = streamUrl.replace(/_\d+\.mp4$/, '');
+      const fallbacks = [];
+      if (streamUrl.includes('.mp4')) {
+        fallbacks.push(`${base}_320.mp4`);
+        fallbacks.push(`${base}_160.mp4`);
+        fallbacks.push(`${base}_96.mp4`);
+        fallbacks.push(`${base}_48.mp4`);
+      } else {
+        // Just as a safety, if we aren't sure, we can't guess easily
+      }
+
+      for (const fallback of fallbacks) {
+        if (fallback === streamUrl) continue;
+        try {
+          const fallbackRes = await fetch(fallback, {
+            headers: fetchHeaders,
+            signal: AbortSignal.timeout(6000),
+          });
+          if (fallbackRes.ok || fallbackRes.status === 206) {
+            upstreamRes = fallbackRes;
+            break;
+          }
+        } catch (err) {
+          // Ignore network/timeout errors on fallbacks and try the next one
+        }
+      }
+    }
+
+    if (!upstreamRes.ok && upstreamRes.status !== 206) {
+      return res.status(upstreamRes.status).send(`Stream fetch failed: ${upstreamRes.statusText}`);
+    }
+
+    res.status(upstreamRes.status);
+    const headersToForward = [
+      'content-type',
+      'content-length',
+      'content-range',
+      'accept-ranges',
+      'cache-control',
+      'last-modified',
+      'etag',
+    ];
+
+    for (const h of headersToForward) {
+      const val = upstreamRes.headers.get(h);
+      if (val) {
+        res.setHeader(h, val);
+      }
+    }
+
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Range, Accept, Content-Type');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+
+    if (upstreamRes.body) {
+      if (typeof (upstreamRes.body as any).pipe === 'function') {
+        (upstreamRes.body as any).pipe(res);
+      } else if (typeof (Readable as any).fromWeb === 'function') {
+        (Readable as any).fromWeb(upstreamRes.body).pipe(res);
+      } else {
+        const arrayBuf = await upstreamRes.arrayBuffer();
+        res.send(Buffer.from(arrayBuf));
+      }
+    } else {
+      res.end();
+    }
+  } catch (err: any) {
+    console.error('[API] /api/playback/stream error:', err);
+    if (!res.headersSent) {
+      sendError(res, 'STREAM_FAILED', 'Failed to proxy audio stream', 500);
+    }
   }
 });
 
@@ -295,7 +488,7 @@ app.get('/api/profile', (req, res) => {
 
 // 18. Update Profile / Settings
 app.put('/api/profile', (req, res) => {
-  const { name, username, avatar, settings } = req.body;
+  const { name, username, avatar, settings, playlists, likedTrackIds } = req.body;
   if (name) userDatabase.name = name;
   if (username) userDatabase.username = username;
   if (avatar) userDatabase.avatar = avatar;
@@ -304,6 +497,12 @@ app.put('/api/profile', (req, res) => {
       ...userDatabase.settings,
       ...settings,
     };
+  }
+  if (playlists && Array.isArray(playlists)) {
+    userDatabase.playlists = playlists;
+  }
+  if (likedTrackIds && Array.isArray(likedTrackIds)) {
+    userDatabase.likedTrackIds = likedTrackIds;
   }
   sendSuccess(res, userDatabase);
 });
@@ -326,6 +525,18 @@ app.post('/api/like-track', (req, res) => {
   sendSuccess(res, { trackId, isLiked, likedTrackIds: userDatabase.likedTrackIds });
 });
 
+// 19b. Get all liked tracks
+app.get('/api/liked-tracks', async (req, res) => {
+  try {
+    const tracks = await Promise.all(
+      userDatabase.likedTrackIds.map(id => MusicService.getTrack(id))
+    );
+    sendSuccess(res, tracks.filter(Boolean));
+  } catch (err) {
+    sendError(res, 'SERVER_ERROR', 'Failed to fetch liked tracks', 500);
+  }
+});
+
 // 20. Follow / Unfollow artist
 app.post('/api/follow-artist', (req, res) => {
   const { artistId } = req.body;
@@ -340,8 +551,17 @@ app.post('/api/follow-artist', (req, res) => {
     userDatabase.followedArtistIds.push(artistId);
     isFollowed = true;
   }
+  userDatabase.followingCount = userDatabase.followedArtistIds.length;
+  if (userDatabase.stats) {
+    userDatabase.stats.followingCount = userDatabase.followedArtistIds.length;
+  }
 
-  sendSuccess(res, { artistId, isFollowed, followedArtistIds: userDatabase.followedArtistIds });
+  sendSuccess(res, {
+    artistId,
+    isFollowed,
+    followedArtistIds: userDatabase.followedArtistIds,
+    followingCount: userDatabase.followingCount,
+  });
 });
 
 // 21. Download / Remove download toggle
@@ -378,8 +598,152 @@ app.post('/api/history', async (req, res) => {
   sendSuccess(res, { ok: true });
 });
 
+// 23. Spotiz Thumbnail Extraction (SpotifyScraper Thumbnail Source)
+app.get('/api/spotify/thumbnail', async (req, res) => {
+  const query = (req.query.query || req.query.q) as string;
+  const id = (req.query.id as string) || query;
+  const type = ((req.query.type as string) || 'artist') as 'artist' | 'track' | 'album' | 'playlist';
+  if (!query) {
+    return sendError(res, 'INVALID_INPUT', 'Query parameter is required', 400);
+  }
 
-// 23. YouTube Audio Proxy
+  try {
+    const thumbnailUrl = await extractSpotifyThumbnail(id, query, type);
+    sendSuccess(res, { thumbnailUrl });
+  } catch (err: any) {
+    sendError(res, 'EXTRACTION_FAILED', 'Failed to extract Spotiz thumbnail', 500);
+  }
+});
+
+// Cache for live resolved artist images
+const artistLiveImageCache = new Map<string, string>();
+
+// 23b. Direct High-Resolution Artist Image Resolver (Deezer + Wikipedia + Spotify fallback)
+app.get('/api/artist-image', async (req, res) => {
+  const name = (req.query.name || req.query.q || req.query.artist) as string;
+  if (!name || typeof name !== 'string') {
+    return res.status(400).json({ error: 'Name parameter required' });
+  }
+
+  const cleanName = name.trim().replace(/^artist-/i, '');
+  const cacheKey = cleanName.toLowerCase();
+
+  if (artistLiveImageCache.has(cacheKey)) {
+    return res.json({ ok: true, imageUrl: artistLiveImageCache.get(cacheKey) });
+  }
+
+  // 1. Try Deezer Search
+  try {
+    const deezerRes = await fetch(`https://api.deezer.com/search/artist?q=${encodeURIComponent(cleanName)}&limit=1`);
+    if (deezerRes.ok) {
+      const d: any = await deezerRes.json();
+      if (d?.data?.[0]) {
+        const art = d.data[0];
+        const pic = art.picture_xl || art.picture_big || art.picture_medium || art.picture;
+        // Ignore Deezer blank image placeholder MD5 hash
+        if (pic && !pic.includes('d41d8cd98f00b204e9800998ecf8427e') && pic.startsWith('http')) {
+          artistLiveImageCache.set(cacheKey, pic);
+          return res.json({ ok: true, imageUrl: pic });
+        }
+      }
+    }
+  } catch (err) {
+    // continue to fallback
+  }
+
+  // 2. Try Wikipedia PageImages API
+  try {
+    const wikiRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(cleanName)}&prop=pageimages&format=json&pithumbsize=600`);
+    if (wikiRes.ok) {
+      const wikiData: any = await wikiRes.json();
+      const pages = wikiData?.query?.pages;
+      if (pages) {
+        for (const pageId in pages) {
+          const thumb = pages[pageId]?.thumbnail?.source;
+          if (thumb && thumb.startsWith('http')) {
+            artistLiveImageCache.set(cacheKey, thumb);
+            return res.json({ ok: true, imageUrl: thumb });
+          }
+        }
+      }
+    }
+  } catch (err) {
+    // continue to fallback
+  }
+
+  // 3. Try Spotify Scraper Thumbnail
+  try {
+    const thumb = await extractSpotifyThumbnail(cleanName, cleanName, 'artist');
+    if (thumb && thumb.startsWith('http')) {
+      artistLiveImageCache.set(cacheKey, thumb);
+      return res.json({ ok: true, imageUrl: thumb });
+    }
+  } catch (err) {
+    // fallback failed
+  }
+
+  return res.json({ ok: false, imageUrl: '' });
+});
+
+// 24. Spotify Canvas Proxy & Resolution
+app.get(['/api/canvas/search', '/api/canvas'], async (req, res) => {
+  try {
+    const title = (req.query.title as string) || '';
+    const artist = (req.query.artist as string) || '';
+    const trackId = (req.query.trackId as string) || (req.query.id as string) || '';
+    const spotifyId = (req.query.spotifyId as string) || '';
+    const spotifyUri = (req.query.spotifyUri as string) || (req.query.uri as string) || '';
+    const isrc = (req.query.isrc as string) || '';
+    const album = (req.query.album as string) || '';
+    const duration = req.query.duration ? Number(req.query.duration) : undefined;
+    
+    if (!title && !trackId && !spotifyUri && !spotifyId && !isrc) {
+      return sendError(res, 'MISSING_PARAMS', 'Title, trackId, spotifyId, isrc, or spotifyUri is required');
+    }
+
+    const result = await SpotifyCanvasService.getCanvasForTrack({
+      title,
+      artist,
+      trackId,
+      spotifyId,
+      spotifyUri,
+      isrc,
+      album,
+      duration,
+    });
+
+    if (result) {
+      return sendSuccess(res, {
+        requestedTrackId: result.requestedTrackId || result.trackId,
+        canonicalSpotifyTrackId: result.canonicalSpotifyTrackId || result.canvasTrackId,
+        canvasAssetId: result.canvasAssetId,
+        canvasEntityUri: result.canvasEntityUri,
+        canvasUrl: result.canvasUrl,
+        videoUrl: result.canvasUrl,
+        trackUri: result.trackUri,
+        trackId: result.trackId,
+        canvasTrackId: result.canvasTrackId,
+        isrc: result.isrc,
+        title: result.title || title,
+        artist: result.artist || artist,
+        album: result.album || album,
+        artistUri: result.artistUri,
+        canvasType: result.canvasType,
+        trackMatched: result.trackMatched,
+        canvasAssetMatched: result.canvasAssetMatched,
+        verified: result.verified,
+        verificationReason: result.verificationReason,
+        status: result.status,
+      });
+    }
+
+    return sendError(res, 'NOT_FOUND', 'Could not find a valid verified canvas MP4 video for this track', 404);
+  } catch (err: any) {
+    console.warn('[CanvasAPI] Error resolving canvas:', err?.message || err);
+    return sendError(res, 'SERVER_ERROR', 'Internal canvas resolution error', 500);
+  }
+});
+// 24. YouTube Audio Proxy
 app.get('/api/stream/youtube/:id', async (req, res) => {
   try {
     const ytdl = require('@distube/ytdl-core');
@@ -403,7 +767,9 @@ app.get('/api/stream/youtube/:id', async (req, res) => {
   }
 });
 
+
 // ================= VITE INTEGRATION =================
+
 
 
 async function startServer() {
@@ -415,14 +781,15 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, { setHeaders: (res, path) => { if (path.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate'); } }));
     app.get('*', (req, res) => {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Spotify 2.0 Audio Server running on http://0.0.0.0:${PORT}`);
+    console.log(`Spotiz Audio Server running on http://0.0.0.0:${PORT}`);
   });
 }
 

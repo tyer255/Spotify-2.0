@@ -1,9 +1,10 @@
 import { IMusicProvider } from './MusicProvider';
 import { Track, Artist, Album, Playlist, LyricsData, HomeFeedData, SearchResults, SearchSuggestion } from '../../src/types';
+import { rankAndSortSuggestions, rankAndSortSearchResults, cleanSearchTitle } from '../../src/utils/searchRanker';
 
 export class SpotifyMusicProvider implements IMusicProvider {
   readonly id = 'spotify-web-api';
-  readonly name = 'Official Spotify Web API';
+  readonly name = 'Official Spotiz Web API';
 
   private clientId: string | null = process.env.SPOTIFY_CLIENT_ID || null;
   private clientSecret: string | null = process.env.SPOTIFY_CLIENT_SECRET || null;
@@ -21,22 +22,29 @@ export class SpotifyMusicProvider implements IMusicProvider {
     if (!token) return [];
 
     try {
-      const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=15`, {
+      const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=25`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return [];
       const data = await res.json();
-      const qLower = q.toLowerCase();
-      const tracks = (data.tracks?.items || [])
-        .filter((t: any) => t.name && t.name.toLowerCase().includes(qLower))
+      const tracks: SearchSuggestion[] = (data.tracks?.items || [])
         .map((t: any) => ({
           id: `spot-sug-${t.id}`,
           title: t.name,
           artist: t.artists?.map((a: any) => a.name).join(', ') || 'Artist',
+          album: t.album?.name,
+          release_date: t.album?.release_date,
+          releaseDate: t.album?.release_date,
+          releaseYear: t.album?.release_date ? parseInt(t.album.release_date.split('-')[0], 10) : 2024,
+          plays: t.popularity ? t.popularity * 1000000 : 15000000,
+          play_count: t.popularity ? t.popularity * 1000000 : 15000000,
+          views: t.popularity ? t.popularity * 1000000 : 15000000,
           type: 'song' as const,
           image: t.album?.images?.[2]?.url || t.album?.images?.[0]?.url,
         }));
-      return tracks.slice(0, 8);
+
+      const ranked = rankAndSortSuggestions(tracks, q);
+      return ranked.slice(0, 8);
     } catch {
       return [];
     }
@@ -66,7 +74,7 @@ export class SpotifyMusicProvider implements IMusicProvider {
         return this.accessToken;
       }
     } catch (e) {
-      console.warn('[Spotify Provider] Token exchange failed:', e);
+      console.warn('[Spotiz Provider] Token exchange failed:', e);
     }
     return null;
   }
@@ -76,6 +84,10 @@ export class SpotifyMusicProvider implements IMusicProvider {
     const largeArt = images[0]?.url || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=80';
     const mediumArt = images[1]?.url || largeArt;
     const smallArt = images[2]?.url || mediumArt;
+
+    const releaseDate = item.album?.release_date || '';
+    const releaseYear = releaseDate ? parseInt(releaseDate.split('-')[0], 10) : 2024;
+    const playCount = item.popularity ? item.popularity * 1000000 : 15000000;
 
     return {
       id: item.id,
@@ -91,20 +103,26 @@ export class SpotifyMusicProvider implements IMusicProvider {
         large: largeArt,
       },
       provider: this.id,
-      playbackAvailability: Boolean(item.preview_url),
-      streamUrl: item.preview_url || '',
+      playbackAvailability: true,
+      streamUrl: '',
       mimeType: 'audio/mpeg',
       explicit: Boolean(item.explicit),
-      releaseYear: item.album?.release_date ? parseInt(item.album.release_date.split('-')[0], 10) : 2024,
+      releaseYear,
+      releaseDate,
+      release_date: releaseDate,
+      createdAt: releaseDate,
+      created_at: releaseDate,
       genre: 'Pop',
-      plays: item.popularity ? item.popularity * 1000000 : 15000000,
+      plays: playCount,
+      play_count: playCount,
+      views: playCount,
       color: '#1DB954',
     };
   }
 
   async search(query: string): Promise<SearchResults> {
     const token = await this.getAccessToken();
-    if (!token) throw new Error('Spotify Web API credentials not configured');
+    if (!token) throw new Error('Spotiz Web API credentials not configured');
 
     const res = await fetch(
       `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track,artist,album&limit=20`,
@@ -113,7 +131,7 @@ export class SpotifyMusicProvider implements IMusicProvider {
       }
     );
 
-    if (!res.ok) throw new Error(`Spotify search failed: ${res.statusText}`);
+    if (!res.ok) throw new Error(`Spotiz search failed: ${res.statusText}`);
     const data = await res.json();
 
     const songs: Track[] = (data.tracks?.items || []).map((t: any) => this.normalizeSpotifyTrack(t));
@@ -124,7 +142,7 @@ export class SpotifyMusicProvider implements IMusicProvider {
       followers: a.followers?.total || 0,
       monthlyListeners: Math.round((a.followers?.total || 100000) * 2.5),
       genres: a.genres || ['Music'],
-      bio: `${a.name} is on Spotify.`,
+      bio: `${a.name} is on Spotiz.`,
       verified: true,
       topTracks: [],
       albums: [],
@@ -148,13 +166,15 @@ export class SpotifyMusicProvider implements IMusicProvider {
       color: '#1DB954',
     }));
 
-    return {
-      topResult: artists.length > 0 ? { type: 'artist', data: artists[0] } : songs.length > 0 ? { type: 'track', data: songs[0] } : null,
+    const rawResults: SearchResults = {
+      topResult: null,
       songs,
       artists,
       albums,
       playlists: [],
     };
+
+    return rankAndSortSearchResults(rawResults, query);
   }
 
   async getTrack(id: string): Promise<Track | null> {
@@ -198,7 +218,7 @@ export class SpotifyMusicProvider implements IMusicProvider {
       },
       tracks: [],
       totalDuration: (al.total_tracks || 10) * 210,
-      label: 'Spotify Record',
+      label: 'Spotiz Record',
       color: '#1DB954',
     }));
 
@@ -209,7 +229,7 @@ export class SpotifyMusicProvider implements IMusicProvider {
       followers: a.followers?.total || 0,
       monthlyListeners: Math.round((a.followers?.total || 100000) * 2.5),
       genres: a.genres || ['Music'],
-      bio: `${a.name} official Spotify profile.`,
+      bio: `${a.name} official Spotiz profile.`,
       verified: true,
       topTracks,
       albums,
@@ -252,44 +272,32 @@ export class SpotifyMusicProvider implements IMusicProvider {
   }
 
   async getPlaylist(id: string): Promise<Playlist | null> {
-    return null;
+    const { OpenMusicProvider } = await import('./OpenMusicProvider');
+    const openProvider = new OpenMusicProvider();
+    return openProvider.getPlaylist(id);
   }
 
   async getRecommendations(seedTrackId?: string, genre?: string): Promise<Track[]> {
-    return [];
+    const { OpenMusicProvider } = await import('./OpenMusicProvider');
+    const openProvider = new OpenMusicProvider();
+    return openProvider.getRecommendations(seedTrackId, genre);
   }
 
   async getLyrics(trackId: string, trackTitle?: string, artistName?: string, duration?: number): Promise<LyricsData> {
-    return {
-      trackId,
-      title: trackTitle || '',
-      artist: artistName || '',
-      synced: false,
-      lines: [],
-      plainLyrics: 'Lyrics unavailable for this track.',
-    };
+    const { OpenMusicProvider } = await import('./OpenMusicProvider');
+    const openProvider = new OpenMusicProvider();
+    return openProvider.getLyrics(trackId, trackTitle, artistName, duration);
   }
 
-  async resolvePlayback(trackId: string) {
-    const track = await this.getTrack(trackId);
-    if (!track || !track.streamUrl) return null;
-
-    return {
-      id: track.id,
-      title: track.title,
-      artist: track.artist,
-      album: track.album,
-      thumbnail: track.images.large,
-      duration: track.duration,
-      stream: {
-        url: track.streamUrl,
-        mimeType: track.mimeType,
-        bitrate: '320kbps',
-      },
-    };
+  async resolvePlayback(trackId: string, title?: string, artist?: string, duration?: number) {
+    const { OpenMusicProvider } = await import('./OpenMusicProvider');
+    const openProvider = new OpenMusicProvider();
+    return openProvider.resolvePlayback(trackId, title, artist, duration);
   }
 
   async getHomeFeed(): Promise<HomeFeedData> {
-    throw new Error('Home feed should use active configured provider');
+    const { OpenMusicProvider } = await import('./OpenMusicProvider');
+    const openProvider = new OpenMusicProvider();
+    return openProvider.getHomeFeed();
   }
 }
