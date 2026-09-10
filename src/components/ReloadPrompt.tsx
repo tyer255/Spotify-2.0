@@ -43,9 +43,11 @@ export function ReloadPrompt() {
               : 'App has been downloaded and is ready to work offline.'}
           </p>
         </div>
-        <button onClick={close} className="p-1 -mr-2 -mt-2 text-neutral-400 hover:text-white rounded-full hover:bg-neutral-800 transition-colors">
-          <X className="w-5 h-5" />
-        </button>
+        {!needRefresh && (
+          <button onClick={close} className="p-1 -mr-2 -mt-2 text-neutral-400 hover:text-white rounded-full hover:bg-neutral-800 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
       
       {needRefresh && (

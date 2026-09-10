@@ -1,55 +1,9 @@
 import { smartRankingService } from './SmartRankingService';
 import { providerManager } from '../providers/ProviderManager';
 import { lyricsIndexService } from './lyricsIndexService';
-import { Track, Artist, Album, Playlist, LyricsData, HomeFeedData, SearchResults, SearchSuggestion, UserProfile } from '../../src/types';
-
-// In-memory Database for User Owned Content & Preferences
-export const userDatabase: UserProfile = {
-  id: 'guest-user',
-  name: 'Your Name',
-  username: 'user',
-  email: '',
-  avatar: '',
-  subscription: 'Spotiz Premium',
-  followersCount: 0,
-  followingCount: 0,
-  likedTrackIds: [],
-  savedAlbumIds: [],
-  followedArtistIds: [],
-  stats: {
-    totalHoursStreamed: 0,
-    tracksPlayedCount: 0,
-    topGenre: 'None',
-    topArtist: 'None',
-    playlistsCount: 0,
-    followersCount: 0,
-    followingCount: 0,
-  },
-  playlists: [],
-  downloadedTrackIds: [],
-  recentHistory: [],
-  interactionStats: {
-    trackPlays: {},
-    artistPlays: {},
-    searchSelections: {},
-    skips: {},
-    replays: {}
-  },
-  settings: {
-    theme: 'dark',
-    accentColor: '#1DB954',
-    audioQuality: 'very_high',
-    crossfadeDuration: 4,
-    gaplessPlayback: true,
-    normalizeVolume: true,
-    equalizerPreset: 'electronic',
-    downloadWifiOnly: true,
-    privateSession: false,
-    autoPlaySimilar: true,
-  }
-};
-
+import { Track, Artist, Album, Playlist, LyricsData, HomeFeedData, SearchResults, SearchSuggestion } from '../../src/types';
 import { resolveMissingSpotifyThumbnails } from './spotifyThumbnailExtractor';
+import { SpotifySearchService } from './spotifySearchService';
 
 export class MusicService {
   static async getHomeFeed(): Promise<HomeFeedData> {
@@ -63,7 +17,18 @@ export class MusicService {
 
   static async search(query: string, userId?: string): Promise<SearchResults> {
     const provider = providerManager.getProvider();
-    const results = await provider.search(query);
+    let results: SearchResults;
+
+    try {
+      results = await SpotifySearchService.search(query);
+      if (!results || (!results.topResult && results.songs.length === 0 && results.artists.length === 0)) {
+        console.log(`[Search] Spotify search returned empty for "${query}", falling back to provider search...`);
+        results = await provider.search(query);
+      }
+    } catch (err) {
+      console.warn(`[Search] Spotify search failed for "${query}", falling back to provider search:`, err);
+      results = await provider.search(query);
+    }
     
     // Inject local lyrics reverse matches
     const lyricMatches = lyricsIndexService.searchLyrics(query);
@@ -78,17 +43,7 @@ export class MusicService {
       resolveMissingSpotifyThumbnails(results.artists, 'artist').catch(() => {});
     }
 
-    // Merge user's matching playlists
-    const q = (query || '').toLowerCase().trim();
-    if (q) {
-      const userMatchedPlaylists = userDatabase.playlists.filter(
-        (p) => p.title.toLowerCase().includes(q) || p.description.toLowerCase().includes(q)
-      );
-      results.playlists = [...userMatchedPlaylists, ...results.playlists];
-    } else {
-      results.playlists = [...userDatabase.playlists];
-    }
-
+    results.playlists = results.playlists || [];
     
     // Apply Smart Search Ranking Layer (AI Ranking)
     if (results.songs && results.songs.length > 0) {
@@ -100,19 +55,29 @@ export class MusicService {
 
   static async getSongSuggestions(query: string): Promise<SearchSuggestion[]> {
     const provider = providerManager.getProvider();
-    const suggestions = await provider.getSongSuggestions(query);
-    return suggestions;
+    try {
+      const suggestions = await SpotifySearchService.getSongSuggestions(query);
+      if (suggestions && suggestions.length > 0) {
+        return suggestions;
+      }
+    } catch (err) {
+      console.warn(`[Search] Spotify suggestions failed for "${query}":`, err);
+    }
+    return provider.getSongSuggestions(query);
   }
 
   static async getTrack(id: string): Promise<Track | null> {
-    // Check if track is inside user playlists or history first
-    for (const pl of userDatabase.playlists) {
-      const found = pl.tracks.find((t) => t.id === id);
-      if (found) return found;
+    const provider = providerManager.getProvider();
+    const track = await provider.getTrack(id);
+    if (track) return track;
+
+    // Check Spotify track lookup if not found in provider
+    if (id.startsWith('spotify-') || /^[0-9A-Za-z]{22}$/.test(id)) {
+      const spotifyTrack = await SpotifySearchService.getTrack(id);
+      if (spotifyTrack) return spotifyTrack;
     }
 
-    const provider = providerManager.getProvider();
-    return provider.getTrack(id);
+    return null;
   }
 
   static async getArtist(id: string): Promise<Artist | null> {
@@ -130,9 +95,6 @@ export class MusicService {
   }
 
   static async getPlaylist(id: string): Promise<Playlist | null> {
-    const userPl = userDatabase.playlists.find((p) => p.id === id);
-    if (userPl) return userPl;
-    
     const provider = providerManager.getProvider();
     return provider.getPlaylist(id);
   }

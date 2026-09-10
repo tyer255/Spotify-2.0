@@ -411,22 +411,43 @@ export class SpotifyCanvasService {
     // 2. Artist Verification
     const cleanExpArtist = this.cleanArtist(expectedArtist).toLowerCase();
     let artistMatched = false;
+    let partialArtistMatched = false;
+    
     for (const a of candidate.artists) {
       const cleanA = a.toLowerCase();
       if (cleanA.includes(cleanExpArtist) || cleanExpArtist.includes(cleanA)) {
         artistMatched = true;
         break;
       }
+      
       // Check first name or last name
-      const expParts = cleanExpArtist.split(/\s+/);
-      if (expParts.some(part => part.length > 2 && cleanA.includes(part))) {
-        artistMatched = true;
-        break;
+      const expParts = cleanExpArtist.split(/\s+/).filter(p => p.length > 2);
+      const candParts = cleanA.split(/\s+/).filter(p => p.length > 2);
+      
+      // If there are multiple parts (e.g. Aditya Rikhari), check if they contradict
+      let matchCount = 0;
+      let conflictCount = 0;
+      for (const ep of expParts) {
+        if (cleanA.includes(ep)) {
+          matchCount++;
+        } else if (candParts.length > 1) {
+          conflictCount++;
+        }
+      }
+      
+      if (matchCount > 0) {
+        if (conflictCount === 0 || matchCount >= expParts.length) {
+          artistMatched = true;
+          break;
+        } else {
+          // If we matched "Aditya" but not "Rikhari" on "Aditya Sharma", it's a conflict
+          partialArtistMatched = true;
+        }
       }
     }
 
     if (!artistMatched && candidate.artists.length > 0 && cleanExpArtist.length > 0) {
-      return { confidence: 0, reason: `Artist mismatch: candidate artists [${candidate.artists.join(', ')}] do not include "${expectedArtist}"` };
+      return { confidence: 0, reason: `Artist mismatch: candidate artists [${candidate.artists.join(', ')}] do not strictly match "${expectedArtist}"` };
     }
 
     // 3. Duration Verification (if duration is provided and candidate duration is known)

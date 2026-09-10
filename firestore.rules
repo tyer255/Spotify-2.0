@@ -68,15 +68,9 @@ service cloud.firestore {
             && data.createdAt is string;
         }
 
-        allow read: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(trackId);
-        allow list: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
-        allow create: if isSignedIn() 
-          && request.auth.uid == userId 
-          && isValidId(userId) 
-          && isValidId(trackId)
-          && isValidLikedTrack(incoming());
-        allow update: if false;
-        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(trackId);
+        allow read, list: if isSignedIn() && request.auth.uid == userId;
+        allow create, update: if isSignedIn() && request.auth.uid == userId && isValidLikedTrack(incoming());
+        allow delete: if isSignedIn() && request.auth.uid == userId;
       }
 
       // Followed Artists Subcollection
@@ -87,15 +81,9 @@ service cloud.firestore {
             && data.createdAt is string;
         }
 
-        allow read: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(artistId);
-        allow list: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
-        allow create: if isSignedIn() 
-          && request.auth.uid == userId 
-          && isValidId(userId) 
-          && isValidId(artistId)
-          && isValidFollowedArtist(incoming());
-        allow update: if false;
-        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(artistId);
+        allow read, list: if isSignedIn() && request.auth.uid == userId;
+        allow create, update: if isSignedIn() && request.auth.uid == userId && isValidFollowedArtist(incoming());
+        allow delete: if isSignedIn() && request.auth.uid == userId;
       }
 
       // Downloads Subcollection
@@ -106,15 +94,23 @@ service cloud.firestore {
             && data.createdAt is string;
         }
 
-        allow read: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(trackId);
-        allow list: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
-        allow create: if isSignedIn() 
-          && request.auth.uid == userId 
-          && isValidId(userId) 
-          && isValidId(trackId)
-          && isValidDownloadedTrack(incoming());
-        allow update: if false;
-        allow delete: if isSignedIn() && request.auth.uid == userId && isValidId(userId) && isValidId(trackId);
+        allow read, list: if isSignedIn() && request.auth.uid == userId;
+        allow create, update: if isSignedIn() && request.auth.uid == userId && isValidDownloadedTrack(incoming());
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      // Saved Albums Subcollection
+      match /savedAlbums/{albumId} {
+        allow read, list: if isSignedIn() && request.auth.uid == userId;
+        allow create, update: if isSignedIn() && request.auth.uid == userId;
+        allow delete: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      // Saved Podcasts Subcollection
+      match /savedPodcasts/{podcastId} {
+        allow read, list: if isSignedIn() && request.auth.uid == userId;
+        allow create, update: if isSignedIn() && request.auth.uid == userId;
+        allow delete: if isSignedIn() && request.auth.uid == userId;
       }
     }
 
@@ -141,15 +137,13 @@ service cloud.firestore {
         && incoming().userId == existing().userId
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt is string
-        && (existing().userId == request.auth.uid || existing().isBlend == true);
+        && (existing().userId == request.auth.uid || (existing().isBlend == true && 'participantIds' in existing() && request.auth.uid in existing().participantIds));
         
       allow delete: if isSignedIn() && isValidId(playlistId) && existing().userId == request.auth.uid;
     }
 
     match /music_events/{eventId} {
-      allow read: if true; // Backend needs to read this to calculate ranking
-      allow create: if true; // Any client can log events
-      allow update, delete: if false;
+      allow read, write: if false;
     }
 
   }

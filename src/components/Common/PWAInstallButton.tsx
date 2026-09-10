@@ -87,7 +87,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
     return (
       <button
         onClick={handleInstallClick}
-        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
+        className={`w-full flex items-center gap-0 xl:gap-3 px-0 xl:px-3 justify-center xl:justify-start py-2.5 rounded-xl text-xs font-medium transition-all ${
           isInstalled
             ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
             : 'text-neutral-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-emerald-500/40'
@@ -101,7 +101,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
         >
           {isInstalled ? <CheckCircle className="w-3.5 h-3.5" /> : <Download className="w-3.5 h-3.5" />}
         </div>
-        <div className="flex flex-col text-left">
+        <div className="hidden xl:flex flex-col text-left">
           <span className="font-semibold">{isInstalled ? 'App Installed' : 'Install App'}</span>
           <span className="text-[10px] text-neutral-400">
             {isInstalled ? 'Standalone Mode' : 'PWA Fast Offline'}

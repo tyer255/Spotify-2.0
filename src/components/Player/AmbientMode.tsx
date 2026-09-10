@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { usePlayer } from '../../context/PlayerContext';
+import { usePlayerProgressStore } from '../../store/playerProgressStore';
 import { CanvasService } from '../../services/CanvasService';
 import { DynamicAmbientBackground } from './DynamicAmbientBackground';
 import {
@@ -26,12 +27,43 @@ interface AmbientModeProps {
   onNavigate?: (view: ViewState) => void;
 }
 
+const cardVariants: Record<string, any> = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 320 : -320,
+    opacity: 0,
+    scale: 0.88,
+    rotate: direction > 0 ? 3.5 : -3.5,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    scale: 1,
+    rotate: 0,
+    transition: {
+      x: { type: 'spring', stiffness: 340, damping: 28 },
+      opacity: { duration: 0.28 },
+      scale: { duration: 0.28 },
+      rotate: { duration: 0.28 },
+    },
+  },
+  exit: (direction: number) => ({
+    x: direction > 0 ? -320 : 320,
+    opacity: 0,
+    scale: 0.88,
+    rotate: direction > 0 ? -3.5 : 3.5,
+    transition: {
+      x: { type: 'spring', stiffness: 340, damping: 28 },
+      opacity: { duration: 0.22 },
+      scale: { duration: 0.22 },
+      rotate: { duration: 0.22 },
+    },
+  }),
+};
+
 export const AmbientMode: React.FC<AmbientModeProps> = () => {
   const {
     track,
     isPlaying,
-    position,
-    duration,
     volume,
     togglePlay,
     seek,
@@ -39,14 +71,23 @@ export const AmbientMode: React.FC<AmbientModeProps> = () => {
     previousTrack,
     setVolume,
     lyricsData,
-    activeLyricIndex,
     isAmbientModeOpen,
     setIsAmbientModeOpen,
     fetchLyrics,
   } = usePlayer();
+  const { position, duration, activeLyricIndex } = usePlayerProgressStore();
 
   // Gesture feedback HUD states
-  const [hudMessage, setHudMessage] = useState<{ icon: React.ReactNode; text: string; sub?: string } | null>(null);
+  const [hudMessage, setHudMessage] = useState<{
+    icon: React.ReactNode;
+    text: string;
+    sub?: string;
+    volumeLevel?: number;
+  } | null>(null);
+  const [slideDirection, setSlideDirection] = useState<number>(1);
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [dragMode, setDragMode] = useState<'none' | 'vertical' | 'horizontal'>('none');
   const [doubleTapRipple, setDoubleTapRipple] = useState<{ x: number; y: number; id: number } | null>(null);
   const [showControls, setShowControls] = useState<boolean>(true);
   const [showGestureGuide, setShowGestureGuide] = useState<boolean>(false);
@@ -60,7 +101,13 @@ export const AmbientMode: React.FC<AmbientModeProps> = () => {
 
   const hudTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const touchStartRef = useRef<{
+    x: number;
+    y: number;
+    time: number;
+    startVol: number;
+    mode: 'none' | 'vertical' | 'horizontal';
+  } | null>(null);
   const lastTapRef = useRef<number>(0);
   const lyricsContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -111,8 +158,8 @@ export const AmbientMode: React.FC<AmbientModeProps> = () => {
 
   // Ensure lyrics are loaded
   useEffect(() => {
-    if (isAmbientModeOpen && track?.id && !lyricsData) {
-      fetchLyrics(track.id);
+    if (isAmbientModeOpen && track?.id && (!lyricsData || lyricsData.trackId !== track.id)) {
+      fetchLyrics(track.id, track.title, track.artist, track.duration);
     }
   }, [isAmbientModeOpen, track?.id, lyricsData, fetchLyrics]);
 
@@ -139,8 +186,8 @@ export const AmbientMode: React.FC<AmbientModeProps> = () => {
     }, 4500);
   };
 
-  const triggerHud = (icon: React.ReactNode, text: string, sub?: string) => {
-    setHudMessage({ icon, text, sub });
+  const triggerHud = (icon: React.ReactNode, text: string, sub?: string, volumeLevel?: number) => {
+    setHudMessage({ icon, text, sub, volumeLevel });
     if (hudTimeoutRef.current) clearTimeout(hudTimeoutRef.current);
     hudTimeoutRef.current = setTimeout(() => {
       setHudMessage(null);
@@ -166,7 +213,12 @@ export const AmbientMode: React.FC<AmbientModeProps> = () => {
         e.preventDefault();
         const newVol = Math.min(1, volume + 0.08);
         setVolume(newVol);
-        triggerHud(<Volume2 className="w-8 h-8 text-emerald-400" />, `${Math.round(newVol * 100)}%`, 'Volume Up');
+        triggerHud(
+          <Volume2 className="w-8 h-8 text-emerald-400" />,
+          `${Math.round(newVol * 100)}%`,
+          'Volume Up',
+          newVol
+        );
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
         const newVol = Math.max(0, volume - 0.08);
@@ -174,14 +226,17 @@ export const AmbientMode: React.FC<AmbientModeProps> = () => {
         triggerHud(
           newVol === 0 ? <VolumeX className="w-8 h-8 text-red-400" /> : <Volume1 className="w-8 h-8 text-emerald-400" />,
           `${Math.round(newVol * 100)}%`,
-          'Volume Down'
+          'Volume Down',
+          newVol
         );
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
+        setSlideDirection(1);
         nextTrack();
         triggerHud(<SkipForward className="w-8 h-8 text-white" />, 'Next Track');
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
+        setSlideDirection(-1);
         previousTrack();
         triggerHud(<SkipBack className="w-8 h-8 text-white" />, 'Previous Track');
       }
@@ -191,7 +246,7 @@ export const AmbientMode: React.FC<AmbientModeProps> = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isAmbientModeOpen, isPlaying, volume]);
 
-  // Touch gesture handlers (Swipe Up/Down, Left/Right, Double Tap)
+  // Touch gesture handlers (Real-time volume slide, Song card slide, Double tap)
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length !== 1) return;
     const touch = e.touches[0];
@@ -199,7 +254,60 @@ export const AmbientMode: React.FC<AmbientModeProps> = () => {
       x: touch.clientX,
       y: touch.clientY,
       time: Date.now(),
+      startVol: volume,
+      mode: 'none',
     };
+    setDragOffset({ x: 0, y: 0 });
+    setIsDragging(false);
+    setDragMode('none');
+    resetControlsTimer();
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    // Identify gesture axis if still undetermined
+    if (touchStartRef.current.mode === 'none') {
+      if (absY > 7 && absY > absX * 1.1) {
+        touchStartRef.current.mode = 'vertical';
+        setDragMode('vertical');
+        setIsDragging(true);
+      } else if (absX > 7 && absX > absY * 1.1) {
+        touchStartRef.current.mode = 'horizontal';
+        setDragMode('horizontal');
+        setIsDragging(true);
+      }
+    }
+
+    if (touchStartRef.current.mode === 'vertical') {
+      // Real-time responsive volume control
+      // Dragging UP (-dy) -> Volume increases
+      // Dragging DOWN (+dy) -> Volume decreases
+      const delta = -dy / 220; // 220px travel covers 0% to 100%
+      const newVol = Math.max(0, Math.min(1, touchStartRef.current.startVol + delta));
+      setVolume(newVol);
+      triggerHud(
+        newVol === 0 ? (
+          <VolumeX className="w-8 h-8 text-red-400" />
+        ) : newVol < 0.4 ? (
+          <Volume1 className="w-8 h-8 text-emerald-400" />
+        ) : (
+          <Volume2 className="w-8 h-8 text-emerald-400" />
+        ),
+        `${Math.round(newVol * 100)}%`,
+        'Volume',
+        newVol
+      );
+    } else if (touchStartRef.current.mode === 'horizontal') {
+      // Dynamic card slide preview while dragging horizontally
+      const dampenedX = dx * 0.92;
+      setDragOffset({ x: dampenedX, y: 0 });
+    }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
@@ -208,48 +316,47 @@ export const AmbientMode: React.FC<AmbientModeProps> = () => {
     const dx = touch.clientX - touchStartRef.current.x;
     const dy = touch.clientY - touchStartRef.current.y;
     const dt = Date.now() - touchStartRef.current.time;
+    const mode = touchStartRef.current.mode;
+
     touchStartRef.current = null;
+    setIsDragging(false);
+    setDragMode('none');
 
-    const absX = Math.abs(dx);
-    const absY = Math.abs(dy);
-    const minSwipeDist = 45;
+    if (mode === 'vertical') {
+      setDragOffset({ x: 0, y: 0 });
+      if (hudTimeoutRef.current) clearTimeout(hudTimeoutRef.current);
+      hudTimeoutRef.current = setTimeout(() => {
+        setHudMessage(null);
+      }, 1200);
+      return;
+    }
 
-    // Detect Swipes
-    if (dt < 650 && (absX > minSwipeDist || absY > minSwipeDist)) {
-      if (absY > absX * 1.2) {
-        // Vertical Swipe: Volume Control
-        if (dy < -minSwipeDist) {
-          // Swipe Up -> Volume Up
-          const newVol = Math.min(1, volume + 0.1);
-          setVolume(newVol);
-          triggerHud(<Volume2 className="w-8 h-8 text-emerald-400" />, `${Math.round(newVol * 100)}%`, 'Volume Up');
-        } else if (dy > minSwipeDist) {
-          // Swipe Down -> Volume Down
-          const newVol = Math.max(0, volume - 0.1);
-          setVolume(newVol);
-          triggerHud(
-            newVol === 0 ? <VolumeX className="w-8 h-8 text-red-400" /> : <Volume1 className="w-8 h-8 text-emerald-400" />,
-            `${Math.round(newVol * 100)}%`,
-            'Volume Down'
-          );
-        }
-      } else if (absX > absY * 1.2) {
-        // Horizontal Swipe: Track Navigation
-        if (dx < -minSwipeDist) {
-          // Swipe Left -> Next Track
-          nextTrack();
-          triggerHud(<SkipForward className="w-8 h-8 text-white" />, 'Next Track');
-        } else if (dx > minSwipeDist) {
-          // Swipe Right -> Previous Track
-          previousTrack();
-          triggerHud(<SkipBack className="w-8 h-8 text-white" />, 'Previous Track');
-        }
+    if (mode === 'horizontal') {
+      const isQuickFlick = dt < 320 && Math.abs(dx) > 30;
+      const isFullSwipe = Math.abs(dx) > 60;
+
+      if ((isQuickFlick && dx < 0) || (isFullSwipe && dx < 0)) {
+        // Swipe Left -> Next Track!
+        setSlideDirection(1);
+        setDragOffset({ x: 0, y: 0 });
+        nextTrack();
+        triggerHud(<SkipForward className="w-8 h-8 text-white" />, 'Next Track');
+      } else if ((isQuickFlick && dx > 0) || (isFullSwipe && dx > 0)) {
+        // Swipe Right -> Previous Track!
+        setSlideDirection(-1);
+        setDragOffset({ x: 0, y: 0 });
+        previousTrack();
+        triggerHud(<SkipBack className="w-8 h-8 text-white" />, 'Previous Track');
+      } else {
+        // Did not meet threshold -> spring back to center
+        setDragOffset({ x: 0, y: 0 });
       }
       return;
     }
 
-    // Detect Double Tap vs Single Tap (Tap with minimal movement)
-    if (absX < 15 && absY < 15) {
+    // Tap vs Double Tap
+    setDragOffset({ x: 0, y: 0 });
+    if (Math.abs(dx) < 15 && Math.abs(dy) < 15) {
       const now = Date.now();
       if (now - lastTapRef.current < 320) {
         // Double Tap -> Play / Pause
@@ -263,10 +370,17 @@ export const AmbientMode: React.FC<AmbientModeProps> = () => {
         setTimeout(() => setDoubleTapRipple(null), 700);
       } else {
         lastTapRef.current = now;
-        // Single tap -> Toggle HUD Controls
+        // Single tap -> Toggle controls
         resetControlsTimer();
       }
     }
+  };
+
+  const handleTouchCancel = () => {
+    touchStartRef.current = null;
+    setIsDragging(false);
+    setDragMode('none');
+    setDragOffset({ x: 0, y: 0 });
   };
 
   const formatTime = (secs: number) => {
@@ -297,9 +411,11 @@ export const AmbientMode: React.FC<AmbientModeProps> = () => {
         exit={{ opacity: 0, scale: 0.98 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchCancel}
         onClick={() => resetControlsTimer()}
-        className={`fixed inset-0 z-[100] text-white select-none overflow-hidden flex flex-col justify-between cursor-default ${
+        className={`fixed inset-0 z-[100] text-white select-none overflow-hidden flex flex-col justify-between cursor-default touch-none ${
           isDimmed ? 'opacity-40' : 'opacity-100'
         } transition-opacity duration-500`}
         style={{
@@ -386,62 +502,109 @@ export const AmbientMode: React.FC<AmbientModeProps> = () => {
         {/* Central Responsive Layout: Dual-Pane on Tablets/Foldables/Desktop, Center Focus on Mobile */}
         <main className="relative z-10 flex-1 flex flex-col md:flex-row items-center justify-center px-6 md:px-12 py-4 gap-8 md:gap-14 max-w-6xl mx-auto w-full overflow-hidden">
           
-          {/* Left / Center Card: Artwork or Spotify Canvas Video + Track Details */}
-          <div className="flex flex-col items-center justify-center text-center max-w-sm w-full shrink-0">
-            {/* The Visual Media Card */}
-            <div className="relative w-56 h-56 sm:w-64 sm:h-64 md:w-72 md:h-72 rounded-3xl overflow-hidden shadow-[0_16px_50px_rgba(0,0,0,0.9)] border border-white/10 bg-neutral-900 group">
-              {showCanvasVideo && canvasUrl ? (
-                <video
-                  src={canvasUrl}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <img
-                  src={artworkUrl}
-                  alt={track.title}
-                  className="w-full h-full object-cover"
-                />
-              )}
+          {/* Left / Center Card: Artwork or Spotify Canvas Video + Track Details with Smooth Sliding Animation */}
+          <div className="relative flex flex-col items-center justify-center text-center max-w-sm w-full shrink-0 overflow-visible">
+            <AnimatePresence initial={false} custom={slideDirection} mode="popLayout">
+              <motion.div
+                key={track.id}
+                custom={slideDirection}
+                variants={cardVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                style={
+                  isDragging && dragMode === 'horizontal'
+                    ? {
+                        x: dragOffset.x,
+                        rotate: dragOffset.x * 0.035,
+                      }
+                    : undefined
+                }
+                className="flex flex-col items-center justify-center text-center w-full shrink-0 select-none will-change-transform"
+              >
+                {/* The Visual Media Card */}
+                <div className="relative w-56 h-56 sm:w-64 sm:h-64 md:w-72 md:h-72 rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.85)] border border-white/10 bg-neutral-900 group">
+                  {showCanvasVideo && canvasUrl ? (
+                    <video
+                      src={canvasUrl}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={artworkUrl}
+                      alt={track.title}
+                      className="w-full h-full object-cover pointer-events-none"
+                      draggable={false}
+                    />
+                  )}
 
-              {/* Ambient Audio Pulse Ring when playing */}
-              {isPlaying && (
-                <div className="absolute inset-0 ring-2 ring-emerald-500/30 rounded-3xl animate-pulse pointer-events-none" />
-              )}
-            </div>
+                  {/* Ambient Audio Pulse Ring when playing */}
+                  {isPlaying && (
+                    <div className="absolute inset-0 ring-2 ring-emerald-500/30 rounded-3xl animate-pulse pointer-events-none" />
+                  )}
+                </div>
 
-            {/* Track Info */}
-            <div className="mt-5 w-full px-2">
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight truncate">
-                {track.title}
-              </h2>
-              <p className="text-sm sm:text-base text-white/70 font-medium truncate mt-0.5">
-                {track.artist}
-              </p>
-              {track.album && (
-                <p className="text-xs text-white/40 truncate mt-0.5 font-mono">
-                  {track.album}
-                </p>
-              )}
-            </div>
+                {/* Track Info */}
+                <div className="mt-5 w-full px-2">
+                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight truncate">
+                    {track.title}
+                  </h2>
+                  <p className="text-sm sm:text-base text-white/70 font-medium truncate mt-0.5">
+                    {track.artist}
+                  </p>
+                  {track.album && (
+                    <p className="text-xs text-white/40 truncate mt-0.5 font-mono">
+                      {track.album}
+                    </p>
+                  )}
+                </div>
 
-            {/* Minimal Progress Line */}
-            <div className="w-full max-w-[260px] mt-4 flex flex-col gap-1.5">
-              <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                {/* Minimal Progress Line */}
+                <div className="w-full max-w-[260px] mt-4 flex flex-col gap-1.5">
+                  <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-emerald-400 rounded-full"
+                      style={{ width: `${progressPercent}%` }}
+                      transition={{ ease: 'linear', duration: 0.5 }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[11px] font-mono text-white/40">
+                    <span>{formatTime(position)}</span>
+                    <span>{formatTime(duration)}</span>
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Interactive Swipe Indicator Badges while dragging horizontally */}
+            <AnimatePresence>
+              {isDragging && dragMode === 'horizontal' && dragOffset.x < -35 && (
                 <motion.div
-                  className="h-full bg-emerald-400 rounded-full"
-                  style={{ width: `${progressPercent}%` }}
-                  transition={{ ease: 'linear', duration: 0.5 }}
-                />
-              </div>
-              <div className="flex justify-between text-[11px] font-mono text-white/40">
-                <span>{formatTime(position)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-            </div>
+                  initial={{ opacity: 0, x: 20, scale: 0.9 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: 20, scale: 0.9 }}
+                  className="absolute right-0 top-1/3 -translate-y-1/2 pointer-events-none z-30 px-3 py-1.5 rounded-full bg-emerald-500 text-black text-xs font-bold shadow-2xl flex items-center gap-1.5 backdrop-blur-md"
+                >
+                  <span>Next</span>
+                  <SkipForward className="w-3.5 h-3.5 fill-black" />
+                </motion.div>
+              )}
+              {isDragging && dragMode === 'horizontal' && dragOffset.x > 35 && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20, scale: 0.9 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -20, scale: 0.9 }}
+                  className="absolute left-0 top-1/3 -translate-y-1/2 pointer-events-none z-30 px-3 py-1.5 rounded-full bg-emerald-500 text-black text-xs font-bold shadow-2xl flex items-center gap-1.5 backdrop-blur-md"
+                >
+                  <SkipBack className="w-3.5 h-3.5 fill-black" />
+                  <span>Previous</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Right Pane: Live Synced Lyrics (Scrolls automatically) */}
@@ -449,7 +612,10 @@ export const AmbientMode: React.FC<AmbientModeProps> = () => {
             {lyricsData && lyricsData.lines && lyricsData.lines.length > 0 ? (
               <div
                 ref={lyricsContainerRef}
-                className="w-full h-full overflow-y-auto no-scrollbar scroll-smooth flex flex-col gap-4 py-16 px-4 mask-radial-fade text-center md:text-left"
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchMove={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
+                className="w-full h-full overflow-y-auto no-scrollbar scroll-smooth flex flex-col gap-4 py-16 px-4 mask-radial-fade text-center md:text-left touch-pan-y"
                 style={{
                   maskImage: 'linear-gradient(to bottom, transparent, black 25%, black 75%, transparent 100%)',
                   WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 25%, black 75%, transparent 100%)',
@@ -461,8 +627,12 @@ export const AmbientMode: React.FC<AmbientModeProps> = () => {
                     <motion.p
                       key={idx}
                       data-lyric-index={idx}
-                      onClick={() => seek(line.time)}
-                      className={`text-lg sm:text-xl md:text-2xl font-bold cursor-pointer transition-all duration-300 ${
+                      onClick={() => {
+                        if (line.time >= 0) seek(line.time);
+                      }}
+                      className={`text-lg sm:text-xl md:text-2xl font-bold ${
+                        line.time >= 0 ? 'cursor-pointer' : 'cursor-default'
+                      } transition-all duration-300 ${
                         isActive
                           ? 'text-white scale-105 drop-shadow-[0_2px_12px_rgba(16,185,129,0.5)] font-black'
                           : 'text-white/30 hover:text-white/60 text-base sm:text-lg font-medium'
@@ -515,7 +685,7 @@ export const AmbientMode: React.FC<AmbientModeProps> = () => {
           />
         )}
 
-        {/* On-Screen Center Gesture HUD Feedback (Volume, Next/Prev, Play/Pause) */}
+        {/* On-Screen Center Gesture HUD Feedback (Volume with live slider, Next/Prev, Play/Pause) */}
         <AnimatePresence>
           {hudMessage && (
             <motion.div
@@ -525,9 +695,17 @@ export const AmbientMode: React.FC<AmbientModeProps> = () => {
               transition={{ duration: 0.2 }}
               className="absolute inset-0 z-50 pointer-events-none flex items-center justify-center"
             >
-              <div className="px-6 py-4 rounded-3xl bg-neutral-900/90 border border-white/15 backdrop-blur-xl shadow-2xl flex flex-col items-center gap-2 min-w-[140px]">
+              <div className="px-6 py-4 rounded-3xl bg-neutral-900/90 border border-white/15 backdrop-blur-xl shadow-2xl flex flex-col items-center gap-2 min-w-[150px]">
                 {hudMessage.icon}
                 <span className="text-xl font-bold text-white tracking-wide">{hudMessage.text}</span>
+                {hudMessage.volumeLevel !== undefined && (
+                  <div className="w-28 h-1.5 bg-white/20 rounded-full overflow-hidden my-1">
+                    <div
+                      className="h-full bg-emerald-400 rounded-full transition-all duration-75"
+                      style={{ width: `${Math.round(hudMessage.volumeLevel * 100)}%` }}
+                    />
+                  </div>
+                )}
                 {hudMessage.sub && (
                   <span className="text-xs font-medium text-white/60 uppercase tracking-wider">
                     {hudMessage.sub}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { usePlayer } from '../../context/PlayerContext';
+import { usePlayerProgressStore } from '../../store/playerProgressStore';
 import { useUser } from '../../context/UserContext';
 import { CanvasService } from '../../services/CanvasService';
 import {
@@ -27,8 +28,6 @@ export const MiniPlayer: React.FC = () => {
   const {
     track,
     isPlaying,
-    position,
-    duration,
     togglePlay,
     seek,
     nextTrack,
@@ -49,6 +48,7 @@ export const MiniPlayer: React.FC = () => {
     isQueueOpen,
     isLoading,
   } = usePlayer();
+  const { position, duration } = usePlayerProgressStore();
 
   const { isTrackLiked, toggleLikeTrack } = useUser();
   const isSeekingRef = React.useRef(false);
@@ -115,7 +115,10 @@ export const MiniPlayer: React.FC = () => {
   return (
     <>
       {/* 1. Mobile Floating MiniPlayer (< md screens) */}
-      <div className="md:hidden fixed bottom-16 left-0 right-0 z-40 px-2 sm:px-3 pb-1 pointer-events-none">
+      <div 
+        className="md:hidden fixed left-0 right-0 z-40 px-2 sm:px-3 pb-1 pointer-events-none"
+        style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}
+      >
         <motion.div
           initial={{ y: 60, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -213,19 +216,11 @@ export const MiniPlayer: React.FC = () => {
                 e.stopPropagation();
                 toggleLikeTrack(track);
               }}
-              title={isLiked ? "Saved to Your Library" : "Save to Your Library"}
+              title={isLiked ? "Remove from Liked Songs" : "Save to Liked Songs"}
+              aria-label={isLiked ? "Remove from Liked Songs" : "Save to Liked Songs"}
               className="p-1.5 text-neutral-300 hover:text-white rounded-full hover:bg-white/10 transition-colors cursor-pointer"
             >
-              {isLiked ? (
-                <div className="w-5 h-5 rounded-full bg-emerald-500 text-black flex items-center justify-center shadow-[0_0_10px_rgba(16,185,129,0.5)]">
-                  <Check className="w-3.5 h-3.5 stroke-[3]" />
-                </div>
-              ) : (
-                <svg viewBox="0 0 24 24" className="w-5 h-5 fill-none stroke-current stroke-2 text-neutral-300">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 8v8M8 12h8" />
-                </svg>
-              )}
+              <Heart className={`w-5 h-5 transition-transform ${isLiked ? 'text-red-500 fill-red-500 scale-105' : 'text-neutral-300'}`} />
             </button>
 
             {/* Play/Pause */}
@@ -250,13 +245,14 @@ export const MiniPlayer: React.FC = () => {
         </motion.div>
       </div>
 
-      {/* 2. Desktop & Tablet Spotiz Docked Bottom Player Bar (>= md screens) */}
-      <div className="hidden md:flex items-center justify-between h-[90px] liquid-glass-bar px-6 select-none z-40 flex-shrink-0">
-        {/* Left Column: Track Info, Like Button, Details */}
-        <div className="flex items-center gap-4 w-1/4 min-w-[220px]">
+      {/* 2. Desktop & Tablet Spotiz Docked Bottom Player Bar (>= md screens) - HIDDEN for 2026 Tablet UI Layout */}
+      <footer className="hidden md:hidden items-center justify-between h-[84px] md:h-[88px] liquid-glass-bar px-4 sm:px-6 lg:px-8 select-none z-40 flex-shrink-0 w-full">
+        {/* Left Section: Track Artwork, Title, Artist & Like Button */}
+        <div className="flex items-center gap-3 w-[30%] min-w-0 max-w-[300px] flex-shrink">
           <div
             onClick={() => setIsFullscreenOpen(true)}
-            className="relative aspect-square w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-neutral-800 cursor-pointer shadow-lg group"
+            className="relative aspect-square w-12 h-12 md:w-14 md:h-14 rounded-lg overflow-hidden flex-shrink-0 bg-neutral-900 cursor-pointer shadow-md group border border-white/10"
+            title="Expand Fullscreen Player"
           >
             <img
               src={track.images?.small || track.images?.medium || track.images?.large || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200&auto=format&fit=crop&q=80'}
@@ -265,99 +261,118 @@ export const MiniPlayer: React.FC = () => {
               className="w-full h-full object-cover group-hover:scale-105 transition-transform"
             />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-              <Maximize2 className="w-5 h-5 text-white" />
+              <Maximize2 className="w-4 h-4 text-white" />
             </div>
+            {isPlaying && (
+              <div className="absolute bottom-1 right-1 w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.9)]" />
+            )}
           </div>
 
-          <div className="min-w-0 pr-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <h4
-                onClick={() => setIsFullscreenOpen(true)}
-                className="text-base font-semibold text-white truncate hover:underline cursor-pointer"
-              >
-                {track.title}
-              </h4>
-
-            </div>
-            <p className="text-sm text-neutral-400 truncate mt-0.5 hover:text-white cursor-pointer">
+          <div className="min-w-0 flex-1 pr-1 flex flex-col justify-center">
+            <h4
+              onClick={() => setIsFullscreenOpen(true)}
+              className="text-xs sm:text-sm font-semibold text-white truncate hover:underline cursor-pointer transition-colors"
+              title={track.title}
+            >
+              {track.title}
+            </h4>
+            <p
+              className="text-[11px] sm:text-xs text-neutral-400 truncate hover:text-neutral-200 cursor-pointer transition-colors mt-0.5"
+              title={track.artist}
+            >
               {track.artist}
             </p>
           </div>
 
           <button
             onClick={() => toggleLikeTrack(track)}
-            className="p-2 text-neutral-400 hover:text-white rounded-full hover:bg-white/5 transition-colors flex-shrink-0 ml-2"
-            title="Save to Liked Songs"
+            className="p-1.5 sm:p-2 text-neutral-400 hover:text-white rounded-full hover:bg-white/5 transition-colors flex-shrink-0 cursor-pointer"
+            title={isLiked ? "Remove from Liked Songs" : "Save to Liked Songs"}
+            aria-label={isLiked ? "Remove from Liked Songs" : "Save to Liked Songs"}
           >
-            <Heart className={`w-5 h-5 ${isLiked ? 'text-red-500 fill-red-500 scale-105' : ''}`} />
+            <Heart className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform ${isLiked ? 'text-red-500 fill-red-500 scale-105' : ''}`} />
           </button>
         </div>
 
-        {/* Center Column: Full Playback Controls + Scrubbing Slider */}
-        <div className="flex flex-col items-center justify-center w-2/4 max-w-2xl px-6">
-          <div className="flex items-center gap-5 mb-2">
+        {/* Center Section: Playback Controls (Top) & Scrubbing Timeline (Bottom) */}
+        <div className="flex flex-col items-center justify-center flex-1 max-w-xl lg:max-w-2xl px-2 sm:px-4 min-w-0">
+          {/* Row 1: Playback Controls */}
+          <div className="flex items-center gap-2.5 sm:gap-3.5 md:gap-5 mb-1 sm:mb-1.5 select-none">
             {/* Shuffle */}
             <button
               onClick={toggleShuffle}
-              className={`p-2 rounded-full transition-colors ${
-                shuffleEnabled ? 'text-emerald-400' : 'text-neutral-400 hover:text-white'
+              className={`p-1.5 sm:p-2 rounded-full transition-colors cursor-pointer relative ${
+                shuffleEnabled ? 'text-emerald-400 hover:text-emerald-300' : 'text-neutral-400 hover:text-white hover:bg-white/5'
               }`}
-              title="Shuffle"
+              title={`Shuffle: ${shuffleEnabled ? 'On' : 'Off'}`}
+              aria-label="Toggle Shuffle"
             >
-              <Shuffle className="w-4 h-4" />
+              <Shuffle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              {shuffleEnabled && (
+                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-400 rounded-full" />
+              )}
             </button>
 
             {/* Previous */}
             <button
               onClick={previousTrack}
-              className="p-2 text-neutral-300 hover:text-white transition-colors"
-              title="Previous"
+              className="p-1.5 sm:p-2 text-neutral-300 hover:text-white hover:bg-white/5 rounded-full transition-colors cursor-pointer"
+              title="Previous track"
+              aria-label="Previous Track"
             >
-              <SkipBack className="w-6 h-6 fill-current" />
+              <SkipBack className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
             </button>
 
             {/* Main Play/Pause Button */}
             <button
               onClick={togglePlay}
               disabled={isLoading}
-              className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all"
+              className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-white text-black flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer flex-shrink-0 mx-0.5"
               title={isPlaying ? 'Pause' : 'Play'}
+              aria-label={isPlaying ? 'Pause' : 'Play'}
             >
               {isLoading ? (
-                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
               ) : isPlaying ? (
-                <Pause className="w-5 h-5 fill-black" />
+                <Pause className="w-4 h-4 sm:w-5 sm:h-5 fill-black" />
               ) : (
-                <Play className="w-5 h-5 fill-black ml-0.5" />
+                <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-black ml-0.5" />
               )}
             </button>
 
             {/* Next */}
             <button
               onClick={nextTrack}
-              className="p-2 text-neutral-300 hover:text-white transition-colors"
-              title="Next"
+              className="p-1.5 sm:p-2 text-neutral-300 hover:text-white hover:bg-white/5 rounded-full transition-colors cursor-pointer"
+              title="Next track"
+              aria-label="Next Track"
             >
-              <SkipForward className="w-6 h-6 fill-current" />
+              <SkipForward className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
             </button>
 
             {/* Repeat */}
             <button
               onClick={toggleRepeat}
-              className={`p-2 rounded-full transition-colors ${
-                repeatMode !== 'off' ? 'text-emerald-400' : 'text-neutral-400 hover:text-white'
+              className={`p-1.5 sm:p-2 rounded-full transition-colors cursor-pointer relative ${
+                repeatMode !== 'off' ? 'text-emerald-400 hover:text-emerald-300' : 'text-neutral-400 hover:text-white hover:bg-white/5'
               }`}
               title={`Repeat: ${repeatMode}`}
+              aria-label="Toggle Repeat"
             >
-              {repeatMode === 'one' ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
+              {repeatMode === 'one' ? <Repeat1 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Repeat className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+              {repeatMode !== 'off' && (
+                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-emerald-400 rounded-full" />
+              )}
             </button>
           </div>
 
-          {/* Timeline seekbar with timestamps */}
-          <div className="w-full flex items-center gap-3 text-xs font-medium text-neutral-400">
-            <span className="w-10 text-right text-[11px] text-neutral-400">{formatTime(currentPos)}</span>
-            <div className="relative flex-1 flex items-center h-4 group cursor-pointer select-none">
-              {/* Background Track (Visible remaining unplayed portion) */}
+          {/* Row 2: Timeline seekbar with timestamps */}
+          <div className="w-full flex items-center gap-2 sm:gap-2.5 text-xs font-medium text-neutral-400 select-none">
+            <span className="w-8 sm:w-9 text-right text-[11px] font-mono text-neutral-400 select-none tabular-nums flex-shrink-0">
+              {formatTime(currentPos)}
+            </span>
+            <div className="relative flex-1 flex items-center h-4 group cursor-pointer select-none py-1">
+              {/* Background Track Bar */}
               <div className="absolute inset-x-0 h-1 bg-white/20 rounded-full group-hover:h-1.5 transition-all overflow-hidden">
                 <div 
                   className="h-full bg-white group-hover:bg-emerald-500 rounded-full transition-[transform] duration-75 ease-out"
@@ -371,7 +386,7 @@ export const MiniPlayer: React.FC = () => {
                 style={{ left: `${Math.min(100, Math.max(0, progressPercent))}%` }}
               />
 
-              {/* Transparent input slider */}
+              {/* Transparent range slider */}
               <input
                 id="miniplayer-seek-slider"
                 type="range"
@@ -392,78 +407,88 @@ export const MiniPlayer: React.FC = () => {
                 aria-label="Seek track"
               />
             </div>
-            <span className="w-10 text-left text-[11px] text-neutral-400">{formatTime(safeDuration)}</span>
+            <span className="w-8 sm:w-9 text-left text-[11px] font-mono text-neutral-400 select-none tabular-nums flex-shrink-0">
+              {formatTime(safeDuration)}
+            </span>
           </div>
         </div>
 
-        {/* Right Column: Lyrics, Queue, Volume, Fullscreen */}
-        <div className="flex items-center justify-end gap-3 w-1/4 min-w-[200px] text-neutral-400">
+        {/* Right Section: Lyrics, Queue, Ambient, Volume, Fullscreen */}
+        <div className="flex items-center justify-end gap-1 sm:gap-1.5 md:gap-2 lg:gap-2.5 w-[30%] min-w-0 max-w-[300px] text-neutral-400 select-none flex-shrink">
           {/* Lyrics toggle */}
           <button
             onClick={() => setIsLyricsOpen(!isLyricsOpen)}
-            className={`p-2 rounded-full transition-colors ${
+            className={`p-1.5 sm:p-2 rounded-full transition-colors cursor-pointer ${
               isLyricsOpen ? 'text-emerald-400 bg-white/10' : 'hover:text-white hover:bg-white/5'
             }`}
             title="Lyrics"
+            aria-label="Toggle Lyrics"
           >
-            <Mic2 className="w-5 h-5" />
+            <Mic2 className="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5" />
           </button>
 
           {/* Queue toggle */}
           <button
             onClick={() => setIsQueueOpen(!isQueueOpen)}
-            className={`p-2 rounded-full transition-colors ${
+            className={`p-1.5 sm:p-2 rounded-full transition-colors cursor-pointer ${
               isQueueOpen ? 'text-emerald-400 bg-white/10' : 'hover:text-white hover:bg-white/5'
             }`}
             title="Queue"
+            aria-label="Toggle Queue"
           >
-            <ListMusic className="w-5 h-5" />
+            <ListMusic className="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5" />
           </button>
-
-          {/* Volume slider */}
-          <div className="flex items-center gap-2 ml-2">
-            <button
-              onClick={toggleMute}
-              className="p-1 hover:text-white transition-colors"
-              title={isMuted ? 'Unmute' : 'Mute'}
-            >
-              {isMuted || volume === 0 ? (
-                <VolumeX className="w-5 h-5 text-neutral-500" />
-              ) : (
-                <Volume2 className="w-5 h-5" />
-              )}
-            </button>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={isMuted ? 0 : (typeof volume === 'number' && !Number.isNaN(volume) ? volume : 1)}
-              onChange={(e) => setVolume(parseFloat(e.target.value))}
-              className="w-24 h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-emerald-500 hover:h-2 transition-all"
-            />
-          </div>
 
           {/* Ambient Mode (Standby) toggle */}
           <button
             id="miniplayer-ambient-mode-btn"
             onClick={() => setIsAmbientModeOpen(true)}
-            className="p-2 text-neutral-400 hover:text-white rounded-full hover:bg-white/5 transition-colors"
+            className="p-1.5 sm:p-2 text-neutral-400 hover:text-white rounded-full hover:bg-white/5 transition-colors cursor-pointer hidden xl:flex"
             title="Ambient Mode (Always-on / Gestures)"
+            aria-label="Ambient Mode"
           >
-            <Sparkle className="w-5 h-5" strokeWidth={1.5} />
+            <Sparkle className="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5" strokeWidth={1.5} />
           </button>
+
+          {/* Volume Group */}
+          <div className="flex items-center gap-1 sm:gap-1.5 group/vol">
+            <button
+              onClick={toggleMute}
+              className="p-1 sm:p-1.5 text-neutral-400 hover:text-white transition-colors cursor-pointer rounded-full hover:bg-white/5"
+              title={isMuted ? 'Unmute' : 'Mute'}
+              aria-label={isMuted ? 'Unmute' : 'Mute'}
+            >
+              {isMuted || volume === 0 ? (
+                <VolumeX className="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5 text-neutral-500" />
+              ) : (
+                <Volume2 className="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5" />
+              )}
+            </button>
+            <div className="relative flex items-center">
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={isMuted ? 0 : (typeof volume === 'number' && !Number.isNaN(volume) ? volume : 1)}
+                onChange={(e) => setVolume(parseFloat(e.target.value))}
+                className="w-14 sm:w-16 md:w-20 lg:w-24 h-1 group-hover/vol:h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-emerald-500 transition-all"
+                aria-label="Volume Slider"
+              />
+            </div>
+          </div>
 
           {/* Fullscreen Player toggle */}
           <button
             onClick={() => setIsFullscreenOpen(true)}
-            className="p-2 hover:text-white rounded-full hover:bg-white/5 transition-colors ml-1"
+            className="p-1.5 sm:p-2 hover:text-white rounded-full hover:bg-white/5 transition-colors cursor-pointer flex-shrink-0"
             title="Fullscreen Player"
+            aria-label="Open Fullscreen Player"
           >
-            <Maximize2 className="w-5 h-5" />
+            <Maximize2 className="w-4 h-4 sm:w-4.5 sm:h-4.5 md:w-5 md:h-5" />
           </button>
         </div>
-      </div>
+      </footer>
     </>
   );
 };

@@ -58,7 +58,7 @@ export const PremiumView: React.FC<PremiumViewProps> = ({ onNavigate }) => {
     frame();
   }, []);
   return (
-    <div className="min-h-full bg-black text-white select-none antialiased pb-24 overflow-x-hidden">
+    <div className="min-h-full bg-black text-white select-none antialiased overflow-x-hidden">
       {/* 1. TOP HERO SECTION WITH SPOTIFY ALBUM COLLAGE BACKGROUND */}
       <div className="relative overflow-hidden w-full bg-gradient-to-b from-[#311042] via-[#1a0f2b] to-black pt-6 pb-8 px-5 sm:px-7">
         {/* Artistic collage album tiles resembling the Spotiz screenshot */}

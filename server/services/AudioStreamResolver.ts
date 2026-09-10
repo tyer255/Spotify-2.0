@@ -185,6 +185,8 @@ export const VERSION_DESCRIPTORS = [
   'bassboost',
   'nightcore',
   'daycore',
+  'hypertechno',
+  'hyper techno',
   'hardstyle',
   'techno',
   'synthwave',
@@ -197,7 +199,63 @@ export const VERSION_DESCRIPTORS = [
   'originally sung',
   'in the style of',
   'originally by',
+  '8-bit emulation',
+  '16-bit emulation',
+  '8-bit',
+  '16-bit',
+  '8bit',
+  '16bit',
+  '8 bit',
+  '16 bit',
+  'emulation',
+  'arcade player',
+  '8-bit arcade',
+  'arcade',
+  'chiptune',
+  'chip tune',
+  'midi',
+  'synth emulation',
+  'kids rhymes',
+  'nursery rhymes',
+  'rhymes',
+  'rhyme',
+  'lullaby',
+  'baby sleep',
+  'music box',
+  'sound-alike',
+  'soundalike',
+  'sound alike',
+  'tribute band',
 ];
+
+export function isWordFuzzyMatch(w1: string, w2: string): boolean {
+  if (w1 === w2) return true;
+  if (!w1 || !w2) return false;
+  // Fold consecutive duplicate letters (e.g. "aasmaan" -> "asman", "aasman" -> "asman", "challeya" -> "chaleya")
+  const fold1 = w1.replace(/(.)\1+/g, '$1');
+  const fold2 = w2.replace(/(.)\1+/g, '$1');
+  if (fold1 === fold2) return true;
+
+  // Single edit distance tolerance for words of length >= 5
+  if (Math.abs(w1.length - w2.length) <= 1 && (w1.length >= 5 || w2.length >= 5)) {
+    let diff = 0;
+    let i = 0, j = 0;
+    while (i < w1.length && j < w2.length) {
+      if (w1[i] !== w2[j]) {
+        diff++;
+        if (diff > 1) return false;
+        if (w1.length > w2.length) i++;
+        else if (w2.length > w1.length) j++;
+        else { i++; j++; }
+      } else {
+        i++;
+        j++;
+      }
+    }
+    return true;
+  }
+  return false;
+}
 
 export function extractVersionDescriptors(text: string): string[] {
   if (!text) return [];
@@ -293,14 +351,58 @@ export function calculateStrictMatchScore(
 ): { verified: boolean; score: number; reason?: string } {
   const cTitle = (candidate.title || '').toLowerCase();
   const tTitle = (target.title || '').toLowerCase();
+  const cArtist = (candidate.artist || '').toLowerCase();
+  const cAlbum = (candidate.album || '').toLowerCase();
+  const candidateFullText = `${cTitle} ${cArtist} ${cAlbum}`;
   
-  // Penalize negative keywords if they are not in the target title
-  const negativeKeywords = ['cover', 'karaoke', 'instrumental', 'dj mix', 'remix', 'live', 'slowed', 'reverb', '8d', 'trap invasion'];
+  const tArtist = (target.artist || '').toLowerCase();
+
+  // Penalize negative keywords if they are not in the target title or artist
+  const negativeKeywords = [
+    'cover', 'covers', 'rendition', 'acoustic cover', 'guitar cover', 'piano cover', 'unplugged cover', 'fingerstyle',
+    'karaoke', 'instrumental', 'backing track', 'minus one',
+    'dj mix', 'remix', 'remixes', 'remixed', 'rmx', 'club mix', 'house mix', 'party mix', 'dholki mix', 'dholki',
+    'dance mix', 'vip edit', 'flip', 'bootleg', 're-drum', 'redrum', 'refix', 'rework', 'slap house',
+    'ringtone', 'caller tune', 'dialer tone', 'ring tone', 'flute', 'violin', 'bgm',
+    'live session', 'live at', 'live from', 'live in',
+    'slowed', 'reverb', 'slowed reverb', 'slowed & reverb', 'slowed + reverb', 'lofi', 'lo-fi', 'chill mix',
+    '8d', '16d', '8d audio', '16d audio', '3d audio', 'trap invasion', 'hypertechno', 'hyper techno', 'hardstyle', 'techno',
+    'synthwave', 'nightcore', 'daycore', 'bass boosted', 'bassboost', 'sped up', 'speed up', 'spedup',
+    '8-bit', '16-bit', '8bit', '16bit', '8 bit', '16 bit', 'emulation', 'arcade player', '8-bit arcade', 'arcade',
+    'chiptune', 'chip tune', 'midi', 'synth emulation',
+    'kids rhymes', 'nursery rhymes', 'rhymes', 'lullaby', 'baby sleep', 'music box',
+    'sound-alike', 'soundalike', 'sound alike', 'tribute band',
+    'mashup', 'medley', 'sing off', 'sing-off', 'singoff', 'battle', 'compilation',
+    'tribute', 'parody', 'acapella', 'a capella', 'acappella', 'drill remix', 'phonk',
+    'status video', 'whatsapp status', 'reels', 'shorts', 'tiktok', 'best part', 'hook line',
+    'teaser', 'trailer', 'dialogue promo', 'dialogue', 'reaction', 'review', 'tutorial', 'how to play', 'chords', 'making of',
+    'behind the scenes', 'bts footage', 'bts video', 'bts shoot', 'bts scenes'
+  ];
   for (const word of negativeKeywords) {
-    if (cTitle.includes(word) && !tTitle.includes(word)) {
+    // If target artist or title contains this keyword (e.g. artist is "BTS"), never penalize it
+    if (tTitle.includes(word) || tArtist.includes(word)) {
+      continue;
+    }
+    // If target artist is BTS, skip any BTS-prefixed phrase unless it explicitly says behind the scenes
+    if ((tArtist.includes('bts') || tArtist.includes('bangtan')) && word.startsWith('bts')) {
+      continue;
+    }
+    if (candidateFullText.includes(word)) {
       return { verified: false, score: -100, reason: 'Contains negative keyword: ' + word };
     }
   }
+
+  // Also check candidate title for standalone "tune" or "mix" unless target requests it
+  if (!tTitle.includes('tune') && /\b(tune|tunes|ringtone|dialertone|callertone)\b/i.test(cTitle)) {
+    return { verified: false, score: -100, reason: 'Candidate is a tune/ringtone snippet' };
+  }
+  if (!tTitle.includes('mix') && /\b(mix|remix)\b/i.test(cTitle)) {
+    return { verified: false, score: -100, reason: 'Candidate is an unrequested mix/remix' };
+  }
+  if (!tTitle.includes('emulation') && /\b(emulation|8-bit|16-bit|8bit|16bit|arcade|chiptune)\b/i.test(cTitle)) {
+    return { verified: false, score: -100, reason: 'Candidate is an arcade/emulation tune' };
+  }
+
   const targetTitle = target.title || '';
   const targetArtist = target.artist || '';
   const candTitle = candidate.title || '';
@@ -344,12 +446,16 @@ export function calculateStrictMatchScore(
   }
 
   const targetWords = cleanTargetT.split(/\s+/).filter((w) => w.length > 0);
-  const candWords = cleanCandT.split(/\s+/).filter((w) => w.length > 0);
+  
+  // Strip featured artists from candidate title BEFORE calculating candWords for foreign word penalization
+  const cleanCandTNoFeat = cleanCandT.replace(/\s*\b(ft|feat|featuring|with)\b.*$/i, '').trim();
+  const candWords = cleanCandTNoFeat.split(/\s+/).filter((w) => w.length > 0);
 
-  // All meaningful target words must be present in candidate (or candidate clean title contains the target base)
+  // All meaningful target words must be present in candidate (with phonetic/transliteration tolerance)
   const targetSignificantWords = targetWords.filter((w) => w.length > 1 && !PLATFORM_NOISE_TOKENS.has(w));
   for (const tw of targetSignificantWords) {
-    if (!candWords.includes(tw) && !cleanCandT.includes(tw)) {
+    const hasWord = candWords.some((cw) => isWordFuzzyMatch(tw, cw)) || cleanCandT.includes(tw);
+    if (!hasWord) {
       return { verified: false, score: 0, reason: `Required target word "${tw}" missing from candidate` };
     }
   }
@@ -365,7 +471,7 @@ export function calculateStrictMatchScore(
   const extraForeignWords = candWords.filter(
     (w) =>
       w.length > 2 &&
-      !targetWords.includes(w) &&
+      !targetWords.some((tw) => isWordFuzzyMatch(tw, w)) &&
       !PLATFORM_NOISE_TOKENS.has(w) &&
       !allowedArtistTokens.has(w)
   );
@@ -391,9 +497,10 @@ export function calculateStrictMatchScore(
   if (targetArtist && targetArtist.trim().length > 0) {
     const primaryMatch = candidate.primaryArtist ? isArtistMatch(candidate.primaryArtist, targetArtist) : false;
     const singerMatch = candidate.singers ? isArtistMatch(candidate.singers, targetArtist) : false;
-    const titleArtistMatch = isArtistMatch(candTitle, targetArtist);
     const fullArtistMatch = isArtistMatch(candArtist, targetArtist);
     const albumArtistMatch = candidate.album ? isArtistMatch(candidate.album, targetArtist) : false;
+    const hasTributeOrEmulation = /\b(tribute|emulation|arcade|cover|style of|originally by|rhyme|rhymes|kids|karaoke|instrumental|8-bit|16-bit)\b/i.test(candTitle);
+    const titleArtistMatch = !hasTributeOrEmulation && isArtistMatch(candTitle, targetArtist);
 
     if (!primaryMatch && !singerMatch && !titleArtistMatch && !fullArtistMatch && !albumArtistMatch) {
       return {
@@ -402,19 +509,49 @@ export function calculateStrictMatchScore(
         reason: `Artist mismatch: target "${targetArtist}" vs candidate "${candArtist}"`,
       };
     }
-    if (fullArtistMatch) { authorScoreBonus = 50; }
+    if (fullArtistMatch || primaryMatch) { authorScoreBonus = 50; }
   }
 
-  // 5. Duration Proximity Bonus
+  // 5. Proximity Check & Proximity Bonus (Allows narrative music video intros/outros but strictly rejects truncated cuts)
   let durationScore = 0;
   if (target.duration && target.duration > 30 && candidate.duration && candidate.duration > 10) {
     const diff = Math.abs(candidate.duration - target.duration);
-    if (diff <= 5) durationScore = 20;
-    else if (diff <= 15) durationScore = 15;
-    else if (diff <= 35) durationScore = 10;
+    // If candidate is significantly shorter than target (e.g. 120s vs 203s), it's a cut snippet/preview
+    const isTruncated = candidate.duration < target.duration - 25 && (target.duration - candidate.duration) / target.duration > 0.12;
+    // Disallow extreme differences (> 55s or > 20% diff for songs longer than 60s)
+    const isExcessive = diff > 55 || (target.duration > 60 && diff / target.duration > 0.20);
+    if (isTruncated || isExcessive) {
+      return { verified: false, score: 0, reason: `Duration mismatch: Target ${target.duration}s vs Candidate ${candidate.duration}s (Diff: ${diff}s, isTruncated=${isTruncated})` };
+    }
+    if (diff <= 5) durationScore = 30;
+    else if (diff <= 15) durationScore = 25;
+    else if (diff <= 30) durationScore = 18;
+    else if (diff <= 45) durationScore = 10;
+    else durationScore = 0;
   }
 
-  const finalScore = titleScore + durationScore + authorScoreBonus;
+  // 6. Authentic Official Track & Official Channel Boosts
+  let officialBonus = 0;
+  if (cArtist.endsWith(' - topic') || cArtist.endsWith(' topic')) {
+    officialBonus += 60; // YouTube Music automated pure studio audio
+  } else if (isArtistMatch(cArtist, targetArtist)) {
+    officialBonus += 45; // Video uploaded directly to verified artist channel
+  }
+
+  if (cTitle.includes('official audio') || cTitle.includes('official music video') || cTitle.includes('official video') || cTitle.includes('audio')) {
+    officialBonus += 25;
+  }
+
+  const verifiedMusicLabels = [
+    't-series', 'sony music', 'zee music', 'yrf', 'tips official', 'speed records',
+    'aditya music', 'vevo', 'warner music', 'universal music', 'coke studio', 'indie india',
+    'hybe labels', 'bighit', 'big hit', 'smtown', 'jyp entertainment', 'yg entertainment'
+  ];
+  if (verifiedMusicLabels.some((lbl) => cArtist.includes(lbl) || cTitle.includes(lbl))) {
+    officialBonus += 20;
+  }
+
+  const finalScore = titleScore + durationScore + authorScoreBonus + officialBonus;
   return { verified: true, score: finalScore };
 }
 
@@ -574,31 +711,37 @@ export class AudioStreamResolver {
         if (verifiedCandidates.length > 0) {
           verifiedCandidates.sort((a, b) => b.score - a.score);
 
+          // Fast-path candidate testing: Test highest scoring candidate primary 320kbps URL first
           for (const cand of verifiedCandidates.slice(0, 3)) {
-            if (discardedUrl && (cand.streamResult.primaryUrl === discardedUrl || cand.streamResult.fallbackUrls.includes(discardedUrl))) {
+            if (discardedUrl && cand.streamResult.primaryUrl === discardedUrl) {
               continue;
             }
 
             const expectedDur = cand.duration > 40 ? cand.duration : (expectedDuration || 210);
-            const check = await validateAudioStream(cand.streamResult.primaryUrl, 2500, expectedDur);
-            let validUrl = check.valid ? cand.streamResult.primaryUrl : '';
+            const primaryUrl = cand.streamResult.primaryUrl;
+            
+            // Ultra-fast 800ms validation on primary 320kbps stream
+            const check = await validateAudioStream(primaryUrl, 800, expectedDur);
+            let validUrl = check.valid ? primaryUrl : '';
 
-            if (!validUrl && cand.streamResult.fallbackUrls) {
-              for (const fb of cand.streamResult.fallbackUrls) {
-                if (fb && fb !== discardedUrl) {
-                  const fbCheck = await validateAudioStream(fb, 2500, expectedDur);
-                  if (fbCheck.valid) {
-                    validUrl = fb;
-                    break;
-                  }
-                }
+            // If primary 320 stream check failed, test the first fallback (160kbps or base)
+            if (!validUrl && cand.streamResult.fallbackUrls.length > 0) {
+              const fbUrl = cand.streamResult.fallbackUrls.find((u) => u !== primaryUrl && u !== discardedUrl);
+              if (fbUrl) {
+                const fbCheck = await validateAudioStream(fbUrl, 800, expectedDur);
+                if (fbCheck.valid) validUrl = fbUrl;
               }
             }
 
             if (validUrl) {
+              const allUrls = [validUrl, ...cand.streamResult.fallbackUrls].filter(
+                (u, i, arr) => u && arr.indexOf(u) === i && u !== discardedUrl
+              );
+              const fallbackUrls = allUrls.filter((u) => u !== validUrl);
+
               const resolved: ResolvedStream = {
                 url: validUrl,
-                fallbackUrls: cand.streamResult.fallbackUrls.filter((u) => u !== validUrl && u !== discardedUrl),
+                fallbackUrls,
                 duration: cand.duration > 40 ? cand.duration : (expectedDuration || 210),
                 source: `JioSaavn Verified (${cand.item.title})`,
                 bitrate: '320kbps AAC',
@@ -624,70 +767,80 @@ export class AudioStreamResolver {
     // ==========================================
     const ytQueries = [
       `${title} ${artist} official audio`.trim(),
-      `${cleanT} ${primaryTargetArtist} official audio`.trim(),
-      `${title} ${artist}`.trim(),
       `${cleanT} ${primaryTargetArtist}`.trim(),
-      `${title} ${artist} lyrics`.trim(),
     ].filter((q) => q && q.length > 1);
 
     try {
       const ytSearch = (await import('yt-search')).default;
       const uniqueYtQueries = Array.from(new Set(ytQueries)).slice(0, 2);
+      const allVerifiedVideos: { vid: any; score: number }[] = [];
+      const seenVideoIds = new Set<string>();
 
-      for (const ytQuery of uniqueYtQueries) {
+      // Run YouTube queries in parallel
+      const ytPromises = uniqueYtQueries.map(async (ytQuery) => {
         try {
           const searchResults = await ytSearch(ytQuery);
-          if (searchResults && searchResults.videos && searchResults.videos.length > 0) {
-            const verifiedVideos: { vid: any; score: number }[] = [];
-            const unverifiedVideos: { vid: any; score: number }[] = [];
-
-            for (const vid of searchResults.videos.slice(0, 8)) {
-              const dur = vid.seconds || 0;
-              const verification = calculateStrictMatchScore(
-                { title: vid.title, artist: vid.author?.name || '', duration: dur },
-                target
-              );
-
-              if (verification.verified && dur >= 30) {
-                verifiedVideos.push({ vid, score: verification.score });
-              } else if (dur >= 30) {
-                unverifiedVideos.push({ vid, score: verification.score });
-              }
-            }
-
-            let bestVideo = null;
-            if (verifiedVideos.length > 0) {
-              verifiedVideos.sort((a, b) => b.score - a.score);
-              bestVideo = verifiedVideos[0].vid;
-            } else if (unverifiedVideos.length > 0) {
-              bestVideo = unverifiedVideos[0].vid;
-            }
-
-            if (bestVideo) {
-              const best = bestVideo;
-              const duration = best.seconds > 10 ? best.seconds : (expectedDuration || 210);
-
-              const resolved: ResolvedStream = {
-                url: `youtube:${best.videoId}`,
-                fallbackUrls: [`https://www.youtube.com/watch?v=${best.videoId}`, `youtube:${best.videoId}`],
-                duration,
-                source: `YouTube Official Audio (${best.title})`,
-                bitrate: '320kbps Opus',
-                mimeType: 'video/youtube',
-                isDirectAudio: false,
-                isMediaDescriptor: true,
-                descriptorType: 'youtube',
-                mediaUri: `youtube:${best.videoId}`,
-              };
-
-              console.log(`[AudioResolver] YouTube Match: "${best.title}" for "${title} - ${artist}"`);
-              streamCache.set(cacheKey, { stream: resolved, expiresAt: Date.now() + 86400 * 1000 });
-              return resolved;
-            }
-          }
+          return searchResults?.videos || [];
         } catch (subErr) {
-          console.warn(`[AudioResolver] YouTube query error:`, subErr);
+          console.warn(`[AudioResolver] YouTube query error for "${ytQuery}":`, subErr);
+          return [];
         }
+      });
+
+      const ytResultsArrays = await Promise.all(ytPromises);
+      
+      for (const videos of ytResultsArrays) {
+        for (const vid of videos.slice(0, 8)) {
+          if (seenVideoIds.has(vid.videoId)) continue;
+          seenVideoIds.add(vid.videoId);
+
+          const dur = vid.seconds || 0;
+          const verification = calculateStrictMatchScore(
+            { title: vid.title, artist: vid.author?.name || '', duration: dur },
+            target
+          );
+
+          if (verification.verified && dur >= 30) {
+            allVerifiedVideos.push({ vid, score: verification.score });
+          }
+        }
+      }
+
+      if (allVerifiedVideos.length > 0) {
+        allVerifiedVideos.sort((a, b) => b.score - a.score);
+
+        // Filter out any discarded URL if provided
+        const availableVideos = allVerifiedVideos.filter((v) => {
+          if (!discardedUrl) return true;
+          return !discardedUrl.includes(v.vid.videoId);
+        });
+
+        const selectedList = availableVideos.length > 0 ? availableVideos : allVerifiedVideos;
+        const best = selectedList[0].vid;
+        const duration = best.seconds > 10 ? best.seconds : (expectedDuration || 210);
+
+        const allFallbacks: string[] = [];
+        for (const item of selectedList) {
+          allFallbacks.push(`youtube:${item.vid.videoId}`);
+          allFallbacks.push(`https://www.youtube.com/watch?v=${item.vid.videoId}`);
+        }
+
+        const resolved: ResolvedStream = {
+          url: `youtube:${best.videoId}`,
+          fallbackUrls: Array.from(new Set(allFallbacks)),
+          duration,
+          source: `YouTube Official Audio (${best.title})`,
+          bitrate: '320kbps Opus',
+          mimeType: 'video/youtube',
+          isDirectAudio: false,
+          isMediaDescriptor: true,
+          descriptorType: 'youtube',
+          mediaUri: `youtube:${best.videoId}`,
+        };
+
+        console.log(`[AudioResolver] YouTube Match: "${best.title}" (${best.videoId}) for "${title} - ${artist}" with ${allFallbacks.length / 2} fallbacks`);
+        streamCache.set(cacheKey, { stream: resolved, expiresAt: Date.now() + 86400 * 1000 });
+        return resolved;
       }
     } catch (err) {
       console.warn(`[AudioResolver] YouTube search failed:`, err);
@@ -723,12 +876,23 @@ export class AudioStreamResolver {
               const streamResult = decryptSaavnMediaUrl(item.more_info.encrypted_media_url);
               if (streamResult) {
                 const expectedDur = dur > 40 ? dur : (expectedDuration || 210);
-                const check = await validateAudioStream(streamResult.primaryUrl, 2500, expectedDur);
-                if (check.valid) {
+                const urlsToTest = [streamResult.primaryUrl, ...streamResult.fallbackUrls].filter(
+                  (u, i, arr) => u && arr.indexOf(u) === i && u !== discardedUrl
+                );
+
+                const checks = await Promise.all(urlsToTest.map(async (u) => ({
+                  url: u,
+                  check: await validateAudioStream(u, 2000, expectedDur)
+                })));
+
+                const validResult = checks.find(c => c.check.valid);
+
+                if (validResult) {
+                  const validUrl = validResult.url;
                   const resolved: ResolvedStream = {
-                    url: streamResult.primaryUrl,
-                    fallbackUrls: streamResult.fallbackUrls,
-                    duration: dur > 40 ? dur : (expectedDuration || 210),
+                    url: validUrl,
+                    fallbackUrls: urlsToTest.filter(u => u !== validUrl),
+                    duration: expectedDur,
                     source: `JioSaavn Auto (${item.title})`,
                     bitrate: '320kbps AAC',
                     mimeType: 'audio/mp4',

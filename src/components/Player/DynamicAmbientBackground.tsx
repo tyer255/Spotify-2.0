@@ -39,16 +39,16 @@ export const DynamicAmbientBackground: React.FC<DynamicAmbientBackgroundProps> =
       id="dynamic-ambient-background"
       className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none select-none z-0"
     >
-      <AnimatePresence mode="sync">
+      <AnimatePresence mode="wait">
         <motion.div
           key={activeKey}
           initial={{ opacity: 0 }}
           animate={{ opacity: isDimmed ? 0.35 : 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.65, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.4 }}
           className="absolute inset-0 w-full h-full transform-gpu"
         >
-          {/* LAYER 1: Deep Root Base Tone (Never pitch black, blends with artwork dominant tone) */}
+          {/* LAYER 1: Deep Root Base Tone */}
           <div
             className="absolute inset-0 w-full h-full transition-colors duration-700"
             style={{
@@ -56,36 +56,39 @@ export const DynamicAmbientBackground: React.FC<DynamicAmbientBackgroundProps> =
             }}
           />
 
-          {/* LAYER 2: Highly Blurred, Enlarged Artwork Fill (True Dynamic Organic Texture) */}
+          {/* LAYER 2: Enlarged Artwork Fill (Optimized: reduced blur, no heavy filters) */}
           {artworkUrl && (
             <div
-              className="absolute -inset-16 w-[calc(100%+8rem)] h-[calc(100%+8rem)] transform-gpu scale-125"
+              className="absolute -inset-16 w-[calc(100%+8rem)] h-[calc(100%+8rem)] transform-gpu scale-[1.3]"
               style={{
                 backgroundImage: `url(${artworkUrl})`,
                 backgroundPosition: 'center',
                 backgroundSize: 'cover',
-                filter: 'blur(72px) saturate(1.45) brightness(0.62)',
-                opacity: 0.85,
+                filter: 'blur(30px) brightness(0.5)',
+                opacity: 0.6,
+                willChange: 'opacity, transform'
               }}
             />
           )}
 
-          {/* LAYER 3: Dynamic Multi-Point Radial Aura Lighting (derived from extracted vibrant & primary colors) */}
+          {/* LAYER 3: Dynamic Multi-Point Radial Aura Lighting (Optimized: removed redundant blur & mix-blend-screen) */}
           {colors && (
             <>
               {/* Top-left / center vibrant color spotlight */}
               <div
-                className="absolute -top-[20%] -left-[15%] w-[80vw] h-[80vw] max-w-[900px] max-h-[900px] rounded-full blur-[90px] opacity-45 mix-blend-screen transform-gpu pointer-events-none"
+                className="absolute -top-[20%] -left-[15%] w-[80vw] h-[80vw] max-w-[900px] max-h-[900px] rounded-full opacity-40 transform-gpu pointer-events-none"
                 style={{
                   background: `radial-gradient(circle, ${colors.vibrant} 0%, ${colors.primary} 45%, transparent 75%)`,
+                  willChange: 'opacity'
                 }}
               />
 
               {/* Bottom-right secondary hue illumination */}
               <div
-                className="absolute -bottom-[20%] -right-[15%] w-[75vw] h-[75vw] max-w-[850px] max-h-[850px] rounded-full blur-[100px] opacity-35 mix-blend-screen transform-gpu pointer-events-none"
+                className="absolute -bottom-[20%] -right-[15%] w-[75vw] h-[75vw] max-w-[850px] max-h-[850px] rounded-full opacity-30 transform-gpu pointer-events-none"
                 style={{
                   background: `radial-gradient(circle, ${colors.secondary} 0%, ${colors.darkBase} 50%, transparent 80%)`,
+                  willChange: 'opacity'
                 }}
               />
             </>

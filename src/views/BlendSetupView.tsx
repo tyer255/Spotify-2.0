@@ -46,7 +46,7 @@ export const BlendSetupView: React.FC<BlendSetupViewProps> = ({ onNavigate, onBa
   };
 
   return (
-    <div className="w-full min-h-full flex flex-col items-center text-white px-4 sm:px-6 pt-2 pb-48">
+    <div className="w-full min-h-full flex flex-col items-center text-white px-4 sm:px-6 pt-2">
       {/* Header */}
       <div className="w-full flex items-center h-14 max-w-md shrink-0 mb-4">
         <button 

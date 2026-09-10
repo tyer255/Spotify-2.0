@@ -5,6 +5,7 @@ import { Music } from 'lucide-react';
 interface PlaylistArtworkProps {
   playlist?: Playlist | null;
   tracks?: Track[];
+  coverImage?: string;
   className?: string;
   fallbackIconClassName?: string;
 }
@@ -12,10 +13,34 @@ interface PlaylistArtworkProps {
 export const PlaylistArtwork: React.FC<PlaylistArtworkProps> = ({
   playlist,
   tracks,
+  coverImage,
   className = '',
   fallbackIconClassName = 'w-1/3 h-1/3 text-neutral-500',
 }) => {
   const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
+  const [customCoverError, setCustomCoverError] = useState(false);
+
+  // Priority 1: User-selected custom cover art from gallery/upload
+  const customCover = (playlist?.coverImage && typeof playlist.coverImage === 'string' && playlist.coverImage.trim() !== '')
+    ? playlist.coverImage.trim()
+    : (coverImage && typeof coverImage === 'string' && coverImage.trim() !== '')
+    ? coverImage.trim()
+    : '';
+
+  if (customCover && !customCoverError) {
+    return (
+      <div className={`relative w-full h-full overflow-hidden bg-neutral-900 select-none ${className}`}>
+        <img
+          src={customCover}
+          alt={playlist?.title || 'Playlist artwork'}
+          loading="eager"
+          referrerPolicy="no-referrer"
+          onError={() => setCustomCoverError(true)}
+          className="w-full h-full object-cover"
+        />
+      </div>
+    );
+  }
 
   const songs: Track[] = playlist?.tracks || tracks || [];
   const songsCount = songs.length;

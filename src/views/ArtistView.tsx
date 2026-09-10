@@ -40,7 +40,7 @@ export const ArtistView: React.FC<ArtistViewProps> = ({ artistId, expectedName, 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const { track: currentTrack, isPlaying, playTrack, togglePlay } = usePlayer();
-  const { isArtistFollowed, toggleFollowArtist } = useUser();
+  const { isArtistFollowed, toggleFollowArtist, isTrackHidden } = useUser();
 
   const loadArtistData = useCallback(async () => {
     setLoading(true);
@@ -203,7 +203,7 @@ export const ArtistView: React.FC<ArtistViewProps> = ({ artistId, expectedName, 
     if (initial) {
       setPortraitImgUrl(initial);
     } else {
-      fetchArtistPortraitLive(artist.name || expectedName || artistId).then((url) => {
+      fetchArtistPortraitLive(artist.name || expectedName, artist.id || artistId).then((url) => {
         if (url) setPortraitImgUrl(url);
       });
     }
@@ -226,6 +226,10 @@ export const ArtistView: React.FC<ArtistViewProps> = ({ artistId, expectedName, 
     }
   };
 
+  const visibleTopTracks = React.useMemo(() => {
+    return artist?.topTracks ? artist.topTracks.filter(t => !isTrackHidden(t.id)) : [];
+  }, [artist, isTrackHidden]);
+
   if (loading) {
     return (
       <div className="p-4 md:p-8 space-y-6">
@@ -236,7 +240,7 @@ export const ArtistView: React.FC<ArtistViewProps> = ({ artistId, expectedName, 
 
   if (error || !artist) {
     return (
-      <div className="relative p-8 py-24 flex flex-col items-center justify-center text-center space-y-4 max-w-md mx-auto min-h-screen">
+      <div className="relative p-8 py-24 flex flex-col items-center justify-center text-center space-y-4 max-w-md mx-auto min-h-full">
         <div className="absolute top-4 left-4 z-30">
           <button
             onClick={handleBack}
@@ -264,15 +268,21 @@ export const ArtistView: React.FC<ArtistViewProps> = ({ artistId, expectedName, 
     );
   }
 
-  const isFollowed = isArtistFollowed(artist.id) || isArtistFollowed(artist.name);
+  const isFollowed =
+    isArtistFollowed(artist.id) ||
+    isArtistFollowed(artist.name) ||
+    (artistId ? isArtistFollowed(artistId) : false) ||
+    (expectedName ? isArtistFollowed(expectedName) : false);
   const isPlayingArtist = currentTrack?.artistId === artist.id && isPlaying;
 
+  
+
   const handlePlayAll = () => {
-    if (artist.topTracks.length > 0) {
+    if (visibleTopTracks.length > 0) {
       if (isPlayingArtist) {
         togglePlay();
       } else {
-        playTrack(artist.topTracks[0], artist.topTracks);
+        playTrack(visibleTopTracks[0], visibleTopTracks);
       }
     }
   };
@@ -280,7 +290,7 @@ export const ArtistView: React.FC<ArtistViewProps> = ({ artistId, expectedName, 
   const hasValidHeader = Boolean(heroImgUrl && !heroImgUrl.includes('unsplash'));
 
   return (
-    <div className="relative pb-32 text-white bg-[#121212] min-h-screen">
+    <div className="relative text-white bg-[#121212] min-h-full">
       {/* Top Navigation Bar with Back Button */}
       <div className="absolute top-0 left-0 right-0 z-30 px-4 sm:px-8 py-4 flex items-center bg-gradient-to-b from-black/60 to-transparent">
         <button
@@ -325,11 +335,11 @@ export const ArtistView: React.FC<ArtistViewProps> = ({ artistId, expectedName, 
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                   onError={() => {
-                    const fallback = getArtistPortrait(artist.name);
+                    const fallback = getArtistPortrait(artist.id || artistId || artist.name);
                     if (fallback && fallback !== portraitImgUrl) {
                       setPortraitImgUrl(fallback);
                     } else {
-                      fetchArtistPortraitLive(artist.name).then((url) => {
+                      fetchArtistPortraitLive(artist.name, artist.id || artistId).then((url) => {
                         if (url) setPortraitImgUrl(url);
                       });
                     }
@@ -365,6 +375,8 @@ export const ArtistView: React.FC<ArtistViewProps> = ({ artistId, expectedName, 
             <button
               onClick={() => toggleFollowArtist({
                 ...artist,
+                id: artist.id || artistId,
+                name: artist.name || expectedName,
                 image: portraitImgUrl || artist.image
               })}
               className={`px-5 py-2 rounded-full text-xs sm:text-sm font-bold border transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 ${
@@ -442,12 +454,12 @@ export const ArtistView: React.FC<ArtistViewProps> = ({ artistId, expectedName, 
             Popular
           </h2>
           <div className="space-y-1">
-            {artist.topTracks.map((track, idx) => (
+            {visibleTopTracks.map((track, idx) => (
               <TrackRow
                 key={`art-trk-${track.id}-${idx}`}
                 track={track}
                 index={idx}
-                queueContext={artist.topTracks}
+                queueContext={visibleTopTracks}
                 showCover={true}
                 onNavigate={onNavigate}
                 variant="artist-popular"

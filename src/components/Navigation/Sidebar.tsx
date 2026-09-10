@@ -31,66 +31,76 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onOpe
   const isLiked = currentView.type === 'library' && currentView.subTab === 'liked';
   const isDownloaded = currentView.type === 'library' && currentView.subTab === 'downloaded';
   const isSettings = currentView.type === 'settings';
+  const isRadio = currentView.type === 'radio';
 
   return (
-    <aside className="hidden md:flex flex-col w-64 h-full liquid-glass-sidebar p-4 text-neutral-300 select-none flex-shrink-0 relative z-20">
+    <aside className="hidden flex-col w-[72px] xl:w-64 h-full liquid-glass-sidebar p-2 xl:p-4 text-neutral-300 select-none flex-shrink-0 relative z-20">
       {/* Brand Logo - Custom Spotiz Sonic Wave Emblem */}
       <div
         onClick={() => onNavigate({ type: 'home' })}
-        className="flex items-center px-2 py-3 mb-3 cursor-pointer group"
+        className="flex items-center px-1 xl:px-2 py-3 mb-3 cursor-pointer group justify-center xl:justify-start"
       >
-        <SpotifyLogo size={36} showText={true} />
+        <div className="hidden xl:flex">
+          <SpotifyLogo size={36} showText={true} />
+        </div>
+        <div className="flex xl:hidden">
+          <SpotifyLogo size={36} showText={false} />
+        </div>
       </div>
 
       {/* Main Nav Links */}
       <nav className="space-y-1.5">
         <button
           onClick={() => onNavigate({ type: 'home' })}
-          className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
+          className={`w-full flex items-center gap-0 xl:gap-4 px-0 xl:px-4 justify-center xl:justify-start py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
             isHome
               ? 'liquid-glass-pill-active text-white font-bold'
               : 'hover:text-white hover:bg-white/5 border border-transparent'
           }`}
         >
           <Home className={`w-5 h-5 ${isHome ? 'text-emerald-400' : ''}`} />
-          <span>Home</span>
+          <span className="hidden xl:block">Home</span>
         </button>
 
         <button
           onClick={() => onNavigate({ type: 'search' })}
-          className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
+          className={`w-full flex items-center gap-0 xl:gap-4 px-0 xl:px-4 justify-center xl:justify-start py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
             isSearch
               ? 'liquid-glass-pill-active text-white font-bold'
               : 'hover:text-white hover:bg-white/5 border border-transparent'
           }`}
         >
           <Search className={`w-5 h-5 ${isSearch ? 'text-emerald-400' : ''}`} />
-          <span>Search</span>
+          <span className="hidden xl:block">Search</span>
         </button>
 
         <button
           onClick={() => onNavigate({ type: 'library' })}
-          className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
+          className={`w-full flex items-center gap-0 xl:gap-4 px-0 xl:px-4 justify-center xl:justify-start py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
             isLibrary
               ? 'liquid-glass-pill-active text-white font-bold'
               : 'hover:text-white hover:bg-white/5 border border-transparent'
           }`}
         >
           <Library className={`w-5 h-5 ${isLibrary ? 'text-emerald-400' : ''}`} />
-          <span>Your Library</span>
+          <span className="hidden xl:block">Your Library</span>
         </button>
 
         <button
-          onClick={() => showComingSoon('Coming Soon', 'Radio stations and live personalized streaming are coming soon.')}
-          className="w-full flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer hover:text-white hover:bg-white/5 border border-transparent group"
+          onClick={() => onNavigate({ type: 'radio' })}
+          className={`w-full flex items-center gap-0 xl:gap-4 px-0 xl:px-4 justify-center xl:justify-start py-3 rounded-xl font-medium text-sm transition-all cursor-pointer group ${
+            isRadio
+              ? 'liquid-glass-pill-active text-white font-bold'
+              : 'hover:text-white hover:bg-white/5 border border-transparent'
+          }`}
         >
-          <Radio className="w-5 h-5 text-neutral-400 group-hover:text-emerald-400 transition-colors" />
-          <span>Radio</span>
+          <Radio className={`w-5 h-5 transition-colors ${isRadio ? 'text-emerald-400' : 'text-neutral-400 group-hover:text-emerald-400'}`} />
+          <span className="hidden xl:block">Radio</span>
         </button>
 
         <button
           onClick={() => onNavigate({ type: 'premium' })}
-          className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
+          className={`w-full flex items-center gap-0 xl:gap-4 px-0 xl:px-4 justify-center xl:justify-start py-3 rounded-xl font-medium text-sm transition-all cursor-pointer ${
             isPremium
               ? 'liquid-glass-pill-active text-white font-bold'
               : 'hover:text-white hover:bg-white/5 border border-transparent'
@@ -99,8 +109,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onOpe
           <div className="w-5 h-5 flex items-center justify-center">
             <SpotifyLogo size={20} />
           </div>
-          <div className="flex items-center justify-between flex-1">
-            <span>Premium</span>
+          <div className="hidden xl:flex items-center justify-between flex-1">
+            <span className="hidden xl:block">Premium</span>
             <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm">
               ACTIVE
             </span>
@@ -115,17 +125,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onOpe
       <div className="space-y-1.5">
         <button
           onClick={onOpenCreatePlaylist}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-neutral-300 hover:text-white hover:bg-white/10 transition-all group cursor-pointer border border-transparent hover:border-white/10"
+          className="w-full flex items-center gap-0 xl:gap-3 px-0 xl:px-4 justify-center xl:justify-start py-2.5 rounded-xl text-sm font-medium text-neutral-300 hover:text-white hover:bg-white/10 transition-all group cursor-pointer border border-transparent hover:border-white/10"
         >
           <div className="w-7 h-7 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-black group-hover:border-emerald-400 transition-colors shadow-sm">
             <Plus className="w-4 h-4" />
           </div>
-          <span>Create Playlist</span>
+          <span className="hidden xl:block">Create Playlist</span>
         </button>
 
         <button
           onClick={() => onNavigate({ type: 'library', subTab: 'liked' })}
-          className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+          className={`w-full flex items-center gap-0 xl:gap-3 px-0 xl:px-4 justify-center xl:justify-start py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
             isLiked
               ? 'liquid-glass-pill text-white font-semibold'
               : 'text-neutral-300 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/10'
@@ -134,15 +144,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onOpe
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-700 to-indigo-500 flex items-center justify-center text-white shadow-sm">
             <Heart className="w-3.5 h-3.5 fill-white" />
           </div>
-          <div className="flex items-center justify-between flex-1">
-            <span>Liked Songs</span>
+          <div className="hidden xl:flex items-center justify-between flex-1">
+            <span className="hidden xl:block">Liked Songs</span>
             <span className="text-xs text-neutral-400">{likedTrackIds.size}</span>
           </div>
         </button>
 
         <button
           onClick={() => onNavigate({ type: 'playlist', playlistId: 'downloaded-tracks' })}
-          className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+          className={`w-full flex items-center gap-0 xl:gap-3 px-0 xl:px-4 justify-center xl:justify-start py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
             currentView.type === 'playlist' && currentView.playlistId === 'downloaded-tracks'
               ? 'liquid-glass-pill text-white font-semibold'
               : 'text-neutral-300 hover:text-white hover:bg-white/10 border border-transparent hover:border-white/10'
@@ -151,8 +161,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onOpe
           <div className="w-7 h-7 rounded-lg bg-emerald-900/60 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shadow-sm">
             <Download className="w-3.5 h-3.5" />
           </div>
-          <div className="flex items-center justify-between flex-1">
-            <span>Downloaded</span>
+          <div className="hidden xl:flex items-center justify-between flex-1">
+            <span className="hidden xl:block">Downloaded</span>
             <span className="text-xs text-neutral-400">{downloadedTrackIds.size}</span>
           </div>
         </button>
@@ -163,22 +173,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onOpe
 
       {/* User Playlists Scrollable List */}
       <div className="flex-1 overflow-y-auto pr-1 space-y-1">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 px-3">
-          Playlists
-        </span>
+        <span className="hidden xl:block text-[11px] font-bold uppercase tracking-wider text-neutral-400 px-3 mb-2 mt-2">Playlists</span>
         {playlists.map((pl) => {
           const isSelected = currentView.type === 'playlist' && currentView.playlistId === pl.id;
           return (
             <button
               key={pl.id}
               onClick={() => onNavigate({ type: 'playlist', playlistId: pl.id })}
-              className={`w-full text-left px-3 py-2 rounded-lg text-xs truncate transition-all cursor-pointer ${
+              className={`w-full flex items-center justify-center xl:justify-start gap-0 xl:gap-3 px-0 xl:px-3 py-2 rounded-lg text-xs transition-all cursor-pointer ${
                 isSelected
                   ? 'text-emerald-400 font-semibold bg-white/10 border border-white/10'
                   : 'text-neutral-400 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
-              {pl.title}
+              <div className="w-8 h-8 rounded-md bg-neutral-800 flex items-center justify-center flex-shrink-0 border border-white/10">
+                <span className="text-sm font-bold text-neutral-300">{pl.title.charAt(0).toUpperCase()}</span>
+              </div>
+              <span className="truncate hidden xl:block">{pl.title}</span>
             </button>
           );
         })}
@@ -190,14 +201,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onOpe
         
         <button
           onClick={() => onNavigate({ type: 'settings' })}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+          className={`w-full flex items-center justify-center xl:justify-start gap-0 xl:gap-3 px-0 xl:px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
             isSettings
               ? 'liquid-glass-pill text-white font-semibold'
               : 'text-neutral-400 hover:text-white hover:bg-white/5 border border-transparent'
           }`}
         >
           <Settings className="w-4 h-4" />
-          <span>App Settings</span>
+          <span className="hidden xl:block">App Settings</span>
         </button>
       </div>
     </aside>

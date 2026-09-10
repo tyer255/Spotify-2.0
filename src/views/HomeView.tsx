@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { motion } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { HomeFeedData, ViewState, Track, Artist, Album } from '../types';
 import { api } from '../services/apiClient';
@@ -28,7 +29,9 @@ import {
   Mic,
   Disc,
   Play,
-  X
+  X,
+  Plus,
+  Check
 } from 'lucide-react';
 
 interface HomeViewProps {
@@ -38,8 +41,8 @@ interface HomeViewProps {
 type CategoryFilter = 'all' | 'music' | 'podcasts';
 
 export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
-  const [feed, setFeed] = useState<HomeFeedData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [feed, setFeed] = useState<HomeFeedData | null>(() => api.getCachedHomeFeed());
+  const [loading, setLoading] = useState<boolean>(() => !api.getCachedHomeFeed());
   const [error, setError] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
@@ -47,24 +50,29 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
   const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState<boolean>(false);
 
   const { track: currentTrack, isPlaying, playTrack, togglePlay } = usePlayer();
-  const { downloadedTracksList, profile, likedTrackIds, likedTracksList, followedArtistsList, removeTrackFromHistory } = useUser();
+  const { downloadedTracksList, profile, likedTrackIds, likedTracksList, followedArtistsList, removeTrackFromHistory, isTrackHidden, isPodcastSaved, toggleSavePodcast } = useUser();
 
   // Dynamic session-based promo ad position (0 = top of feed, 1 = after 1 content section)
   const homeAdPosition = useMemo(() => getHomeAdPosition(), []);
 
-  const loadFeed = async () => {
-    setLoading(true);
+  const loadFeed = async (forceRefresh = false) => {
+    // Only show full skeleton loader if we have NO cached data at all
+    if (!feed && !api.getCachedHomeFeed()) {
+      setLoading(true);
+    }
     setError(null);
     try {
-      const res = await api.getHomeFeed();
+      const res = await api.getHomeFeed(forceRefresh);
       if (res.success && res.data) {
         setFeed(res.data);
-      } else {
+      } else if (!feed) {
         setError('Cannot connect to music service');
       }
     } catch (e) {
       console.warn('Failed to load home feed', e);
-      setError('Cannot connect to music service');
+      if (!feed) {
+        setError('Cannot connect to music service');
+      }
     } finally {
       setLoading(false);
     }
@@ -314,7 +322,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
   // Error / Offline State
   if (isOffline) {
     return (
-      <div className="p-4 sm:p-6 md:p-8 pb-32 space-y-8 select-none">
+      <div className="p-4 sm:p-6 md:p-8 space-y-8 select-none">
         <div className="bg-gradient-to-r from-blue-900/40 via-indigo-900/20 to-transparent p-6 rounded-2xl border border-blue-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400 flex-shrink-0">
@@ -340,7 +348,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
               </button>
             )}
             <button
-              onClick={loadFeed}
+              onClick={() => loadFeed(true)}
               className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white font-semibold text-xs transition-all cursor-pointer"
             >
               Retry Online
@@ -354,7 +362,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
               <Download className="w-5 h-5 text-emerald-400" />
               <span>Downloaded & Offline Music</span>
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
               {downloadedTracksList.map((t) => (
                 <TrackCard
                   key={`offline-${t.id}`}
@@ -372,7 +380,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
 
   if (error && !feed) {
     return (
-      <div className="p-4 sm:p-6 md:p-8 pb-32 space-y-8 select-none">
+      <div className="p-4 sm:p-6 md:p-8 space-y-8 select-none">
         <div className="bg-gradient-to-r from-red-900/40 via-orange-900/20 to-transparent p-6 rounded-2xl border border-red-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-red-500/20 border border-red-400/30 flex items-center justify-center text-red-400 flex-shrink-0">
@@ -387,7 +395,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={loadFeed}
+              onClick={() => loadFeed(true)}
               className="px-3.5 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white font-semibold text-xs transition-all cursor-pointer"
             >
               Try Again
@@ -399,75 +407,67 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
   }
 
   // Active Personalized Data
-  const recommendedTracks = dynamicRecommended.length > 0 ? [...dynamicRecommended.slice(0, 5), ...personalized.recommendedForToday.filter(t => !dynamicRecommended.slice(0,5).find(dt => dt.id === t.id)).slice(0, 5)] : personalized.recommendedForToday;
-  const startListeningTracks = personalized.startListening;
-  const becauseYouListenToTracks = personalized.becauseYouListenToTracks;
-  const trendingTracks = personalized.trendingInVibe;
+  const recommendedTracks = (dynamicRecommended.length > 0 ? [...dynamicRecommended.slice(0, 5), ...personalized.recommendedForToday.filter(t => !dynamicRecommended.slice(0,5).find(dt => dt.id === t.id)).slice(0, 5)] : personalized.recommendedForToday).filter(t => !isTrackHidden(t.id));
+  const startListeningTracks = personalized.startListening.filter(t => !isTrackHidden(t.id));
+  const becauseYouListenToTracks = personalized.becauseYouListenToTracks.filter(t => !isTrackHidden(t.id));
+  const trendingTracks = personalized.trendingInVibe.filter(t => !isTrackHidden(t.id));
   const recommendedStations = personalized.recommendedStations;
   const popularArtists = personalized.favouriteArtists;
   const newReleases = personalized.recommendedAlbums;
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 pb-36 space-y-8 select-none">
+    <div className="px-4 sm:px-6 md:px-8 pt-0 space-y-8 select-none">
       {/* 1. Header with Profile Avatar & Filter Pills */}
-      <div className="sticky top-0 z-20 bg-neutral-950/85 backdrop-blur-md py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8 mb-2 flex items-center gap-2.5 sm:gap-3 overflow-x-auto no-scrollbar border-b border-white/5">
-        {/* User Profile Avatar on left */}
-        <button
-          onClick={() => setIsProfileDrawerOpen(true)}
-          className="flex-shrink-0 rounded-full hover:scale-105 active:scale-95 transition-transform cursor-pointer"
-          title="Open Profile & Menu"
-          aria-label="Open Profile and settings menu"
-        >
-          <UserAvatar
-            avatarUrl={profile?.avatar}
-            name={profile?.name || 'Guest User'}
-            sizeClassName="w-9 h-9 sm:w-10 sm:h-10"
-            iconClassName="w-5 h-5 text-neutral-300"
-          />
-        </button>
-
-        {/* Filter Pills */}
-        <button
-          onClick={() => setCategoryFilter('all')}
-          className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all active:scale-95 cursor-pointer flex-shrink-0 ${
-            categoryFilter === 'all'
-              ? 'bg-[#1ed760] text-black shadow-sm'
-              : 'bg-white/[0.08] hover:bg-white/[0.12] text-neutral-200 border border-white/10'
-          }`}
-        >
-          All
-        </button>
-
-        <button
-          onClick={() => setCategoryFilter('music')}
-          className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all active:scale-95 cursor-pointer flex-shrink-0 ${
-            categoryFilter === 'music'
-              ? 'bg-[#1ed760] text-black shadow-sm'
-              : 'bg-white/[0.08] hover:bg-white/[0.12] text-neutral-200 border border-white/10'
-          }`}
-        >
-          Music
-        </button>
-
-        <button
-          onClick={() => setCategoryFilter('podcasts')}
-          className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all active:scale-95 cursor-pointer flex-shrink-0 ${
-            categoryFilter === 'podcasts'
-              ? 'bg-[#1ed760] text-black shadow-sm'
-              : 'bg-white/[0.08] hover:bg-white/[0.12] text-neutral-200 border border-white/10'
-          }`}
-        >
-          Podcasts
-        </button>
-
-        {/* Clean Downloaded Tracks Icon Button in Top Header */}
-        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+      <div className="sticky top-0 z-20 bg-neutral-950/90 backdrop-blur-xl py-3 sm:py-3.5 -mx-4 px-4 sm:-mx-6 sm:px-6 md:-mx-8 md:px-8 mb-4 flex items-center justify-between gap-3 border-b border-white/10 shadow-lg">
+        {/* Left Side: Profile Avatar & Filter Pills (Scrollable if narrow, never crushed) */}
+        <div className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto no-scrollbar min-w-0 flex-1 pr-2">
+          {/* User Profile Avatar */}
           <button
-            onClick={() => onNavigate({ type: 'playlist', playlistId: 'downloaded-tracks' })}
-            className="w-9 h-9 rounded-full bg-white/[0.08] hover:bg-white/[0.14] active:scale-95 border border-white/10 text-neutral-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
-            title="Downloaded Songs"
+            onClick={() => setIsProfileDrawerOpen(true)}
+            className="flex-shrink-0 rounded-full hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+            title="Open Profile & Menu"
+            aria-label="Open Profile and settings menu"
           >
-            <Download className="w-4 h-4 text-emerald-400" />
+            <UserAvatar
+              avatarUrl={profile?.avatar}
+              name={profile?.name || 'Guest User'}
+              sizeClassName="w-9 h-9 sm:w-10 sm:h-10"
+              iconClassName="w-5 h-5 text-neutral-300"
+            />
+          </button>
+
+          {/* Filter Pills */}
+          <button
+            onClick={() => setCategoryFilter('all')}
+            className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all active:scale-95 cursor-pointer flex-shrink-0 ${
+              categoryFilter === 'all'
+                ? 'bg-[#1ed760] text-black shadow-sm font-bold'
+                : 'bg-white/[0.08] hover:bg-white/[0.14] text-neutral-200 border border-white/10'
+            }`}
+          >
+            All
+          </button>
+
+          <button
+            onClick={() => setCategoryFilter('music')}
+            className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all active:scale-95 cursor-pointer flex-shrink-0 ${
+              categoryFilter === 'music'
+                ? 'bg-[#1ed760] text-black shadow-sm font-bold'
+                : 'bg-white/[0.08] hover:bg-white/[0.14] text-neutral-200 border border-white/10'
+            }`}
+          >
+            Music
+          </button>
+
+          <button
+            onClick={() => setCategoryFilter('podcasts')}
+            className={`px-3.5 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all active:scale-95 cursor-pointer flex-shrink-0 ${
+              categoryFilter === 'podcasts'
+                ? 'bg-[#1ed760] text-black shadow-sm font-bold'
+                : 'bg-white/[0.08] hover:bg-white/[0.14] text-neutral-200 border border-white/10'
+            }`}
+          >
+            Podcasts
           </button>
         </div>
       </div>
@@ -479,7 +479,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
             <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
               Top 10 Hindi Podcasts & Shows
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
               {podcastShows.map((pod) => (
                 <div
                   key={pod.id}
@@ -566,7 +566,7 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
             <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
               Start listening
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
+            <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2 pt-1">
               {startListeningTracks.map((track, idx) => (
                 <CompactTrackRow
                   key={`start-listening-${track.id}-${idx}`}
@@ -818,16 +818,42 @@ export const HomeView: React.FC<HomeViewProps> = ({ onNavigate }) => {
                 </p>
               </div>
               
-              <button
-                onClick={() => {
-                   window.open(`https://youtube.com/watch?v=${selectedPodcast.videoId}`, '_blank');
-                   setSelectedPodcast(null);
-                }}
-                className="w-full py-3.5 rounded-full bg-[#1ed760] text-black font-bold text-sm sm:text-base hover:bg-[#1db954] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer mt-4"
-              >
-                <Play className="w-5 h-5 fill-black" />
-                Play on YouTube
-              </button>
+              <div className="flex items-center gap-3 mt-4">
+                <button
+                  id="podcast-save-btn"
+                  onClick={() => toggleSavePodcast(selectedPodcast)}
+                  className={`py-3.5 px-6 rounded-full font-bold text-sm sm:text-base transition-all flex items-center justify-center gap-2 cursor-pointer border ${
+                    isPodcastSaved(selectedPodcast.id)
+                      ? 'border-[#1ed760] text-[#1ed760] bg-[#1ed760]/10 hover:bg-[#1ed760]/20'
+                      : 'border-white/20 text-white hover:bg-white/10'
+                  }`}
+                  title={isPodcastSaved(selectedPodcast.id) ? 'Remove from Your Library' : 'Save to Your Library'}
+                >
+                  {isPodcastSaved(selectedPodcast.id) ? (
+                    <>
+                      <Check className="w-5 h-5 text-[#1ed760] stroke-[2.5]" />
+                      <span>Saved</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-5 h-5 stroke-[2.2]" />
+                      <span>Save</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  id="podcast-play-youtube-btn"
+                  onClick={() => {
+                     window.open(`https://youtube.com/watch?v=${selectedPodcast.videoId}`, '_blank');
+                     setSelectedPodcast(null);
+                  }}
+                  className="flex-1 py-3.5 rounded-full bg-[#1ed760] text-black font-bold text-sm sm:text-base hover:bg-[#1db954] hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Play className="w-5 h-5 fill-black" />
+                  Play on YouTube
+                </button>
+              </div>
             </div>
           </div>
         </div>,

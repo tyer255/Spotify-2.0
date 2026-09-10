@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { usePlayer } from '../../context/PlayerContext';
+import { usePlayerProgressStore } from '../../store/playerProgressStore';
 import { X, Sparkles, Music, ChevronDown } from 'lucide-react';
 
 const PALETTES = [
@@ -14,16 +15,15 @@ export const LyricsDrawer: React.FC = () => {
   const {
     track,
     lyricsData,
-    activeLyricIndex,
     seek,
     isLyricsOpen,
     setIsLyricsOpen,
-    position,
-    duration,
     isPlaying,
     togglePlay,
     isLoading,
+    fetchLyrics,
   } = usePlayer();
+  const { position, duration, activeLyricIndex } = usePlayerProgressStore();
 
   const activeLineRef = useRef<HTMLDivElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -51,6 +51,13 @@ export const LyricsDrawer: React.FC = () => {
       });
     }
   }, [activeLyricIndex]);
+
+  // Auto-fetch lyrics when drawer opens if not already loaded
+  useEffect(() => {
+    if (isLyricsOpen && track?.id && (!lyricsData || lyricsData.trackId !== track.id)) {
+      fetchLyrics(track.id, track.title, track.artist, track.duration);
+    }
+  }, [isLyricsOpen, track?.id, lyricsData?.trackId, fetchLyrics]);
 
   if (!isLyricsOpen || !track) return null;
 
@@ -142,9 +149,13 @@ export const LyricsDrawer: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs uppercase tracking-widest text-neutral-400 font-bold">Lyrics</span>
-                {lyricsData?.synced && (
+                {lyricsData?.synced ? (
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold uppercase tracking-wider flex items-center gap-1 border border-emerald-500/30">
                     <Sparkles className="w-2.5 h-2.5" /> Synced
+                  </span>
+                ) : (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-neutral-300 font-medium tracking-wider">
+                    Full Lyrics
                   </span>
                 )}
               </div>
@@ -184,8 +195,14 @@ export const LyricsDrawer: React.FC = () => {
                   key={index}
                   id={`lyric-${index}`}
                   ref={isActive ? activeLineRef : null}
-                  onClick={() => seek(lineTime)}
+                  onClick={() => {
+                    if (lineTime >= 0) {
+                      seek(lineTime);
+                    }
+                  }}
                   className={`lyric-line text-2xl md:text-4xl lg:text-5xl font-bold ${
+                    lineTime >= 0 ? 'cursor-pointer' : 'cursor-default'
+                  } ${
                     isActive ? 'active' : ''
                   }`}
                 >

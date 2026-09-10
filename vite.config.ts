@@ -52,10 +52,14 @@ export default defineConfig(() => {
           name: 'Spotiz - Music & Podcasts',
           short_name: 'Spotiz',
           description: 'Stream high-fidelity music, curated playlists, synchronized lyrics, and podcasts anywhere.',
-          theme_color: '#1DB954',
-          background_color: '#121212',
+          id: '/',
+          start_url: '/',
+          scope: '/',
+          theme_color: '#000000',
+          background_color: '#000000',
           display: 'standalone',
-          orientation: 'portrait',
+          display_override: ['standalone', 'minimal-ui'],
+          orientation: 'portrait-primary',
           icons: [
             {
               src: '/pwa-192x192.png',
@@ -64,33 +68,21 @@ export default defineConfig(() => {
               purpose: 'any'
             },
             {
+              src: '/pwa-maskable-192x192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'maskable'
+            },
+            {
               src: '/pwa-512x512.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any'
             },
             {
-              src: '/icon-192.svg',
-              sizes: '192x192',
-              type: 'image/svg+xml',
-              purpose: 'any'
-            },
-            {
-              src: '/icon-512.svg',
-              sizes: '512x512',
-              type: 'image/svg+xml',
-              purpose: 'any'
-            },
-            {
               src: '/pwa-maskable-512x512.png',
               sizes: '512x512',
               type: 'image/png',
-              purpose: 'maskable'
-            },
-            {
-              src: '/icon-maskable.svg',
-              sizes: '512x512',
-              type: 'image/svg+xml',
               purpose: 'maskable'
             }
           ]

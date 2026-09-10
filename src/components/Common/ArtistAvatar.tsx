@@ -62,7 +62,7 @@ export const ArtistAvatar: React.FC<ArtistAvatarProps> = ({
     let active = true;
     const query = name.trim();
     if (query) {
-      fetchArtistPortraitLive(id || query).then((liveUrl) => {
+      fetchArtistPortraitLive(query, id).then((liveUrl) => {
         if (active && liveUrl) {
           setCurrentSrc(liveUrl);
           setHasError(false);
@@ -76,24 +76,42 @@ export const ArtistAvatar: React.FC<ArtistAvatarProps> = ({
   }, [name, id, image]);
 
   const handleImageError = () => {
-    // If the image fails to load, try catalog or live portrait fetch once before showing initial
-    const catalogFallback = getArtistPortrait(name);
-    if (catalogFallback && catalogFallback !== currentSrc) {
-      setCurrentSrc(catalogFallback);
-      setHasError(false);
-    } else {
-      // Attempt live fetch if not already done
-      fetchArtistPortraitLive(name).then((liveUrl) => {
-        if (liveUrl && liveUrl !== currentSrc) {
-          setCurrentSrc(liveUrl);
-          setHasError(false);
-        } else {
-          setHasError(true);
-        }
-      }).catch(() => {
-        setHasError(true);
-      });
+    // 1. If image was from Deezer or external CDN that may be blocked by ISP, retry with image-proxy
+    if (currentSrc && !currentSrc.startsWith('/api/image-proxy') && currentSrc.startsWith('http')) {
+      if (currentSrc.includes('dzcdn.net') || currentSrc.includes('deezer.com')) {
+        setCurrentSrc(`/api/image-proxy?url=${encodeURIComponent(currentSrc)}`);
+        setHasError(false);
+        return;
+      }
     }
+
+    // 2. Try catalog fallback by id or name
+    const catalogFallback = getArtistPortrait(id) || getArtistPortrait(name);
+    if (catalogFallback && catalogFallback !== currentSrc) {
+      if (catalogFallback.includes('dzcdn.net')) {
+        setCurrentSrc(`/api/image-proxy?url=${encodeURIComponent(catalogFallback)}`);
+      } else {
+        setCurrentSrc(catalogFallback);
+      }
+      setHasError(false);
+      return;
+    }
+
+    // 3. Attempt live fetch from server
+    fetchArtistPortraitLive(name, id).then((liveUrl) => {
+      if (liveUrl && liveUrl !== currentSrc) {
+        if (liveUrl.includes('dzcdn.net')) {
+          setCurrentSrc(`/api/image-proxy?url=${encodeURIComponent(liveUrl)}`);
+        } else {
+          setCurrentSrc(liveUrl);
+        }
+        setHasError(false);
+      } else {
+        setHasError(true);
+      }
+    }).catch(() => {
+      setHasError(true);
+    });
   };
 
   const initialLetter = name && name.trim().length > 0 ? name.trim().charAt(0).toUpperCase() : 'A';

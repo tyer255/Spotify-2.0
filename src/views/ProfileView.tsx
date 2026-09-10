@@ -109,7 +109,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
   
   if (!firebaseUser) {
     return (
-      <div className="pb-32 w-full max-w-6xl mx-auto flex flex-col justify-start sm:justify-center items-center min-h-[calc(100vh-80px)] pt-4 sm:pt-8 px-4">
+      <div className="w-full max-w-6xl mx-auto flex flex-col justify-start sm:justify-center items-center min-h-[calc(100vh-80px)] pt-4 sm:pt-8 px-4">
         <AuthModal />
       </div>
     );
@@ -129,7 +129,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div id="profile-view-container" className="p-4 md:p-8 pb-32 space-y-8 text-white max-w-6xl mx-auto select-none">
+    <div id="profile-view-container" className="p-4 md:p-8 space-y-8 text-white max-w-6xl mx-auto select-none">
       {/* Hidden File Input for Image Selection */}
       <input
         id="profile-avatar-file-input"

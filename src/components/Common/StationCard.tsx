@@ -24,16 +24,20 @@ interface StationCardProps {
   onNavigate?: (view: ViewState) => void;
 }
 
-export const StationCard: React.FC<StationCardProps> = ({ station }) => {
+export const StationCard: React.FC<StationCardProps> = ({ station, onNavigate }) => {
   const { showComingSoon } = useUser();
 
   const handlePlayStation = (e: React.MouseEvent) => {
     e.stopPropagation();
-    showComingSoon('Coming Soon', `${station.title} Radio station and smart continuous broadcast are coming soon.`);
+    if (onNavigate) {
+      onNavigate({ type: 'radio-station', stationId: station.id, stationTitle: station.title });
+    }
   };
 
   const handleClick = () => {
-    showComingSoon('Coming Soon', `${station.title} Radio station and smart continuous broadcast are coming soon.`);
+    if (onNavigate) {
+      onNavigate({ type: 'radio-station', stationId: station.id, stationTitle: station.title });
+    }
   };
 
   const artist0 = station.artists[0];

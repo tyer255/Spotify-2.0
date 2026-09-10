@@ -14,7 +14,7 @@ interface CacheItem<T> {
 }
 const cache = new Map<string, CacheItem<any>>();
 
-function getFromCache<T>(key: string): T | null {
+export function getFromCache<T>(key: string): T | null {
   const item = cache.get(key);
   if (!item) return null;
   if (Date.now() > item.expiresAt) {
@@ -24,7 +24,7 @@ function getFromCache<T>(key: string): T | null {
   return item.data as T;
 }
 
-function setToCache<T>(key: string, data: T, ttlSeconds: number = 30): void {
+export function setToCache<T>(key: string, data: T, ttlSeconds: number = 30): void {
   cache.set(key, {
     data,
     expiresAt: Date.now() + ttlSeconds * 1000,
@@ -147,10 +147,7 @@ function getValidSaavnStream(item: any): string | null {
       return decrypted;
     }
   }
-  const vlink = item.more_info?.vlink;
-  if (vlink && typeof vlink === 'string' && !vlink.includes('jiotune') && !vlink.includes('preview')) {
-    return vlink;
-  }
+  // DO NOT use vlink as it is a 30s caller tune / ringtone preview, not the official song
   return null;
 }
 
@@ -236,13 +233,28 @@ export class OpenMusicProvider implements IMusicProvider {
     return true;
   }
 
-  // Parse LRC formatted synced lyrics to structured lines with precise sub-second timestamps
+  // Parse LRC formatted synced lyrics to structured lines with precise sub-second timestamps and offset compensation
   private parseLrcLyrics(lrcText: string): { time: number; startTimeMs: number; text: string }[] {
     const lines: { time: number; startTimeMs: number; text: string }[] = [];
     if (!lrcText) return lines;
 
+    // 1. Extract optional global [offset:+/-ms] tag (positive = delay lyrics, negative = advance lyrics)
+    let globalOffsetSec = 0;
+    const offsetMatch = lrcText.match(/\[offset:\s*([+-]?\d+)\s*\]/i);
+    if (offsetMatch && offsetMatch[1]) {
+      const parsedOffsetMs = parseInt(offsetMatch[1], 10);
+      if (!isNaN(parsedOffsetMs)) {
+        globalOffsetSec = parsedOffsetMs / 1000;
+      }
+    }
+
     const rawLines = lrcText.split('\n');
     for (const rawLine of rawLines) {
+      // Ignore LRC metadata headers like [ti:...], [ar:...], [al:...], [by:...], [offset:...]
+      if (/^\[(ti|ar|al|by|offset|length|re|ve):/i.test(rawLine.trim())) {
+        continue;
+      }
+
       const timeTagRegex = /\[(\d{1,2}):(\d{2})(?:[.:](\d{2,3}))?\]/g;
       const matches = Array.from(rawLine.matchAll(timeTagRegex));
       const cleanText = rawLine.replace(/\[\d{1,2}:\d{2}(?:[.:]\d{2,3})?\]/g, '').trim();
@@ -253,7 +265,9 @@ export class OpenMusicProvider implements IMusicProvider {
           const seconds = parseInt(match[2], 10);
           const fractionStr = match[3] || '0';
           const fraction = fractionStr.length === 2 ? parseInt(fractionStr, 10) * 10 : parseInt(fractionStr, 10);
-          const totalSeconds = minutes * 60 + seconds + fraction / 1000;
+          const baseSeconds = minutes * 60 + seconds + fraction / 1000;
+          // Apply global offset compensation (clamped to 0)
+          const totalSeconds = Math.max(0, baseSeconds + globalOffsetSec);
           lines.push({
             time: Number(totalSeconds.toFixed(3)),
             startTimeMs: Math.round(totalSeconds * 1000),
@@ -322,129 +336,85 @@ export class OpenMusicProvider implements IMusicProvider {
     const cached = getFromCache<Track>(cacheKey);
     if (cached) return cached;
 
+    // 1. Prioritize JioSaavn for authentic direct 320kbps streams
     try {
-      const url = `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&limit=10`;
-      const data = await safeFetchJson<any>(url, 3500);
-      if (data && data.results && data.results.length > 0) {
-        // Filter out bad hits
+      const saavnUrl = `https://www.jiosaavn.com/api.php?__call=search.getResults&q=${encodeURIComponent(
+        q
+      )}&_format=json&_marker=0&api_version=4&ctx=web6dot0&n=5&p=1`;
+      const data = await safeFetchJson<any>(saavnUrl, 2500);
+      if (data && data.results && Array.isArray(data.results) && data.results.length > 0) {
         const badWords = ['dj mix', 'cover', 'karaoke', 'instrumental', 'tribute', 'remix', 'trap invasion', 'lofi'];
-        const validResults = data.results.filter(r => {
-          const t = (r.trackName || '').toLowerCase();
-          const a = (r.artistName || '').toLowerCase();
-          if (badWords.some(w => t.includes(w) || a.includes(w))) return false;
-          return true;
+        const validResults = data.results.filter((r: any) => {
+          const t = (r.title || '').toLowerCase();
+          return !badWords.some((w) => t.includes(w));
         });
-        
-        if (validResults.length > 0) {
-          const track = this.normalizeItunesTrack(validResults[0]);
-          setToCache(cacheKey, track, 1800);
-          return applyMetadataOverrides(track);
-        } else {
-          // Fallback to first if all filtered
-          const track = this.normalizeItunesTrack(data.results[0]);
-          setToCache(cacheKey, track, 1800);
+        const chosen = validResults[0] || data.results[0];
+        if (chosen) {
+          const stream = getValidSaavnStream(chosen);
+          const dur = parseInt(chosen.more_info?.duration || '0', 10) || 210;
+          const rawArt = chosen.image || '';
+          const largeArt = rawArt
+            ? rawArt.replace('150x150', '500x500')
+            : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=80';
+          const releaseDate = chosen.release_date || (chosen.year ? `${chosen.year}-01-01` : '');
+          const playCount = parseInt(chosen.play_count || '5000000', 10);
+          const title = chosen.title
+            ? chosen.title.replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, '&')
+            : 'Unknown Title';
+          const artist = extractSaavnArtist(chosen);
+
+          const track: Track = {
+            id: `saavn-${chosen.id}`,
+            title,
+            artist,
+            artistId: extractSaavnArtistId(chosen, artist),
+            album: chosen.more_info?.album
+              ? chosen.more_info.album.replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, '&')
+              : chosen.title || 'Single',
+            albumId: `album-${chosen.more_info?.album_id || chosen.id}`,
+            duration: dur,
+            images: { small: largeArt, medium: largeArt, large: largeArt },
+            provider: 'open-authorized-music',
+            playbackAvailability: true,
+            streamUrl: stream || '',
+            mimeType: 'audio/mp4',
+            explicit: chosen.explicit_content === '1',
+            releaseYear: chosen.year ? parseInt(chosen.year, 10) : 2024,
+            releaseDate,
+            release_date: releaseDate,
+            createdAt: releaseDate,
+            created_at: releaseDate,
+            genre: chosen.language ? chosen.language.charAt(0).toUpperCase() + chosen.language.slice(1) : 'Music',
+            plays: playCount,
+            play_count: playCount,
+            views: playCount,
+            color: '#1DB954',
+          };
+          setToCache(cacheKey, track, 3600);
+          setToCache(`track-${track.id}`, track, 3600);
           return applyMetadataOverrides(track);
         }
       }
     } catch {}
 
-    // Fallback to JioSaavn
+    // 2. Fallback to iTunes if JioSaavn yields no match
     try {
-      const url = `https://saavn.dev/api/search/songs?query=${encodeURIComponent(q)}&limit=10`;
-      const data = await safeFetchJson<any>(url, 3500);
-      if (data && data.success && data.data && data.data.results && data.data.results.length > 0) {
-        const badWords = ['dj mix', 'cover', 'karaoke', 'instrumental', 'tribute', 'remix', 'trap invasion'];
-        const validResults = data.data.results.filter(r => {
-          const t = (r.name || '').toLowerCase();
-          if (badWords.some(w => t.includes(w))) return false;
+      const url = `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&limit=10`;
+      const data = await safeFetchJson<any>(url, 3000);
+      if (data && data.results && data.results.length > 0) {
+        const badWords = ['dj mix', 'cover', 'karaoke', 'instrumental', 'tribute', 'remix', 'trap invasion', 'lofi'];
+        const validResults = data.results.filter((r: any) => {
+          const t = (r.trackName || '').toLowerCase();
+          const a = (r.artistName || '').toLowerCase();
+          if (badWords.some((w: string) => t.includes(w) || a.includes(w))) return false;
           return true;
         });
 
-        if (validResults.length > 0) {
-          const track = (function(item) {
-    const stream = getValidSaavnStream(item);
-    const dur = parseInt(item.more_info?.duration || '0', 10) || 210;
-    const rawArt = item.image || '';
-    
-            let largeArt = rawArt ? rawArt.replace('150x150', '500x500') : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=80';
-
-    const releaseDate = item.release_date || (item.year ? `${item.year}-01-01` : '');
-    const playCount = parseInt(item.play_count || '5000000', 10);
-    const title = item.title ? item.title.replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, '&') : 'Unknown Title';
-    const artist = extractSaavnArtist(item);
-    
-            
-return {
-      id: `saavn-${item.id}`,
-      title,
-      artist,
-      artistId: extractSaavnArtistId(item, artist),
-      album: item.more_info?.album ? item.more_info.album.replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, '&') : (item.title || 'Single'),
-      albumId: `album-${item.more_info?.album_id || item.id}`,
-      duration: dur,
-      images: { small: largeArt, medium: largeArt, large: largeArt },
-      provider: 'open-authorized-music',
-      playbackAvailability: true,
-      streamUrl: stream || '',
-      mimeType: 'audio/mp4',
-      explicit: item.explicit_content === '1',
-      releaseYear: item.year ? parseInt(item.year, 10) : 2024,
-      releaseDate: releaseDate,
-      release_date: releaseDate,
-      createdAt: releaseDate,
-      created_at: releaseDate,
-      genre: item.language ? item.language.charAt(0).toUpperCase() + item.language.slice(1) : 'Music',
-      plays: playCount,
-      play_count: playCount,
-      views: playCount,
-      color: '#1DB954'
-    };
-  })(validResults[0]);
-          setToCache(cacheKey, track, 1800);
-          return applyMetadataOverrides(track);
-        } else {
-          const track = (function(item) {
-    const stream = getValidSaavnStream(item);
-    const dur = parseInt(item.more_info?.duration || '0', 10) || 210;
-    const rawArt = item.image || '';
-    
-            let largeArt = rawArt ? rawArt.replace('150x150', '500x500') : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=80';
-
-    const releaseDate = item.release_date || (item.year ? `${item.year}-01-01` : '');
-    const playCount = parseInt(item.play_count || '5000000', 10);
-    const title = item.title ? item.title.replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, '&') : 'Unknown Title';
-    const artist = extractSaavnArtist(item);
-    
-            
-return {
-      id: `saavn-${item.id}`,
-      title,
-      artist,
-      artistId: extractSaavnArtistId(item, artist),
-      album: item.more_info?.album ? item.more_info.album.replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, '&') : (item.title || 'Single'),
-      albumId: `album-${item.more_info?.album_id || item.id}`,
-      duration: dur,
-      images: { small: largeArt, medium: largeArt, large: largeArt },
-      provider: 'open-authorized-music',
-      playbackAvailability: true,
-      streamUrl: stream || '',
-      mimeType: 'audio/mp4',
-      explicit: item.explicit_content === '1',
-      releaseYear: item.year ? parseInt(item.year, 10) : 2024,
-      releaseDate: releaseDate,
-      release_date: releaseDate,
-      createdAt: releaseDate,
-      created_at: releaseDate,
-      genre: item.language ? item.language.charAt(0).toUpperCase() + item.language.slice(1) : 'Music',
-      plays: playCount,
-      play_count: playCount,
-      views: playCount,
-      color: '#1DB954'
-    };
-  })(data.data.results[0]);
-          setToCache(cacheKey, track, 1800);
-          return applyMetadataOverrides(track);
-        }
+        const chosen = validResults[0] || data.results[0];
+        const track = this.normalizeItunesTrack(chosen);
+        setToCache(cacheKey, track, 1800);
+        setToCache(`track-${track.id}`, track, 1800);
+        return applyMetadataOverrides(track);
       }
     } catch {}
 
@@ -693,9 +663,17 @@ return {
                 return sKey === trackKey;
               });
               if (existing && stream && !existing.streamUrl) {
-                existing.streamUrl = stream;
-                existing.playbackAvailability = true;
-                setToCache(`track-${existing.id}`, existing, 3600);
+                // Ensure the candidate is NOT an unrequested remix, cover, lofi, or tune variant
+                const candLower = `${title} ${item.more_info?.album || ''}`.toLowerCase();
+                const existLower = existing.title.toLowerCase();
+                const unwantedWords = ['remix', 'mix', 'lofi', 'lo-fi', 'cover', 'slowed', 'reverb', 'acoustic', 'sped up', 'speed up', 'tune', 'ringtone'];
+                const hasUnwanted = unwantedWords.some(w => candLower.includes(w) && !existLower.includes(w));
+
+                if (!hasUnwanted) {
+                  existing.streamUrl = stream;
+                  existing.playbackAvailability = true;
+                  setToCache(`track-${existing.id}`, existing, 3600);
+                }
               }
               return;
             }
@@ -947,10 +925,12 @@ return {
       if (songs.length === 0) {
         try {
           const ytSearch = (await import('yt-search')).default;
-          // Run ytSearch with a strict 2-second timeout so it never causes the 10-15s delay the user reported
-          const ytPromise = ytSearch(`${q} official audio`);
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('YT Timeout')), 4000));
-          const ytRes = await Promise.race([ytPromise, timeoutPromise]) as any;
+          // Gracefully race ytSearch with a 5-second timeout resolving to null to avoid unhandled rejections
+          const ytPromise = ytSearch(`${q} official audio`).catch(() => null);
+          const timeoutPromise = new Promise<{ videos?: any[] } | null>((resolve) =>
+            setTimeout(() => resolve(null), 5000)
+          );
+          const ytRes = (await Promise.race([ytPromise, timeoutPromise])) as any;
           if (ytRes && ytRes.videos && ytRes.videos.length > 0) {
             for (const vid of ytRes.videos.slice(0, 8)) {
               if (vid.seconds && vid.seconds >= 35 && vid.seconds <= 1200) {
@@ -983,8 +963,8 @@ return {
               }
             }
           }
-        } catch (e) {
-          console.warn('[Diagnostics] YT fallback search failed:', e);
+        } catch (e: any) {
+          // Graceful fallback - continue search resolution
         }
       }
 
@@ -1479,13 +1459,13 @@ topTracks.push({
 
     // Check if it's a Saavn album ID (usually prefixed with 'album-')
     // iTunes IDs are generally purely numeric.
-    const cleanId = id.replace(/^(saavn-)?album-/, '');
-    const isPurelyNumericId = /^\d+$/.test(id);
+    const cleanId = id.replace(/^(saavn-)?album-/, '').replace(/^saavn-/, '');
+    const isPurelyNumericId = /^\d+$/.test(cleanId);
 
     // 1. Try iTunes if it might be an iTunes ID
     if (isPurelyNumericId) {
       try {
-        const lookupUrl = `https://itunes.apple.com/lookup?id=${encodeURIComponent(id)}&entity=song`;
+        const lookupUrl = `https://itunes.apple.com/lookup?id=${encodeURIComponent(cleanId)}&entity=song`;
         const data = await safeFetchJson<any>(lookupUrl, 5000);
         if (data && data.results && Array.isArray(data.results) && data.results.length > 0) {
           const albumRecord = data.results.find((r: any) => r.wrapperType === 'collection') || data.results[0];
@@ -1497,28 +1477,30 @@ topTracks.push({
           const tracks = rawTracks.map((t: any) => this.normalizeItunesTrack(t));
           const totalDuration = tracks.reduce((acc: number, curr: Track) => acc + curr.duration, 0);
 
-          const album: Album = {
-            id: String(albumRecord.collectionId || id),
-            name: albumRecord.collectionName || 'Album',
-            artist: albumRecord.artistName || 'Unknown Artist',
-            artistId: String(albumRecord.artistId || ''),
-            year: albumRecord.releaseDate ? new Date(albumRecord.releaseDate).getFullYear() : 2024,
-            images: {
-              small: largeArt,
-              medium: largeArt,
-              large: largeArt,
-            },
-            tracks,
-            totalDuration,
-            label: albumRecord.copyright || 'Authorized Music Release',
-            color: '#1DB954',
-          };
+          if (tracks.length > 0) {
+            const album: Album = {
+              id: String(albumRecord.collectionId || cleanId),
+              name: albumRecord.collectionName || 'Album',
+              artist: albumRecord.artistName || 'Unknown Artist',
+              artistId: String(albumRecord.artistId || ''),
+              year: albumRecord.releaseDate ? new Date(albumRecord.releaseDate).getFullYear() : 2024,
+              images: {
+                small: largeArt,
+                medium: largeArt,
+                large: largeArt,
+              },
+              tracks,
+              totalDuration,
+              label: albumRecord.copyright || 'Authorized Music Release',
+              color: '#1DB954',
+            };
 
-          setToCache(cacheKey, album, 600);
-          return album;
+            setToCache(cacheKey, album, 600);
+            return album;
+          }
         }
       } catch (e) {
-        console.warn(`[Diagnostics] Failed to lookup album ${id} on iTunes:`, e);
+        console.warn(`[Diagnostics] Failed to lookup album ${cleanId} on iTunes:`, e);
       }
     }
 
@@ -1526,14 +1508,13 @@ topTracks.push({
     try {
       const saavnUrl = `https://www.jiosaavn.com/api.php?__call=content.getAlbumDetails&albumid=${encodeURIComponent(cleanId)}&_format=json&_marker=0&api_version=4&ctx=web6dot0`;
       const data = await safeFetchJson<any>(saavnUrl, 5000);
-      if (data && data.id && data.list) {
+      if (data && typeof data === 'object' && !data.error && !Array.isArray(data)) {
         const rawArt = data.image || '';
         
             let largeArt = rawArt ? rawArt.replace('150x150', '500x500') : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=80';
 
-
         const tracks: Track[] = [];
-        if (Array.isArray(data.list)) {
+        if (Array.isArray(data.list) && data.list.length > 0) {
           data.list.forEach((item: any) => {
             const stream = getValidSaavnStream(item);
             const dur = parseInt(item.more_info?.duration || '0', 10) || 210;
@@ -1754,146 +1735,6 @@ tracks.push({
     const titleLower = title.toLowerCase();
     const artistLower = artist.toLowerCase();
 
-    // 1. Verified Synced LRC Fallback Bank for Popular Tracks
-    const VERIFIED_SYNCED_LYRICS: Record<string, string> = {
-      chaleya: `[00:00.00] ♪ (Music starts) ♪
-[00:04.50] Ishq mein dil bana hai
-[00:07.20] Ishq mein dil fanaa hai
-[00:09.80] Ho... mita de ya bana de
-[00:13.00] Maine tujhko chuna hai
-[00:15.50] Tere saare rang odh ke dhang odh ke
-[00:18.50] Tera hua main sabko chhod ke
-[00:21.00] Ho... ishq ni karna naksh-e-kadam pe
-[00:24.50] Chalna hai tera ho ke
-[00:26.50] Chaleya teri ore tera chaleya
-[00:29.50] Hai tujh pe aake ruka main
-[00:32.50] Chaleya teri ore tera chaleya
-[00:35.00] Hai tujh pe aake ruka main
-[00:37.50] Ishq mein dil bana hai
-[00:40.00] Ishq mein dil fanaa hai
-[00:43.00] Ho... mita de ya bana de
-[00:46.00] Maine tujhko chuna hai
-[00:48.50] ♪ (Drop / Instrumental) ♪
-[00:58.00] Fin.`,
-      'tum hi ho': `[00:00.00] ♪ (Piano intro) ♪
-[00:12.00] Hum tere bin ab reh nahi sakte
-[00:18.00] Tere bina kya wajood mera
-[00:24.00] Hum tere bin ab reh nahi sakte
-[00:29.00] Tere bina kya wajood mera
-[00:35.50] Tujh se juda agar ho jaayenge
-[00:41.50] Toh khud se hi ho jaayenge juda
-[00:47.00] Kyunki tum hi ho, ab tum hi ho
-[00:53.00] Zindagi ab tum hi ho
-[00:59.00] Chain bhi, mera dard bhi
-[01:05.00] Meri aashiqui ab tum hi ho
-[01:13.00] Tera mera rishta hai kaisa
-[01:18.00] Ik pal door gawaara nahi
-[01:24.00] Tere liye har roz hai jeete
-[01:30.00] Tujhko diya mera waqt sabhi
-[01:36.00] Koi lamha mera na ho tere bina
-[01:42.00] Har saans pe naam tera
-[01:48.00] Kyunki tum hi ho, ab tum hi ho
-[01:54.00] Zindagi ab tum hi ho`,
-      'blinding lights': `[00:00.00] ♪ (Synthesizer Intro) ♪
-[00:13.50] Yeah
-[00:15.50] I've been tryna call
-[00:18.00] I've been on my own for long enough
-[00:22.50] Maybe you can show me how to love, maybe
-[00:29.00] I'm going through withdrawals
-[00:33.00] You don't even have to do too much
-[00:37.00] You can turn me on with just a touch, baby
-[00:43.00] I look around and Sin City's cold and empty
-[00:47.00] No one's around to judge me
-[00:51.00] I can't see clearly when you're gone
-[00:55.00] I said, ooh, I'm blinded by the lights
-[01:00.00] No, I can't sleep until I feel your touch
-[01:07.50] I said, ooh, I'm drowning in the night
-[01:13.00] Oh, when I'm like this, you're the one I trust`,
-      'cruel summer': `[00:00.00] ♪ (Intro) ♪
-[00:06.00] Fever dream high in the quiet of the night
-[00:09.50] You know that I caught it
-[00:12.00] Bad, bad boy, shiny toy with a price
-[00:15.00] You know that I bought it
-[00:18.00] Killing me slow, out the window
-[00:21.00] I'm always waiting for you to be waiting below
-[00:24.00] Devils roll the dice, angels roll their eyes
-[00:27.00] What doesn't kill me makes me want you more
-[00:30.00] And it's new, the shape of your body
-[00:34.00] It's blue, the feeling I've got
-[00:37.00] And it's ooh, whoa, oh
-[00:40.00] It's a cruel summer
-[00:43.00] It's cool, that's what I tell 'em
-[00:46.00] No rules in breakable heaven
-[00:49.00] But ooh, whoa, oh
-[00:52.00] It's a cruel summer with you`,
-      espresso: `[00:00.00] ♪ (Intro beat) ♪
-[00:04.00] Now he's thinkin' 'bout me every night, oh
-[00:08.50] Is it that sweet? I guess so
-[00:11.00] Say you can't sleep, baby, I know
-[00:14.00] That's that me, espresso
-[00:16.50] Move it up, down, left, right, oh
-[00:19.50] Switch it up like Nintendo
-[00:22.00] Say you can't sleep, baby, I know
-[00:25.00] That's that me, espresso
-[00:27.50] I can't relate to desperation
-[00:30.50] My give-a-fucks are on vacation
-[00:33.50] And I got this one boy and he won't stop callin'
-[00:36.50] When they act this way, I know I got 'em`,
-      'die with a smile': `[00:00.00] ♪ (Guitar intro) ♪
-[00:11.00] I, I just woke up from a dream
-[00:16.50] Where you and I had to say goodbye
-[00:21.50] And I don't know what it all means
-[00:27.00] But since I survived, I realized
-[00:32.00] Wherever you go, that's where I'll follow
-[00:38.00] Nobody's promised tomorrow
-[00:43.00] So I'ma love you every night like it's the last night
-[00:49.00] Like it's the last night
-[00:54.00] If the world was ending, I'd wanna be next to you
-[01:05.00] If the party was over and our time on Earth was through
-[01:15.00] I'd wanna hold you just for a while
-[01:20.50] And die with a smile`,
-      yellow: `[00:00.00] ♪ (Acoustic Guitar Intro) ♪
-[00:16.00] Look at the stars
-[00:20.00] Look how they shine for you
-[00:25.00] And everything you do
-[00:31.00] Yeah, they were all yellow
-[00:39.00] I came along
-[00:43.00] I wrote a song for you
-[00:48.00] And all the things you do
-[00:54.00] And it was called "Yellow"
-[01:02.00] So then I took my turn
-[01:07.00] Oh, what a thing to have done
-[01:13.00] And it was all yellow`,
-      kesariya: `[00:00.00] ♪ (Intro) ♪
-[00:07.00] Mujhko itna bataye koi
-[00:11.00] Kaise tujhse dil na lagaye koi
-[00:16.00] Rabba ne tujhko banane mein
-[00:20.00] Kar di hai husn ki khaali tijoriyan
-[00:25.00] Kajre ki siyahi se likhi
-[00:29.00] Hai tune jaane kitno ki love storiyan
-[00:34.00] Kesariya tera ishq hai piya
-[00:38.50] Rang jaaun jo main haath lagaun
-[00:43.00] Din beete saara teri fikr mein
-[00:47.50] Rain saari teri khair manaun`,
-    };
-
-    // Check verified bank
-    for (const [key, lrc] of Object.entries(VERIFIED_SYNCED_LYRICS)) {
-      if (titleLower.includes(key)) {
-        const lines = this.parseLrcLyrics(lrc);
-        const result: LyricsData = {
-          trackId,
-          title,
-          artist,
-          synced: true,
-          lines,
-          plainLyrics: lines.map((l) => l.text).join('\n'),
-        };
-        setToCache(cacheKey, result, 3600);
-        return result;
-      }
-    }
-
     try {
       const cleanTitle = title
         .replace(/\([^)]*\)/g, '')
@@ -1908,63 +1749,124 @@ tracks.push({
         .replace(/feat\..*|ft\..*/gi, '')
         .trim();
 
-      // 2. Query LRCLIB with Exact & Search Endpoints
-      const lrclibUrl = `https://lrclib.net/api/get?track_name=${encodeURIComponent(cleanTitle)}&artist_name=${encodeURIComponent(cleanArtist)}${duration ? `&duration=${Math.round(duration)}` : ''}`;
-      let lyricData = await safeFetchJson<any>(lrclibUrl, 3500);
+      let lyricData: any = null;
 
+      // 1. First try Exact Endpoint with duration
+      if (duration && duration > 20) {
+        const lrclibUrl = `https://lrclib.net/api/get?track_name=${encodeURIComponent(cleanTitle)}&artist_name=${encodeURIComponent(cleanArtist)}&duration=${Math.round(duration)}`;
+        lyricData = await safeFetchJson<any>(lrclibUrl, 3500);
+      }
+
+      // 2. If no exact match by duration, try Intelligent Scored Search
+      if (!lyricData || !lyricData.syncedLyrics) {
+        const searchQueries = [
+          `${cleanArtist} ${cleanTitle}`,
+          `${cleanTitle} ${cleanArtist}`,
+          cleanTitle,
+        ];
+
+        let candidateList = [];
+        for (const query of searchQueries) {
+          const searchUrl = `https://lrclib.net/api/search?q=${encodeURIComponent(query)}`;
+          const list = await safeFetchJson(searchUrl, 3500);
+          if (Array.isArray(list) && list.length > 0) {
+            candidateList = list;
+            break;
+          }
+        }
+
+        if (candidateList.length > 0) {
+          const scored = candidateList.map((item) => {
+            let score = 0;
+            const itemTitle = (item.trackName || '').toLowerCase();
+            const itemArtist = (item.artistName || '').toLowerCase();
+            const cleanTitleLow = cleanTitle.toLowerCase();
+            const cleanArtistLow = cleanArtist.toLowerCase();
+
+            if (item.syncedLyrics && item.syncedLyrics.length > 20) score += 120;
+            else if (item.plainLyrics && item.plainLyrics.length > 20) score += 20;
+
+            if (itemTitle === cleanTitleLow) score += 60;
+            else if (itemTitle.includes(cleanTitleLow)) score += 35;
+
+            if (cleanArtistLow.length > 1 && itemArtist.includes(cleanArtistLow)) score += 45;
+            else if (cleanArtistLow.length > 1 && cleanArtistLow.includes(itemArtist)) score += 30;
+
+            const isRemixOrCover = /(remix|cover|lofi|slowed|reverb|karaoke|acoustic|live|tribute)/i.test(itemTitle);
+            const originalWantedRemix = /(remix|cover|lofi|slowed|reverb|karaoke|acoustic|live)/i.test(cleanTitleLow);
+            if (isRemixOrCover && !originalWantedRemix) score -= 60;
+
+            if (duration && duration > 20 && item.duration) {
+              const durDiff = Math.abs(item.duration - duration);
+              if (durDiff <= 2) score += 80;
+              else if (durDiff <= 5) score += 55;
+              else if (durDiff <= 10) score += 30;
+              else score -= Math.min(Math.round(durDiff * 2), 100);
+            }
+
+            return { item, score };
+          });
+
+          scored.sort((a, b) => b.score - a.score);
+          if (scored[0] && scored[0].score > 0) {
+            lyricData = scored[0].item;
+          }
+        }
+      }
+
+      // 3. Fallback to duration-less exact match if search also fails
       if (!lyricData) {
         const fallbackLrcUrl = `https://lrclib.net/api/get?track_name=${encodeURIComponent(cleanTitle)}&artist_name=${encodeURIComponent(cleanArtist)}`;
         lyricData = await safeFetchJson<any>(fallbackLrcUrl, 3500);
       }
 
-      if (!lyricData) {
-        const searchUrl = `https://lrclib.net/api/search?q=${encodeURIComponent(`${cleanArtist} ${cleanTitle}`)}`;
-        const list = await safeFetchJson<any[]>(searchUrl, 3500);
-        if (Array.isArray(list) && list.length > 0) {
-          lyricData = list.find((item) => item.syncedLyrics) || list[0];
-        }
-      }
-
+      // If LRCLIB matched
       if (lyricData && (lyricData.syncedLyrics || lyricData.plainLyrics)) {
-        let lines: { time: number; startTimeMs: number; text: string }[] = [];
-        const isSynced = Boolean(lyricData.syncedLyrics);
+        const isSynced = Boolean(lyricData.syncedLyrics && lyricData.syncedLyrics.trim().length > 0);
 
         if (isSynced) {
-          lines = this.parseLrcLyrics(lyricData.syncedLyrics);
+          const lines = this.parseLrcLyrics(lyricData.syncedLyrics);
+          if (lines.length > 0) {
+            const result: LyricsData = {
+              trackId,
+              title: lyricData.trackName || title,
+              artist: lyricData.artistName || artist,
+              synced: true,
+              lines,
+              plainLyrics: lyricData.plainLyrics || lines.map((l) => l.text).join('\n'),
+            };
+
+            setToCache(cacheKey, result, 3600);
+            return result;
+          }
         } else if (lyricData.plainLyrics) {
+          // Plain unsynced lyrics: DO NOT assign fake timestamps!
           const plainLines = lyricData.plainLyrics
             .split('\n')
             .map((l: string) => l.trim())
             .filter((l: string) => l.length > 0);
 
-          const totalDur = duration && duration > 20 ? duration : plainLines.length * 4;
-          const step = (totalDur - 6) / Math.max(plainLines.length, 1);
-          lines = plainLines.map((text: string, i: number) => {
-            const t = Number((3 + i * step).toFixed(2));
-            return {
-              time: t,
-              startTimeMs: Math.round(t * 1000),
-              text,
-            };
-          });
-        }
+          const lines = plainLines.map((text: string) => ({
+            time: -1,
+            startTimeMs: -1,
+            text,
+          }));
 
-        if (lines.length > 0) {
           const result: LyricsData = {
             trackId,
             title: lyricData.trackName || title,
             artist: lyricData.artistName || artist,
-            synced: isSynced,
+            synced: false,
             lines,
-            plainLyrics: lyricData.plainLyrics || lines.map((l) => l.text).join('\n'),
+            plainLyrics: lyricData.plainLyrics,
           };
 
-          setToCache(cacheKey, result, 1800);
+          setToCache(cacheKey, result, 3600);
           return result;
         }
       }
 
-      // 3. Fallback to JioSaavn Lyrics API
+      // 2. Fallback to JioSaavn Lyrics API (Clean Plain Lyrics)
       const saavnSearchUrl = `https://www.jiosaavn.com/api.php?__call=search.getResults&q=${encodeURIComponent(`${cleanTitle} ${cleanArtist}`)}&_format=json&_marker=0&api_version=4&ctx=web6dot0&n=5&p=1`;
       const saavnData = await safeFetchJson<any>(saavnSearchUrl, 3500);
 
@@ -1990,16 +1892,12 @@ tracks.push({
               .map((l: string) => l.trim())
               .filter((l: string) => l.length > 0);
 
-            const totalDur = duration && duration > 20 ? duration : plainLines.length * 4;
-            const step = (totalDur - 6) / Math.max(plainLines.length, 1);
-            const lines = plainLines.map((text: string, i: number) => {
-              const t = Number((3 + i * step).toFixed(2));
-              return {
-                time: t,
-                startTimeMs: Math.round(t * 1000),
-                text,
-              };
-            });
+            // True unsynced lines (no fake timestamps that cause out-of-sync jumps)
+            const lines = plainLines.map((text: string) => ({
+              time: -1,
+              startTimeMs: -1,
+              text,
+            }));
 
             const result: LyricsData = {
               trackId,
@@ -2010,13 +1908,116 @@ tracks.push({
               plainLyrics: rawText,
             };
 
-            setToCache(cacheKey, result, 1800);
+            setToCache(cacheKey, result, 3600);
             return result;
           }
         }
       }
     } catch (e) {
       console.warn(`[Diagnostics] Error fetching lyrics:`, e);
+    }
+
+    // 3. Fallback to Verified Synced LRC Bank (Last resort if online sources return nothing)
+    const VERIFIED_SYNCED_LYRICS: Record<string, string> = {
+      chaleya: `[00:00.00] ♪ (Music starts) ♪
+[00:04.50] Ishq mein dil bana hai
+[00:07.20] Ishq mein dil fanaa hai
+[00:09.80] Ho... mita de ya bana de
+[00:13.00] Maine tujhko chuna hai
+[00:15.50] Tere saare rang odh ke dhang odh ke
+[00:18.50] Tera hua main sabko chhod ke
+[00:21.00] Ho... ishq ni karna naksh-e-kadam pe
+[00:24.50] Chalna hai tera ho ke
+[00:26.50] Chaleya teri ore tera chaleya
+[00:29.50] Hai tujh pe aake ruka main
+[00:32.50] Chaleya teri ore tera chaleya
+[00:35.00] Hai tujh pe aake ruka main`,
+      'tum hi ho': `[00:00.00] ♪ (Piano intro) ♪
+[00:12.00] Hum tere bin ab reh nahi sakte
+[00:18.00] Tere bina kya wajood mera
+[00:24.00] Hum tere bin ab reh nahi sakte
+[00:29.00] Tere bina kya wajood mera
+[00:35.50] Tujh se juda agar ho jaayenge
+[00:41.50] Toh khud se hi ho jaayenge juda
+[00:47.00] Kyunki tum hi ho, ab tum hi ho
+[00:53.00] Zindagi ab tum hi ho
+[00:59.00] Chain bhi, mera dard bhi
+[01:05.00] Meri aashiqui ab tum hi ho`,
+      'blinding lights': `[00:00.00] ♪ (Synthesizer Intro) ♪
+[00:13.50] Yeah
+[00:15.50] I've been tryna call
+[00:18.00] I've been on my own for long enough
+[00:22.50] Maybe you can show me how to love, maybe
+[00:29.00] I'm going through withdrawals
+[00:33.00] You don't even have to do too much
+[00:37.00] You can turn me on with just a touch, baby
+[00:43.00] I look around and Sin City's cold and empty
+[00:47.00] No one's around to judge me
+[00:51.00] I can't see clearly when you're gone
+[00:55.00] I said, ooh, I'm blinded by the lights
+[01:00.00] No, I can't sleep until I feel your touch`,
+      'cruel summer': `[00:00.00] ♪ (Intro) ♪
+[00:06.00] Fever dream high in the quiet of the night
+[00:09.50] You know that I caught it
+[00:12.00] Bad, bad boy, shiny toy with a price
+[00:15.00] You know that I bought it
+[00:18.00] Killing me slow, out the window
+[00:21.00] I'm always waiting for you to be waiting below
+[00:24.00] Devils roll the dice, angels roll their eyes
+[00:27.00] What doesn't kill me makes me want you more`,
+      espresso: `[00:00.00] ♪ (Intro beat) ♪
+[00:04.00] Now he's thinkin' 'bout me every night, oh
+[00:08.50] Is it that sweet? I guess so
+[00:11.00] Say you can't sleep, baby, I know
+[00:14.00] That's that me, espresso
+[00:16.50] Move it up, down, left, right, oh
+[00:19.50] Switch it up like Nintendo
+[00:22.00] Say you can't sleep, baby, I know
+[00:25.00] That's that me, espresso`,
+      'die with a smile': `[00:00.00] ♪ (Guitar intro) ♪
+[00:11.00] I, I just woke up from a dream
+[00:16.50] Where you and I had to say goodbye
+[00:21.50] And I don't know what it all means
+[00:27.00] But since I survived, I realized
+[00:32.00] Wherever you go, that's where I'll follow
+[00:38.00] Nobody's promised tomorrow
+[00:43.00] So I'ma love you every night like it's the last night`,
+      yellow: `[00:00.00] ♪ (Acoustic Guitar Intro) ♪
+[00:16.00] Look at the stars
+[00:20.00] Look how they shine for you
+[00:25.00] And everything you do
+[00:31.00] Yeah, they were all yellow
+[00:39.00] I came along
+[00:43.00] I wrote a song for you
+[00:48.00] And all the things you do
+[00:54.00] And it was called "Yellow"`,
+      kesariya: `[00:00.00] ♪ (Intro) ♪
+[00:07.00] Mujhko itna bataye koi
+[00:11.00] Kaise tujhse dil na lagaye koi
+[00:16.00] Rabba ne tujhko banane mein
+[00:20.00] Kar di hai husn ki khaali tijoriyan
+[00:25.00] Kajre ki siyahi se likhi
+[00:29.00] Hai tune jaane kitno ki love storiyan
+[00:34.00] Kesariya tera ishq hai piya
+[00:38.50] Rang jaaun jo main haath lagaun
+[00:43.00] Din beete saara teri fikr mein
+[00:47.50] Rain saari teri khair manaun`,
+    };
+
+    for (const [key, lrc] of Object.entries(VERIFIED_SYNCED_LYRICS)) {
+      if (titleLower.includes(key)) {
+        const lines = this.parseLrcLyrics(lrc);
+        const result: LyricsData = {
+          trackId,
+          title,
+          artist,
+          synced: true,
+          lines,
+          plainLyrics: lines.map((l) => l.text).join('\n'),
+        };
+        setToCache(cacheKey, result, 3600);
+        return result;
+      }
     }
 
     // Default graceful fallback
@@ -2045,24 +2046,33 @@ tracks.push({
     duration?: number,
     options?: { forceFresh?: boolean; discardUrl?: string }
   ) {
-    const cacheKey = `playback-strict-v2-${trackId}`;
+    const cacheKey = `playback-strict-v3-${trackId}`;
     if (!options?.forceFresh && !options?.discardUrl) {
       const cached = getFromCache<any>(cacheKey);
       if (cached) return cached;
     }
 
-    // RULE: Get the track explicitly
+    // Normalized title & primary artist cache check (cross-provider hit)
+    const cleanT = (title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cleanA = (artist || '').split(/[,&\/]/)[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+    const normKey = cleanT && cleanA ? `playback-ta-v3-${cleanT}::${cleanA}` : null;
+    if (!options?.forceFresh && !options?.discardUrl && normKey) {
+      const cachedByTA = getFromCache<any>(normKey);
+      if (cachedByTA) return cachedByTA;
+    }
+
+    // RULE: Get cached track or look up only if metadata is missing
     let track = getFromCache<Track>(`track-${trackId}`);
-    if (!track) {
-        track = await this.getTrack(trackId);
+    if (!track && (!title || !artist)) {
+      track = await this.getTrack(trackId);
     }
 
     // Check if track has a youtube descriptor directly
     if (track && track.streamUrl && track.streamUrl.startsWith('youtube:')) {
       const result = {
         id: trackId,
-        title: track.title,
-        artist: track.artist,
+        title: track.title || title || 'Unknown Title',
+        artist: track.artist || artist || 'Unknown Artist',
         album: track.album || 'Single',
         thumbnail: track.images?.large || '',
         duration: track.duration || duration || 210,
@@ -2079,17 +2089,18 @@ tracks.push({
         },
       };
       setToCache(cacheKey, result, 86400);
+      if (normKey) setToCache(normKey, result, 86400);
       return result;
     }
 
-    // STRICT MATCH: If the track already has a valid full streamUrl, validate before using.
+    // STRICT MATCH: If the track already has a valid full streamUrl, validate fast before using
     if (track && track.streamUrl && track.streamUrl.startsWith('http') && !track.streamUrl.includes('jiotune') && !track.streamUrl.includes('preview') && (track.duration || 0) >= 45) {
-      const check = await validateAudioStream(track.streamUrl, 5000, track.duration || 210);
+      const check = await validateAudioStream(track.streamUrl, 800, track.duration || 210);
       if (check.valid) {
         const result = {
           id: trackId,
-          title: track.title,
-          artist: track.artist,
+          title: track.title || title || 'Unknown Title',
+          artist: track.artist || artist || 'Unknown Artist',
           album: track.album || 'Single',
           thumbnail: track.images?.large || '',
           duration: track.duration || duration || 210,
@@ -2105,59 +2116,47 @@ tracks.push({
           },
         };
         setToCache(cacheKey, result, 86400);
+        if (normKey) setToCache(normKey, result, 86400);
         return result;
-      } else {
-        console.log(`[OpenMusicProvider] Existing streamUrl for ${trackId} skipped (${check.error}). Initiating resolution pipeline...`);
       }
     }
 
-    // STRICT MATCH: If it's a Saavn track, fetch it strictly by ID and decrypt encrypted_media_url.
+    // STRICT MATCH: If it's a Saavn track, fetch it strictly by ID and decrypt encrypted_media_url
     if (trackId.startsWith('saavn-')) {
         const sId = trackId.replace('saavn-', '');
         try {
             const url = `https://www.jiosaavn.com/api.php?__call=song.getDetails&pids=${sId}&_format=json&_marker=0&api_version=4&ctx=web6dot0`;
-            const data = await safeFetchJson<any>(url, 3000);
+            const data = await safeFetchJson<any>(url, 2000);
             if (data && data.songs && data.songs.length > 0) {
                 const item = data.songs[0];
                 const streamResult = getValidSaavnStreamWithFallbacks(item);
-                if (streamResult) {
+                if (streamResult && streamResult.primaryUrl) {
                     const expectedDur = parseInt(item.more_info?.duration || '0', 10) || duration || 210;
-                    const check = await validateAudioStream(streamResult.primaryUrl, 5000, expectedDur);
-                    let validUrl = check.valid ? streamResult.primaryUrl : '';
-                    let validFallbacks = streamResult.fallbackUrls.filter((u) => u !== validUrl);
+                    const check = await validateAudioStream(streamResult.primaryUrl, 800, expectedDur);
+                    const validUrl = check.valid ? streamResult.primaryUrl : (streamResult.fallbackUrls[0] || streamResult.primaryUrl);
+                    const validFallbacks = streamResult.fallbackUrls.filter((u) => u !== validUrl);
 
-                    if (!validUrl && streamResult.fallbackUrls.length > 1) {
-                      for (const fb of streamResult.fallbackUrls) {
-                        const fbCheck = await validateAudioStream(fb, 4000, expectedDur);
-                        if (fbCheck.valid) {
-                          validUrl = fb;
-                          break;
-                        }
-                      }
-                    }
-
-                    if (validUrl) {
-                      const result = {
-                          id: trackId,
-                          title: track?.title || item.title || title,
-                          artist: track?.artist || artist,
-                          album: track?.album || 'Single',
-                          thumbnail: track?.images?.large || '',
-                          duration: parseInt(item.more_info?.duration || '0', 10) || duration || 210,
-                          stream: {
-                              url: validUrl,
-                              fallbackUrls: [validUrl, ...validFallbacks],
-                              mimeType: 'audio/mp4',
-                              bitrate: '320kbps',
-                              isFullLength: true,
-                              isDirectAudio: true,
-                              isMediaDescriptor: false,
-                              descriptorType: 'direct',
-                          },
-                      };
-                      setToCache(cacheKey, result, 86400);
-                      return result;
-                    }
+                    const result = {
+                        id: trackId,
+                        title: track?.title || item.title || title,
+                        artist: track?.artist || artist,
+                        album: track?.album || 'Single',
+                        thumbnail: track?.images?.large || '',
+                        duration: expectedDur,
+                        stream: {
+                            url: validUrl,
+                            fallbackUrls: [validUrl, ...validFallbacks],
+                            mimeType: 'audio/mp4',
+                            bitrate: '320kbps',
+                            isFullLength: true,
+                            isDirectAudio: true,
+                            isMediaDescriptor: false,
+                            descriptorType: 'direct',
+                        },
+                    };
+                    setToCache(cacheKey, result, 86400);
+                    if (normKey) setToCache(normKey, result, 86400);
+                    return result;
                 }
             }
         } catch (e) {
@@ -2205,6 +2204,7 @@ tracks.push({
           },
         };
         setToCache(cacheKey, result, 86400);
+        if (normKey) setToCache(normKey, result, 86400);
         return result;
       }
     }
@@ -2362,10 +2362,10 @@ console.log("-> 1");
         for (const r of albumResults.results) {
           if (r.collectionType === 'Album' || r.wrapperType === 'collection') {
             albums.push({
-              id: `album-${r.collectionId}`,
+              id: String(r.collectionId || r.id || Math.random().toString(36).substr(2, 9)),
               name: r.collectionName || 'Unknown Album',
               artist: r.artistName || 'Unknown Artist',
-              artistId: `artist-${r.artistId || ''}`,
+              artistId: String(r.artistId || ''),
               year: r.releaseDate ? new Date(r.releaseDate).getFullYear() : 2024,
               images: {
                 small: r.artworkUrl100 || '',

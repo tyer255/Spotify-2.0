@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { usePlayer } from '../../context/PlayerContext';
+import { usePlayerProgressStore } from '../../store/playerProgressStore';
 import { useUser } from '../../context/UserContext';
+import { useShare } from '../../context/ShareContext';
 import { ViewState } from '../../types';
 import {
   ChevronDown,
@@ -19,6 +21,7 @@ import {
   Plus,
   Check,
   CheckCircle,
+  Heart,
   X,
   Laptop2,
   Video,
@@ -39,8 +42,6 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({ onNavigate }
   const {
     track,
     isPlaying,
-    position,
-    duration,
     volume,
     isMuted,
     playbackRate,
@@ -64,9 +65,13 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({ onNavigate }
     setIsAmbientModeOpen,
     sleepTimerMinutes,
     setSleepTimer,
+    lyricsData,
+    fetchLyrics,
   } = usePlayer();
+  const { position, duration, activeLyricIndex } = usePlayerProgressStore();
 
   const { isTrackLiked, toggleLikeTrack, playlists, addTrackToPlaylist, showToast } = useUser();
+  const { openShare } = useShare();
   const [showMenu, setShowMenu] = useState(false);
   const [showSleepTimerModal, setShowSleepTimerModal] = useState(false);
   const [showDeviceModal, setShowDeviceModal] = useState(false);
@@ -158,27 +163,46 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({ onNavigate }
   const [seekPos, setSeekPos] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Parse lyrics lines
-  const lyricsLines = useMemo(() => {
-    if (!track?.lyrics) {
-      return ["Music playing...", "Enjoy the rhythm", "Feel the beat", "..."];
+  // Fetch lyrics when fullscreen player is open if not loaded yet
+  useEffect(() => {
+    if (isFullscreenOpen && track?.id && (!lyricsData || lyricsData.trackId !== track.id)) {
+      fetchLyrics(track.id, track.title, track.artist, track.duration);
     }
-    const lines = track.lyrics.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
-    return lines.length > 0 ? lines.slice(0, 4) : ["Music playing...", "Enjoy the rhythm", "Feel the beat", "..."];
-  }, [track?.lyrics]);
+  }, [isFullscreenOpen, track?.id, lyricsData?.trackId, fetchLyrics]);
 
-  // Current active lyric snippet directly under album artwork
+  // Parse lyrics lines for preview card (uses high-precision synced lyrics from PlayerContext)
+  const lyricsLines = useMemo(() => {
+    if (lyricsData && lyricsData.lines && lyricsData.lines.length > 0) {
+      if (lyricsData.synced && activeLyricIndex >= 0) {
+        const start = Math.max(0, activeLyricIndex);
+        return lyricsData.lines.slice(start, start + 3).map((l) => l.text);
+      }
+      return lyricsData.lines.slice(0, 3).map((l) => l.text);
+    }
+    if (track?.lyrics) {
+      const lines = track.lyrics.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
+      return lines.slice(0, 3);
+    }
+    return ["Music playing...", "Enjoy the rhythm", "Feel the beat"];
+  }, [lyricsData, activeLyricIndex, track?.lyrics]);
+
+  // Current active lyric snippet directly under album artwork (synced to audio timeline)
   const activeLyricSnippet = useMemo(() => {
-    if (!track?.lyrics) return null;
-    const lines = track.lyrics.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
-    if (lines.length === 0) return null;
-    
-    // We can't use currentDisplayTime directly here if we want to avoid re-rendering issues, 
-    // but since we're fixing the hook order, we just need to ensure the variables exist.
-    // For the active lyric, it depends on duration and current time, which are available from usePlayer() above.
-    const approxLineIndex = duration > 0 ? Math.floor((position / duration) * lines.length) : 0;
-    return lines[Math.min(lines.length - 1, Math.max(0, approxLineIndex))] || lines[0];
-  }, [track?.lyrics, position, duration]);
+    if (lyricsData && lyricsData.lines && lyricsData.lines.length > 0) {
+      if (lyricsData.synced && activeLyricIndex >= 0 && activeLyricIndex < lyricsData.lines.length) {
+        return lyricsData.lines[activeLyricIndex].text;
+      }
+      if (!lyricsData.synced) {
+        return lyricsData.lines[0]?.text || null;
+      }
+      return lyricsData.lines[0]?.text || null;
+    }
+    if (track?.lyrics) {
+      const lines = track.lyrics.split('\n').map((l: string) => l.trim()).filter((l: string) => l.length > 0);
+      return lines[0] || null;
+    }
+    return null;
+  }, [lyricsData, activeLyricIndex, track?.lyrics]);
 
   if (!isFullscreenOpen || !track) return null;
 
@@ -221,33 +245,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({ onNavigate }
   };
 
   const handleShare = async () => {
-    const shareData = {
-      title: track.title,
-      text: `Listening to ${track.title} by ${track.artist} on Spotiz`,
-      url: window.location.href,
-    };
-    
-    try {
-      if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-        await navigator.share(shareData);
-        return;
-      }
-    } catch (err) {
-      console.warn('Native share failed or was cancelled:', err);
-    }
-    
-    // Fallback to clipboard
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(`${track.title} by ${track.artist} - ${window.location.href}`);
-        showToast('Track link copied to clipboard!');
-      } else {
-        showToast('Sharing not supported on this device.');
-      }
-    } catch (err) {
-      console.warn('Clipboard write failed:', err);
-      showToast('Unable to copy link. Permission denied.');
-    }
+    openShare(track);
   };
 
   const dominantColor = track.color || '#1DB954';
@@ -269,7 +267,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({ onNavigate }
         transition={{ type: 'spring', damping: 28, stiffness: 240 }}
         className="fixed inset-0 z-50 flex flex-col text-white select-none overflow-hidden bg-[#080808] will-change-transform transform-gpu"
       >
-        <div className={`absolute inset-0 z-0 transition-opacity duration-300 ${showArtworkInCanvas ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <div className="absolute inset-0 z-0 transition-opacity duration-300 opacity-100">
           <CanvasBackground track={track} dominantColor={dominantColor} onVideoReady={setIsCanvasReady} isArtworkVisible={showArtworkInCanvas} />
         </div>
 
@@ -302,18 +300,11 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({ onNavigate }
                 toggleLikeTrack(track);
                 showToast(isLiked ? 'Removed from Liked Songs' : 'Added to Liked Songs');
               }}
-              className="p-1 hover:scale-105 transition-transform"
-              aria-label="Add to library"
+              className="p-1.5 hover:scale-105 transition-transform cursor-pointer"
+              aria-label={isLiked ? "Remove from Liked Songs" : "Save to Liked Songs"}
+              title={isLiked ? "Remove from Liked Songs" : "Save to Liked Songs"}
             >
-              {isLiked ? (
-                <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-black">
-                  <Check className="w-4 h-4 stroke-[2.5]" />
-                </div>
-              ) : (
-                <div className="w-6 h-6 rounded-full border border-white flex items-center justify-center text-white">
-                  <Plus className="w-4 h-4 stroke-[2.5]" />
-                </div>
-              )}
+              <Heart className={`w-6 h-6 transition-all ${isLiked ? 'text-red-500 fill-red-500 scale-105' : 'text-neutral-300 hover:text-white'}`} />
             </button>
             <button onClick={togglePlay} className="p-1" aria-label={isPlaying ? 'Pause' : 'Play'}>
               {isPlaying ? <Pause className="w-5 h-5 fill-white text-white" /> : <Play className="w-5 h-5 fill-white text-white" />}
@@ -459,26 +450,18 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({ onNavigate }
                   </p>
                 </div>
 
-                {/* Spotiz Single (+) / (✓) Button */}
+                {/* Spotiz Heart Like Button */}
                 <div className="flex items-center flex-shrink-0">
                   <button
                     onClick={() => {
                       toggleLikeTrack(track);
                       showToast(isLiked ? 'Removed from Liked Songs' : 'Added to Liked Songs');
                     }}
-                    className="p-1 -mr-1 rounded-full hover:scale-105 active:scale-95 transition-transform cursor-pointer"
-                    aria-label={isLiked ? "Saved to Library" : "Add to Library"}
+                    className="p-1.5 rounded-full hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+                    aria-label={isLiked ? "Saved to Liked Songs" : "Save to Liked Songs"}
                     title={isLiked ? "Saved to Liked Songs (Click to remove)" : "Save to Liked Songs"}
                   >
-                    {isLiked ? (
-                      <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-black shadow-md shadow-emerald-950/40">
-                        <Check className="w-5 h-5 stroke-[2.5]" />
-                      </div>
-                    ) : (
-                      <div className="w-8 h-8 rounded-full border-2 border-white/80 flex items-center justify-center text-white hover:border-white transition-colors">
-                        <Plus className="w-5 h-5 stroke-[2.5]" />
-                      </div>
-                    )}
+                    <Heart className={`w-7 h-7 transition-all ${isLiked ? 'text-red-500 fill-red-500 scale-105' : 'text-neutral-300 hover:text-white'}`} />
                   </button>
                 </div>
               </div>

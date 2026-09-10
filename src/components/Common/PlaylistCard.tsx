@@ -3,6 +3,7 @@ import { Playlist, ViewState } from '../../types';
 import { Play } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
 import { PlaylistArtwork } from './PlaylistArtwork';
+import { useUser } from '../../context/UserContext';
 
 interface PlaylistCardProps {
   playlist: Playlist;
@@ -11,6 +12,7 @@ interface PlaylistCardProps {
 
 export const PlaylistCard: React.FC<PlaylistCardProps> = ({ playlist, onNavigate }) => {
   const { playTrack } = usePlayer();
+  const { isTrackHidden } = useUser();
 
   const handleClick = () => {
     if (onNavigate) {
@@ -20,8 +22,9 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({ playlist, onNavigate
 
   const handlePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (playlist.tracks && playlist.tracks.length > 0) {
-      playTrack(playlist.tracks[0], playlist.tracks);
+    const visibleTracks = playlist.tracks ? playlist.tracks.filter(t => !isTrackHidden(t.id)) : [];
+    if (visibleTracks.length > 0) {
+      playTrack(visibleTracks[0], visibleTracks);
     } else {
       handleClick();
     }
@@ -30,7 +33,7 @@ export const PlaylistCard: React.FC<PlaylistCardProps> = ({ playlist, onNavigate
   return (
     <div
       onClick={handleClick}
-      className="group relative flex-shrink-0 w-40 sm:w-44 p-3 rounded-2xl liquid-glass-card transition-all duration-300 cursor-pointer flex flex-col"
+      className="group relative flex-shrink-0 w-[140px] xs:w-[150px] sm:w-[176px] p-3 rounded-2xl liquid-glass-card transition-all duration-300 cursor-pointer flex flex-col"
     >
       <div className="relative aspect-square w-full rounded-xl overflow-hidden mb-3 bg-neutral-800 shadow-md">
         <PlaylistArtwork

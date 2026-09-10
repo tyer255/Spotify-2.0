@@ -4,6 +4,7 @@ class ApiClient {
   private baseUrl = '/api';
   private searchCache = new Map<string, { data: any; timestamp: number }>();
   private suggestionsCache = new Map<string, { data: any; timestamp: number }>();
+  private homeFeedCache: { data: any; timestamp: number } | null = null;
   private activeSearchController: AbortController | null = null;
   private activeSuggestionsController: AbortController | null = null;
   private sessionId: string = Math.random().toString(36).substring(2);
@@ -80,9 +81,27 @@ class ApiClient {
     };
   }
 
-  // Home Feed
-  async getHomeFeed() {
-    return this.fetchWithRetry<any>('/home');
+  // Home Feed with client cache (valid for 5 minutes)
+  async getHomeFeed(bypassCache = false) {
+    if (!bypassCache && this.homeFeedCache && (Date.now() - this.homeFeedCache.timestamp < 300000)) {
+      return { success: true, data: this.homeFeedCache.data };
+    }
+    const res = await this.fetchWithRetry<any>('/home');
+    if (res.success && res.data) {
+      this.homeFeedCache = {
+        data: res.data,
+        timestamp: Date.now(),
+      };
+    }
+    return res;
+  }
+
+  getCachedHomeFeed() {
+    return this.homeFeedCache?.data || null;
+  }
+
+  clearHomeFeedCache() {
+    this.homeFeedCache = null;
   }
 
   // Search with client caching and in-flight cancellation
@@ -263,6 +282,17 @@ class ApiClient {
     if (seedTrackId) params.append('seedTrackId', seedTrackId);
     if (genre) params.append('genre', genre);
     return this.fetchWithRetry<any>(`/recommendations?${params.toString()}`);
+  }
+
+  // Radio Station
+  async getShareRecord(id: string) {
+    return this.fetchWithRetry<any>(`/share/${id}`);
+  }
+
+  async getRadio(seedType: 'artist' | 'song' | 'album', seedId: string, seedTitle?: string) {
+    const params = new URLSearchParams({ seedType, seedId });
+    if (seedTitle) params.append('seedTitle', seedTitle);
+    return this.fetchWithRetry<any>(`/radio?${params.toString()}`);
   }
 
   // Profile

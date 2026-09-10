@@ -10,8 +10,7 @@ export const HomeFooter: React.FC<HomeFooterProps> = ({ onNavigate }) => {
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
 
-  const handleNavigation = (e: React.MouseEvent, pageId: string) => {
-    e.preventDefault();
+  const handleNavigation = (pageId: string) => {
     onNavigate({ type: 'info', pageId });
   };
 
@@ -74,13 +73,13 @@ export const HomeFooter: React.FC<HomeFooterProps> = ({ onNavigate }) => {
             <ul className="flex flex-col space-y-3">
               {section.links.map((link) => (
                 <li key={link.label}>
-                  <a
-                    href="#"
-                    onClick={(e) => handleNavigation(e, link.pageId)}
-                    className="text-neutral-400 hover:text-white hover:underline transition-colors text-sm font-medium"
+                  <button
+                    type="button"
+                    onClick={() => handleNavigation(link.pageId)}
+                    className="text-left text-neutral-400 hover:text-white hover:underline transition-colors text-sm font-medium cursor-pointer"
                   >
                     {link.label}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -134,14 +133,14 @@ export const HomeFooter: React.FC<HomeFooterProps> = ({ onNavigate }) => {
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
           {legalLinks.map((link) => (
-            <a
+            <button
               key={link.label}
-              href="#"
-              onClick={(e) => handleNavigation(e, link.pageId)}
-              className="text-xs text-neutral-400 hover:text-white transition-colors whitespace-nowrap"
+              type="button"
+              onClick={() => handleNavigation(link.pageId)}
+              className="text-xs text-neutral-400 hover:text-white hover:underline transition-colors whitespace-nowrap cursor-pointer"
             >
               {link.label}
-            </a>
+            </button>
           ))}
         </div>
         

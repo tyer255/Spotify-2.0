@@ -108,9 +108,6 @@ export type RepeatMode = 'off' | 'all' | 'one';
 export interface PlaybackState {
   track: Track | null;
   isPlaying: boolean;
-  position: number; // Current playback time in seconds
-  duration: number; // Duration in seconds
-  bufferedPosition: number;
   repeatMode: RepeatMode;
   shuffleEnabled: boolean;
   volume: number; // 0 to 1
@@ -171,6 +168,7 @@ export interface UserSettings {
   theme: 'dark' | 'light' | 'system';
   accentColor: string; // e.g. '#1DB954' (Spotiz Green), '#8B5CF6' (Purple), '#06B6D4' (Cyan), '#EC4899' (Pink), '#F59E0B' (Amber)
   audioQuality: 'low' | 'normal' | 'high' | 'very_high';
+  audioDownloadQuality?: 'low' | 'normal' | 'high' | 'very_high';
   crossfadeDuration: number; // 0 to 12s
   gaplessPlayback: boolean;
   normalizeVolume: boolean;
@@ -178,6 +176,39 @@ export interface UserSettings {
   downloadWifiOnly: boolean;
   privateSession: boolean;
   autoPlaySimilar: boolean;
+  
+  // Additional Settings
+  canvasEnabled?: boolean;
+  showUnplayable?: boolean;
+  filterExplicit?: boolean;
+  listeningActivity?: boolean;
+  recentArtistsVisible?: boolean;
+  publicPlaylistsDefault?: boolean;
+  automix?: boolean;
+  monoAudio?: boolean;
+  
+  // Notifications
+  browserPushEnabled?: boolean;
+  musicArtistUpdates?: boolean;
+  playlistRadar?: boolean;
+  inAppAlerts?: boolean;
+  emailNews?: boolean;
+  monthlyDigest?: boolean;
+  
+  // Devices
+  deviceBroadcast?: boolean;
+  localDevicesOnly?: boolean;
+  
+  // Data & Offline
+  dataSaver?: boolean;
+  audioOnly?: boolean;
+  
+  // Media Quality
+  autoAdjust?: boolean;
+  
+  // Ads
+  tailoredAds?: boolean;
+  thirdPartyAds?: boolean;
 }
 
 export interface UserProfileStats {
@@ -222,6 +253,7 @@ export interface UserProfile {
   followedArtistIds: string[];
   playlists: Playlist[];
   downloadedTrackIds: string[];
+  hiddenTrackIds?: string[];
   recentHistory: { track: Track; playedAt: string }[];
   recentSearches?: RecentSearchItem[];
   settings: UserSettings;
@@ -241,7 +273,7 @@ export interface ApiResponse<T> {
 export type ActiveTab = 'home' | 'search' | 'library' | 'premium' | 'profile';
 export type ViewState = 
   | { type: 'home' }
-  | { type: 'search'; initialQuery?: string }
+  | { type: 'search'; initialQuery?: string; scannedSongId?: string }
   | { type: 'library'; subTab?: 'playlists' | 'liked' | 'downloaded' | 'artists' | 'history' }
   | { type: 'premium' }
   | { type: 'profile' }
@@ -249,6 +281,9 @@ export type ViewState =
   | { type: 'album'; albumId: string }
   | { type: 'playlist'; playlistId: string }
   | { type: 'settings' }
+  | { type: 'radio' }
+  | { type: 'radio-station'; stationId: string; stationTitle?: string }
   | { type: 'blend-setup' }
   | { type: 'blend-invite'; blendId: string }
-  | { type: 'info'; pageId: string };
+  | { type: 'info'; pageId: string }
+  | { type: 'share-landing'; shareId: string; shareType: 'song' | 'lyrics' };

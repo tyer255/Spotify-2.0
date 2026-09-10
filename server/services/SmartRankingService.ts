@@ -1,4 +1,4 @@
-import { serverDb, collection, getDocs, addDoc, query, where, orderBy, limit, Timestamp } from './firebaseServer';
+
 
 export interface MusicEvent {
   id?: string;
@@ -36,12 +36,9 @@ class SmartRankingService {
     
     // Optimistic cache update
     this.cachedEvents.push(newEvent);
-
-    // Save to Firestore
-    try {
-      await addDoc(collection(serverDb, 'music_events'), newEvent);
-    } catch (err) {
-      console.error("[SmartRankingService] Failed to log event to Firestore", err);
+    // Bound memory
+    if (this.cachedEvents.length > 50000) {
+      this.cachedEvents = this.cachedEvents.slice(10000);
     }
   }
 
@@ -50,22 +47,6 @@ class SmartRankingService {
     if (!songs || songs.length === 0) return songs;
 
     const now = Date.now();
-    
-    // Sync cache from Firestore periodically (every 5 minutes) to scale
-    if (now - this.lastFetch > 5 * 60 * 1000) {
-      try {
-        const snapshot = await getDocs(collection(serverDb, 'music_events'));
-        const events: MusicEvent[] = [];
-        snapshot.forEach(doc => {
-          events.push(doc.data() as MusicEvent);
-        });
-        this.cachedEvents = events;
-        this.lastFetch = now;
-      } catch (err) {
-        console.error("[SmartRankingService] Failed to fetch events", err);
-      }
-    }
-
     const oneHour = 60 * 60 * 1000;
     
     // Pre-calculate user history for personalization (Requirement 6)

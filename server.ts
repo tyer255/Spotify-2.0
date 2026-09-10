@@ -1,23 +1,97 @@
 
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { Readable } from 'stream';
-import { createServer as createViteServer } from 'vite';
+import dns from 'dns/promises';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 
 import fetch from 'node-fetch';
 
-
-import { MusicService, userDatabase } from './server/services/musicService';
+import { adminAuth } from './server/firebaseAdmin';
+import { MusicService } from './server/services/musicService';
 import { smartRankingService } from './server/services/SmartRankingService';
 import { providerManager } from './server/providers/ProviderManager';
+import { RadioRecommendationService } from './server/services/RadioRecommendationService';
 import { extractSpotifyThumbnail, resolveMissingSpotifyThumbnails } from './server/services/spotifyThumbnailExtractor';
 import { SpotifyCanvasService } from './server/services/spotifyCanvasService';
+import { ShareService } from './server/services/shareService';
 
 const app = express();
-const PORT = 3000;
+app.set('trust proxy', 1); // Trust first proxy (Cloud Run/Nginx)
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+// Set up CORS
+const allowedOrigins = process.env.NODE_ENV === 'production' 
+  ? [/^https:\/\/.*\.run\.app$/, /^https:\/\/.*\.web\.app$/, process.env.FRONTEND_URL].filter(Boolean) as (string | RegExp)[]
+  : '*'; // allow all in dev
+
+app.use(cors({
+  origin: allowedOrigins.length > 0 ? allowedOrigins : '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-session-id', 'x-user-id'],
+  credentials: false // Set to false if allowing wildcard origins to avoid security issues
+}));
+
+// Set up Rate Limiting
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 120, // Limit each IP to 120 requests per `window` (here, per 1 minute)
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  handler: (req, res) => {
+    sendError(res, 'RATE_LIMIT_EXCEEDED', 'Too many requests, please try again later.', 429);
+  }
+});
+
+// Apply rate limiter to all API routes
+app.use('/api/', apiLimiter);
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Auth Middleware for Android/External Clients
+// Web uses direct Firebase client SDK for protected actions, but if they hit an API, we can verify it.
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any;
+    }
+  }
+}
+
+const requireAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return sendError(res, 'UNAUTHORIZED', 'Missing or invalid Authorization header', 401);
+  }
+
+  const idToken = authHeader.split('Bearer ')[1];
+  try {
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    req.user = decodedToken;
+    next();
+  } catch (error) {
+    console.error('Auth verification failed:', error);
+    return sendError(res, 'UNAUTHORIZED', 'Invalid or expired token', 401);
+  }
+};
+
+const optionalAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const idToken = authHeader.split('Bearer ')[1];
+    try {
+      const decodedToken = await adminAuth.verifyIdToken(idToken);
+      req.user = decodedToken;
+    } catch (error) {
+      // ignore invalid token for optional auth
+    }
+  }
+  next();
+};
 
 // Helper for standardized API responses
 function sendSuccess(res: express.Response, data: any, status = 200) {
@@ -68,10 +142,10 @@ app.get('/api/home', async (req, res) => {
 
 // 3. Search
 
-app.get('/api/search', async (req, res) => {
+app.get('/api/search', optionalAuth, async (req, res) => {
   try {
     const q = (req.query.q as string) || '';
-    const userId = (req.headers['x-user-id'] as string) || (req.headers['x-session-id'] as string) || 'anonymous';
+    const userId = req.user?.uid || (req.headers['x-user-id'] as string) || (req.headers['x-session-id'] as string) || 'anonymous';
     const results = await MusicService.search(q, userId);
     sendSuccess(res, results);
   } catch (err: any) {
@@ -82,10 +156,10 @@ app.get('/api/search', async (req, res) => {
 
 
 // Smart Ranking Analytics Event
-app.post('/api/analytics/event', (req, res) => {
+app.post('/api/analytics/event', optionalAuth, (req, res) => {
   try {
     const { event_type, song_id } = req.body;
-    const userId = (req.headers['x-user-id'] as string) || (req.headers['x-session-id'] as string) || 'anonymous';
+    const userId = req.user?.uid || (req.headers['x-user-id'] as string) || (req.headers['x-session-id'] as string) || 'anonymous';
     
     if (event_type && song_id) {
       smartRankingService.logEvent({
@@ -171,123 +245,6 @@ app.get('/api/playlist/:id', async (req, res) => {
   }
 });
 
-// 8. Create Playlist
-app.post('/api/playlist', (req, res) => {
-  const { title, description, coverImage, id } = req.body;
-  if (!title || typeof title !== 'string') {
-    return sendError(res, 'INVALID_INPUT', 'Playlist title is required', 400);
-  }
-
-  const newPlaylist = {
-    id: id || `user-pl-${Date.now()}`,
-    title: title.trim(),
-    description: description ? String(description).trim() : 'Custom playlist created on Spotiz',
-    coverImage: coverImage || '',
-    userId: userDatabase.id,
-    isPublic: true,
-    tracks: [],
-    createdAt: new Date().toISOString().split('T')[0],
-    updatedAt: new Date().toISOString().split('T')[0],
-    likesCount: 0,
-    color: '#10B981',
-  };
-
-  userDatabase.playlists.unshift(newPlaylist);
-  sendSuccess(res, newPlaylist, 201);
-});
-
-// 9. Update / Rename Playlist
-app.put('/api/playlist/:id', (req, res) => {
-  const { title, description, coverImage } = req.body;
-  const pl = userDatabase.playlists.find((p) => p.id === req.params.id);
-  if (!pl) {
-    return sendError(res, 'PLAYLIST_NOT_FOUND', 'User playlist not found or cannot be modified', 404);
-  }
-
-  if (title) pl.title = String(title).trim();
-  if (description !== undefined) pl.description = String(description).trim();
-  if (coverImage) pl.coverImage = coverImage;
-  pl.updatedAt = new Date().toISOString().split('T')[0];
-
-  sendSuccess(res, pl);
-});
-
-// 10. Delete Playlist
-app.delete('/api/playlist/:id', (req, res) => {
-  const index = userDatabase.playlists.findIndex((p) => p.id === req.params.id);
-  if (index !== -1) {
-    userDatabase.playlists.splice(index, 1);
-  }
-  sendSuccess(res, { deletedId: req.params.id });
-});
-
-// 11. Add track to playlist
-app.post('/api/playlist/:id/tracks', async (req, res) => {
-  const { trackId, track: clientTrack } = req.body;
-  let pl = userDatabase.playlists.find((p) => p.id === req.params.id);
-  if (!pl) {
-    // If playlist was created locally or after server reload, register it on the fly
-    const newPlaylist = {
-      id: req.params.id,
-      title: 'My Playlist',
-      description: 'Custom playlist created on Spotiz',
-      coverImage: '',
-      userId: userDatabase.id,
-      isPublic: true,
-      tracks: [],
-      createdAt: new Date().toISOString().split('T')[0],
-      updatedAt: new Date().toISOString().split('T')[0],
-      likesCount: 0,
-      color: '#10B981',
-    };
-    userDatabase.playlists.unshift(newPlaylist);
-    pl = newPlaylist;
-  }
-
-  let trackToPush = clientTrack;
-  if (!trackToPush && trackId) {
-    trackToPush = await MusicService.getTrack(trackId);
-  }
-  if (!trackToPush) {
-    return sendError(res, 'TRACK_NOT_FOUND', 'Track to add was not found', 404);
-  }
-
-  if (!pl.tracks.some((t: any) => t.id === trackToPush.id)) {
-    pl.tracks.push(trackToPush);
-  }
-  pl.updatedAt = new Date().toISOString().split('T')[0];
-  sendSuccess(res, pl);
-});
-
-// 12. Remove track from playlist
-app.delete('/api/playlist/:id/tracks/:trackId', (req, res) => {
-  const pl = userDatabase.playlists.find((p) => p.id === req.params.id);
-  if (pl) {
-    pl.tracks = pl.tracks.filter((t) => t.id !== req.params.trackId);
-    pl.updatedAt = new Date().toISOString().split('T')[0];
-  }
-  sendSuccess(res, pl || { id: req.params.id, tracks: [] });
-});
-
-// 13. Reorder tracks in playlist
-app.put('/api/playlist/:id/reorder', (req, res) => {
-  const { trackIds } = req.body;
-  const pl = userDatabase.playlists.find((p) => p.id === req.params.id);
-  if (!pl) {
-    return sendError(res, 'PLAYLIST_NOT_FOUND', 'Playlist not found', 404);
-  }
-
-  if (Array.isArray(trackIds)) {
-    const reordered: typeof pl.tracks = [];
-    trackIds.forEach((id) => {
-      const found = pl.tracks.find((t) => t.id === id);
-      if (found) reordered.push(found);
-    });
-    pl.tracks = reordered;
-  }
-  sendSuccess(res, pl);
-});
-
 // 14. Lyrics
 app.get('/api/lyrics/:id', async (req, res) => {
   try {
@@ -328,15 +285,109 @@ app.post('/api/playback/resolve', async (req, res) => {
   }
 });
 
+function isPrivateOrReservedIp(ip: string): boolean {
+  if (ip.includes('.')) {
+    const parts = ip.split('.').map(p => parseInt(p, 10));
+    if (parts.length !== 4 || parts.some(isNaN)) return true;
+    const [b0, b1] = parts;
+    if (b0 === 0) return true; // 0.0.0.0/8
+    if (b0 === 10) return true; // 10.0.0.0/8
+    if (b0 === 127) return true; // 127.0.0.0/8 loopback
+    if (b0 === 169 && b1 === 254) return true; // 169.254.0.0/16 link-local / cloud metadata
+    if (b0 === 172 && b1 >= 16 && b1 <= 31) return true; // 172.16.0.0/12
+    if (b0 === 192 && b1 === 168) return true; // 192.168.0.0/16
+    if (b0 >= 224) return true; // Multicast & reserved
+  } else if (ip.includes(':')) {
+    const normalized = ip.toLowerCase();
+    if (normalized === '::1' || normalized === '::') return true;
+    if (normalized.startsWith('fe80:') || normalized.startsWith('fc') || normalized.startsWith('fd')) return true;
+    if (normalized.startsWith('::ffff:')) {
+      const ipv4Part = normalized.replace('::ffff:', '');
+      return isPrivateOrReservedIp(ipv4Part);
+    }
+  }
+  return false;
+}
+
+const isSafeStreamUrl = async (urlString: string): Promise<boolean> => {
+  try {
+    const url = new URL(urlString);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+    // Reject embedded credentials
+    if (url.username || url.password) return false;
+    // Disallow non-standard ports (strictly standard web audio ports only)
+    if (url.port && url.port !== '80' && url.port !== '443') return false;
+
+    const host = url.hostname.toLowerCase().replace(/\.+$/, '');
+    
+    // Explicit whitelist of allowed domains for upstream audio proxies
+    const allowedDomains = [
+      'saavncdn.com',
+      'jiosaavn.com',
+      'audius.co',
+      'googlevideo.com',
+      'youtube.com',
+      'deezer.com',
+      'dzcdn.net',
+      'spotify.com',
+      'spotifycdn.com',
+      'sndcdn.com',
+      'mzstatic.com',
+      'itunes.apple.com'
+    ];
+    
+    const domainMatches = allowedDomains.some(domain => host === domain || host.endsWith('.' + domain));
+    if (!domainMatches) return false;
+
+    // Validate IP resolution against private / loopback / link-local / cloud metadata ranges
+    try {
+      const lookup = await dns.lookup(host);
+      if (lookup && lookup.address && isPrivateOrReservedIp(lookup.address)) {
+        return false;
+      }
+    } catch {
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+async function safeStreamFetch(url: string, options: any, maxRedirects = 5): Promise<any> {
+  let currentUrl = url;
+  for (let i = 0; i < maxRedirects; i++) {
+    const isSafe = await isSafeStreamUrl(currentUrl);
+    if (!isSafe) {
+      throw new Error(`SSRF Prevention: Blocked access or redirect to unsafe domain/IP: ${currentUrl}`);
+    }
+    const res = await fetch(currentUrl, { ...options, redirect: 'manual' });
+    if (res.status >= 300 && res.status < 400 && res.headers.has('location')) {
+      let location = res.headers.get('location')!;
+      if (!location.startsWith('http')) {
+        location = new URL(location, currentUrl).toString();
+      }
+      currentUrl = location;
+      continue;
+    }
+    return res;
+  }
+  throw new Error('Too many redirects');
+}
+
 // 15b. Audio Download Proxy (Fetches full audio buffer for reliable offline caching)
 app.get('/api/audio-download', async (req, res) => {
   const audioUrl = req.query.url as string;
   if (!audioUrl) {
     return sendError(res, 'INVALID_INPUT', 'Audio url is required', 400);
   }
+  if (!(await isSafeStreamUrl(audioUrl))) {
+    return sendError(res, 'INVALID_INPUT', 'Unsupported audio URL domain', 403);
+  }
 
   try {
-    const audioRes = await fetch(audioUrl, {
+    const audioRes = await safeStreamFetch(audioUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': '*/*',
@@ -373,6 +424,9 @@ app.get('/api/playback/stream', async (req, res) => {
   if (!streamUrl) {
     return sendError(res, 'INVALID_INPUT', 'url is required', 400);
   }
+  if (!(await isSafeStreamUrl(streamUrl))) {
+    return sendError(res, 'INVALID_INPUT', 'Unsupported stream URL domain', 403);
+  }
 
   try {
     const rangeHeader = req.headers.range;
@@ -386,7 +440,7 @@ app.get('/api/playback/stream', async (req, res) => {
       fetchHeaders['Range'] = rangeHeader;
     }
 
-    let upstreamRes = await fetch(streamUrl, {
+    let upstreamRes = await safeStreamFetch(streamUrl, {
       headers: fetchHeaders,
       signal: AbortSignal.timeout(8000),
     });
@@ -407,7 +461,7 @@ app.get('/api/playback/stream', async (req, res) => {
       for (const fallback of fallbacks) {
         if (fallback === streamUrl) continue;
         try {
-          const fallbackRes = await fetch(fallback, {
+          const fallbackRes = await safeStreamFetch(fallback, {
             headers: fetchHeaders,
             signal: AbortSignal.timeout(6000),
           });
@@ -481,122 +535,25 @@ app.get('/api/recommendations', async (req, res) => {
   }
 });
 
-// 17. User Profile & Library Data
-app.get('/api/profile', (req, res) => {
-  sendSuccess(res, userDatabase);
-});
+// 16b. Radio Station
+app.get('/api/radio', async (req, res) => {
+  const seedType = req.query.seedType as 'artist' | 'song' | 'album';
+  const seedId = req.query.seedId as string;
+  const seedTitle = req.query.seedTitle as string;
 
-// 18. Update Profile / Settings
-app.put('/api/profile', (req, res) => {
-  const { name, username, avatar, settings, playlists, likedTrackIds } = req.body;
-  if (name) userDatabase.name = name;
-  if (username) userDatabase.username = username;
-  if (avatar) userDatabase.avatar = avatar;
-  if (settings) {
-    userDatabase.settings = {
-      ...userDatabase.settings,
-      ...settings,
-    };
-  }
-  if (playlists && Array.isArray(playlists)) {
-    userDatabase.playlists = playlists;
-  }
-  if (likedTrackIds && Array.isArray(likedTrackIds)) {
-    userDatabase.likedTrackIds = likedTrackIds;
-  }
-  sendSuccess(res, userDatabase);
-});
-
-// 19. Like / Unlike track toggle
-app.post('/api/like-track', (req, res) => {
-  const { trackId } = req.body;
-  if (!trackId) return sendError(res, 'INVALID_INPUT', 'trackId required', 400);
-
-  const idx = userDatabase.likedTrackIds.indexOf(trackId);
-  let isLiked = false;
-  if (idx > -1) {
-    userDatabase.likedTrackIds.splice(idx, 1);
-    isLiked = false;
-  } else {
-    userDatabase.likedTrackIds.push(trackId);
-    isLiked = true;
+  if (!seedType || !seedId) {
+    return sendError(res, 'INVALID_INPUT', 'seedType and seedId required', 400);
   }
 
-  sendSuccess(res, { trackId, isLiked, likedTrackIds: userDatabase.likedTrackIds });
-});
-
-// 19b. Get all liked tracks
-app.get('/api/liked-tracks', async (req, res) => {
   try {
-    const tracks = await Promise.all(
-      userDatabase.likedTrackIds.map(id => MusicService.getTrack(id))
-    );
-    sendSuccess(res, tracks.filter(Boolean));
+    const radioTracks = await RadioRecommendationService.generateRadio(seedType, seedId, seedTitle);
+    sendSuccess(res, radioTracks);
   } catch (err) {
-    sendError(res, 'SERVER_ERROR', 'Failed to fetch liked tracks', 500);
+    console.error('[Radio API] Error generating radio:', err);
+    sendError(res, 'RADIO_FAILED', 'Failed to generate radio station', 500);
   }
 });
 
-// 20. Follow / Unfollow artist
-app.post('/api/follow-artist', (req, res) => {
-  const { artistId } = req.body;
-  if (!artistId) return sendError(res, 'INVALID_INPUT', 'artistId required', 400);
-
-  const idx = userDatabase.followedArtistIds.indexOf(artistId);
-  let isFollowed = false;
-  if (idx > -1) {
-    userDatabase.followedArtistIds.splice(idx, 1);
-    isFollowed = false;
-  } else {
-    userDatabase.followedArtistIds.push(artistId);
-    isFollowed = true;
-  }
-  userDatabase.followingCount = userDatabase.followedArtistIds.length;
-  if (userDatabase.stats) {
-    userDatabase.stats.followingCount = userDatabase.followedArtistIds.length;
-  }
-
-  sendSuccess(res, {
-    artistId,
-    isFollowed,
-    followedArtistIds: userDatabase.followedArtistIds,
-    followingCount: userDatabase.followingCount,
-  });
-});
-
-// 21. Download / Remove download toggle
-app.post('/api/download-track', (req, res) => {
-  const { trackId } = req.body;
-  if (!trackId) return sendError(res, 'INVALID_INPUT', 'trackId required', 400);
-
-  const idx = userDatabase.downloadedTrackIds.indexOf(trackId);
-  let isDownloaded = false;
-  if (idx > -1) {
-    userDatabase.downloadedTrackIds.splice(idx, 1);
-    isDownloaded = false;
-  } else {
-    userDatabase.downloadedTrackIds.push(trackId);
-    isDownloaded = true;
-  }
-
-  sendSuccess(res, { trackId, isDownloaded, downloadedTrackIds: userDatabase.downloadedTrackIds });
-});
-
-// 22. Record History
-app.post('/api/history', async (req, res) => {
-  const { trackId } = req.body;
-  const track = await MusicService.getTrack(trackId);
-  if (track) {
-    userDatabase.recentHistory.unshift({
-      track,
-      playedAt: new Date().toISOString(),
-    });
-    if (userDatabase.recentHistory.length > 30) {
-      userDatabase.recentHistory.pop();
-    }
-  }
-  sendSuccess(res, { ok: true });
-});
 
 // 23. Spotiz Thumbnail Extraction (SpotifyScraper Thumbnail Source)
 app.get('/api/spotify/thumbnail', async (req, res) => {
@@ -615,67 +572,102 @@ app.get('/api/spotify/thumbnail', async (req, res) => {
   }
 });
 
+// 23b. Image Proxy to bypass ISP restrictions / CORS for artist images & CDNs
+app.get('/api/image-proxy', async (req, res) => {
+  const imageUrl = (req.query.url as string) || '';
+  if (!imageUrl || !imageUrl.startsWith('http')) {
+    return res.status(400).send('Invalid url');
+  }
+
+  try {
+    const upstreamRes = await fetch(imageUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      },
+    });
+
+    if (!upstreamRes.ok) {
+      return res.status(upstreamRes.status).send('Upstream image error');
+    }
+
+    const contentType = upstreamRes.headers.get('content-type') || 'image/jpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    const buffer = await upstreamRes.arrayBuffer();
+    return res.send(Buffer.from(buffer));
+  } catch (err) {
+    return res.status(500).send('Proxy error');
+  }
+});
+
+// Follow / Unfollow Artist endpoint
+app.post('/api/follow-artist', (req, res) => {
+  const artistId = req.body?.artistId;
+  sendSuccess(res, { success: true, artistId });
+});
+
+// Download track state endpoint
+app.post('/api/download-track', (req, res) => {
+  const trackId = req.body?.trackId;
+  sendSuccess(res, { success: true, trackId });
+});
+
 // Cache for live resolved artist images
 const artistLiveImageCache = new Map<string, string>();
+const MAX_ARTIST_CACHE = 5000;
 
 // 23b. Direct High-Resolution Artist Image Resolver (Deezer + Wikipedia + Spotify fallback)
 app.get('/api/artist-image', async (req, res) => {
   const name = (req.query.name || req.query.q || req.query.artist) as string;
+  const id = (req.query.id || req.query.spotifyId) as string;
+  
   if (!name || typeof name !== 'string') {
     return res.status(400).json({ error: 'Name parameter required' });
   }
 
   const cleanName = name.trim().replace(/^artist-/i, '');
-  const cacheKey = cleanName.toLowerCase();
+  // If an ID is provided, use it for the cache key, otherwise fallback to the cleaned name
+  const cacheKey = (id || cleanName).toLowerCase();
 
   if (artistLiveImageCache.has(cacheKey)) {
     return res.json({ ok: true, imageUrl: artistLiveImageCache.get(cacheKey) });
   }
 
-  // 1. Try Deezer Search
-  try {
-    const deezerRes = await fetch(`https://api.deezer.com/search/artist?q=${encodeURIComponent(cleanName)}&limit=1`);
-    if (deezerRes.ok) {
-      const d: any = await deezerRes.json();
-      if (d?.data?.[0]) {
-        const art = d.data[0];
-        const pic = art.picture_xl || art.picture_big || art.picture_medium || art.picture;
-        // Ignore Deezer blank image placeholder MD5 hash
-        if (pic && !pic.includes('d41d8cd98f00b204e9800998ecf8427e') && pic.startsWith('http')) {
-          artistLiveImageCache.set(cacheKey, pic);
+  const addToCache = (key: string, val: string) => {
+    if (artistLiveImageCache.size >= MAX_ARTIST_CACHE) {
+      const first = artistLiveImageCache.keys().next().value;
+      if (first) artistLiveImageCache.delete(first);
+    }
+    artistLiveImageCache.set(key, val);
+  };
+
+  // 0. Exact ID Resolution (if Spotify ID is provided)
+  const targetId = id || (cleanName.startsWith('spotify-artist-') ? cleanName : '');
+  if (targetId && targetId.startsWith('spotify-artist-')) {
+    try {
+      const artistData = await MusicService.getArtist(targetId);
+      if (artistData && (artistData as any).image) {
+        const pic = (artistData as any).image;
+        if (pic && typeof pic === 'string') {
+          addToCache(cacheKey, pic);
           return res.json({ ok: true, imageUrl: pic });
         }
       }
+    } catch (err) {
+      console.warn('[ArtistImage] Spotify ID resolution failed, falling back to name search:', err);
     }
-  } catch (err) {
-    // continue to fallback
   }
 
-  // 2. Try Wikipedia PageImages API
+  // 1. Use the strict SpotifyScraper Thumbnail Extractor
+  // This extractor checks Saavn, iTunes, and Deezer with strict name matching
+  // to avoid fuzzy logic returning the wrong artist (e.g. returning 'Makar' for 'Mazaq').
   try {
-    const wikiRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(cleanName)}&prop=pageimages&format=json&pithumbsize=600`);
-    if (wikiRes.ok) {
-      const wikiData: any = await wikiRes.json();
-      const pages = wikiData?.query?.pages;
-      if (pages) {
-        for (const pageId in pages) {
-          const thumb = pages[pageId]?.thumbnail?.source;
-          if (thumb && thumb.startsWith('http')) {
-            artistLiveImageCache.set(cacheKey, thumb);
-            return res.json({ ok: true, imageUrl: thumb });
-          }
-        }
-      }
-    }
-  } catch (err) {
-    // continue to fallback
-  }
-
-  // 3. Try Spotify Scraper Thumbnail
-  try {
-    const thumb = await extractSpotifyThumbnail(cleanName, cleanName, 'artist');
+    const thumb = await extractSpotifyThumbnail(targetId || cacheKey, cleanName, 'artist');
     if (thumb && thumb.startsWith('http')) {
-      artistLiveImageCache.set(cacheKey, thumb);
+      addToCache(cacheKey, thumb);
       return res.json({ ok: true, imageUrl: thumb });
     }
   } catch (err) {
@@ -768,20 +760,146 @@ app.get('/api/stream/youtube/:id', async (req, res) => {
 });
 
 
+// ================= SHARE ROUTES =================
+app.post('/api/share', async (req, res) => {
+  const { type, songId, title, artist, artwork, album, duration, lyrics, customImageBase64 } = req.body;
+  if (!type || !songId || !title || !artist) {
+    return sendError(res, 'INVALID_INPUT', 'Missing required share fields', 400);
+  }
+  
+  try {
+    const record = ShareService.createShare({
+      type, songId, title, artist, artwork, album, duration, lyrics, customImageBase64
+    });
+    sendSuccess(res, record);
+  } catch (err) {
+    sendError(res, 'SHARE_FAILED', 'Failed to generate share link', 500);
+  }
+});
+
+app.get('/api/share/:id', (req, res) => {
+  const record = ShareService.getShare(req.params.id);
+  if (!record) {
+    return sendError(res, 'NOT_FOUND', 'Share link not found', 404);
+  }
+  sendSuccess(res, record);
+});
+
+app.get('/api/share/:id/image.png', (req, res) => {
+  const record = ShareService.getShare(req.params.id);
+  if (!record || !record.customImageBase64) {
+    return res.status(404).send('Image not found');
+  }
+  
+  const base64Data = record.customImageBase64.replace(/^data:image\/png;base64,/, "");
+  const img = Buffer.from(base64Data, 'base64');
+  
+  res.writeHead(200, {
+    'Content-Type': 'image/png',
+    'Content-Length': img.length,
+    'Cache-Control': 'public, max-age=86400'
+  });
+  res.end(img);
+});
+
 // ================= VITE INTEGRATION =================
 
 
 
+function escapeHtml(str: string): string {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
+function sanitizeMediaUrl(urlStr: string): string {
+  if (!urlStr || typeof urlStr !== 'string') return '/pwa-512x512.png';
+  if (urlStr.startsWith('/') && !urlStr.startsWith('//')) {
+    return escapeHtml(urlStr);
+  }
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      return escapeHtml(parsed.href);
+    }
+  } catch {
+    // invalid url
+  }
+  return '/pwa-512x512.png';
+}
+
+const currentFilePath = typeof __filename !== 'undefined' ? __filename : (import.meta?.url ? fileURLToPath(import.meta.url) : '');
+const isProduction = process.env.NODE_ENV === 'production' || currentFilePath.endsWith('.cjs') || currentFilePath.includes('dist');
+
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
+  let vite: any;
+  if (!isProduction) {
+    try {
+      const { createServer } = await import('vite');
+      vite = await createServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      });
+    } catch (err) {
+      console.warn('Vite dev server failed to initialize, falling back to static build:', err);
+    }
+  }
+
+  app.get('/share/:type/:id', async (req, res, next) => {
+    try {
+      const shareId = req.params.id;
+      const record = ShareService.getShare(shareId);
+      
+      let html = '';
+      if (!isProduction && vite) {
+         html = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf-8');
+         html = await vite.transformIndexHtml(req.originalUrl, html);
+      } else {
+         html = fs.readFileSync(path.join(process.cwd(), 'dist', 'index.html'), 'utf-8');
+      }
+
+      if (record) {
+         const isLyrics = record.type === 'lyrics';
+         const title = isLyrics ? `${record.title} — Lyrics` : `${record.title} — ${record.artist}`;
+         const description = isLyrics && record.lyrics
+           ? `"${record.lyrics.split('\n')[0]}" — Listen on Spotiz`
+           : `Listen to "${record.title}" by ${record.artist} on Spotiz`;
+         const host = escapeHtml(req.get('host') || 'localhost');
+         const path = escapeHtml(req.originalUrl || '');
+         const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+         const customImageUrl = record.customImageBase64 ? `${protocol}://${host}/api/share/${record.shareId}/image.png` : sanitizeMediaUrl(record.artwork);
+         const artworkUrl = customImageUrl;
+         const safeTitle = escapeHtml(title);
+         const safeDescription = escapeHtml(description);
+         
+         const ogTags = `
+           <meta property="og:title" content="${safeTitle}" />
+           <meta property="og:description" content="${safeDescription}" />
+           <meta property="og:image" content="${artworkUrl}" />
+           <meta property="og:type" content="music.song" />
+           <meta property="og:url" content="${protocol}://${host}${path}" />
+           <meta name="twitter:card" content="summary_large_image" />
+         `;
+         // Remove existing OG tags before inserting dynamic ones
+         html = html.replace(/<meta property="og:[^>]+>/g, '');
+         html = html.replace(/<meta name="twitter:[^>]+>/g, '');
+         html = html.replace('</head>', `${ogTags}</head>`);
+      }
+
+      res.status(200).set({ 'Content-Type': 'text/html' }).end(html);
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  if (!isProduction && vite) {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath, { setHeaders: (res, path) => { if (path.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate'); } }));
+    app.use(express.static(distPath, { setHeaders: (res, filePath) => { if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate'); } }));
     app.get('*', (req, res) => {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(path.join(distPath, 'index.html'));

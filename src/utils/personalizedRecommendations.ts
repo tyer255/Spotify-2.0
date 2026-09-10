@@ -43,6 +43,75 @@ export function normalizeArtistKey(nameOrId: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+export const defaultRecommendedStations: StationData[] = [
+  {
+    id: 'station-arijit-singh',
+    title: 'Arijit Singh Radio',
+    supportingText: 'With Atif Aslam, Pritam, Shreya Ghoshal and more',
+    themeColor: '#10B981',
+    artists: [
+      { name: 'Arijit Singh', image: 'https://image-cdn-fa.spotifycdn.com/image/ab67616100005174adfb0b2df04b77e43b5f7375' },
+      { name: 'Atif Aslam', image: 'https://cdn-images.dzcdn.net/images/artist/0ea90444148fff9c11d77f06a344724e/1000x1000-000000-80-0-0.jpg' },
+      { name: 'Shreya Ghoshal', image: 'https://cdn-images.dzcdn.net/images/artist/3bb832d37d10ff2affcfa9afdc7c68a0/1000x1000-000000-80-0-0.jpg' },
+    ],
+  },
+  {
+    id: 'station-kishore-kumar',
+    title: 'Kishore Kumar Radio',
+    supportingText: 'With Lata Mangeshkar, Mohammed Rafi, R.D. Burman and more',
+    themeColor: '#3B82F6',
+    artists: [
+      { name: 'Kishore Kumar', image: 'https://cdn-images.dzcdn.net/images/artist/5972263348ad902e29a4749e748ff452/1000x1000-000000-80-0-0.jpg' },
+      { name: 'Lata Mangeshkar', image: 'https://upload.wikimedia.org/wikipedia/commons/2/2f/LataMangeshkar10.jpg' },
+      { name: 'Mohammed Rafi', image: 'https://cdn-images.dzcdn.net/images/artist/9e79b89a9b2073fae0cc2f6bce278abe/1000x1000-000000-80-0-0.jpg' },
+    ],
+  },
+  {
+    id: 'station-the-weeknd',
+    title: 'The Weeknd Radio',
+    supportingText: 'With Post Malone, Bruno Mars, Drake and more',
+    themeColor: '#EF4444',
+    artists: [
+      { name: 'The Weeknd', image: 'https://image-cdn-fa.spotifycdn.com/image/ab67616100005174c1719ac9e6a75c1c25835018' },
+      { name: 'Post Malone', image: 'https://cdn-images.dzcdn.net/images/artist/a5a8cca44e7eab2db7d44e039bed2574/1000x1000-000000-80-0-0.jpg' },
+      { name: 'Bruno Mars', image: 'https://cdn-images.dzcdn.net/images/artist/c17b6a4a821e25e985b98df969438053/1000x1000-000000-80-0-0.jpg' },
+    ],
+  },
+  {
+    id: 'station-taylor-swift',
+    title: 'Taylor Swift Radio',
+    supportingText: 'With Olivia Rodrigo, Billie Eilish, Selena Gomez and more',
+    themeColor: '#EC4899',
+    artists: [
+      { name: 'Taylor Swift', image: 'https://image-cdn-ak.spotifycdn.com/image/ab67616100005174e2e8e7ff002a4afda1c7147e' },
+      { name: 'Olivia Rodrigo', image: 'https://image-cdn-ak.spotifycdn.com/image/ab67616100005174b14eb4dcfd2f3858bed06e44' },
+      { name: 'Billie Eilish', image: 'https://cdn-images.dzcdn.net/images/artist/e71b26859dd2aaae73eb492f254e0c40/1000x1000-000000-80-0-0.jpg' },
+    ],
+  },
+  {
+    id: 'station-diljit-dosanjh',
+    title: 'Diljit Dosanjh Radio',
+    supportingText: 'With Karan Aujla, AP Dhillon, Sidhu Moose Wala and more',
+    themeColor: '#F59E0B',
+    artists: [
+      { name: 'Diljit Dosanjh', image: 'https://cdn-images.dzcdn.net/images/artist/79b85e695e0ca6529e56bf3b628e92bd/1000x1000-000000-80-0-0.jpg' },
+      { name: 'Karan Aujla', image: 'https://cdn-images.dzcdn.net/images/artist/a91a1d5ea91e85e4f0966569b50e8d6a/1000x1000-000000-80-0-0.jpg' },
+      { name: 'AP Dhillon', image: 'https://cdn-images.dzcdn.net/images/artist/b6f5cfd71e21b2d713c723f66c0e5a95/1000x1000-000000-80-0-0.jpg' },
+    ],
+  },
+  {
+    id: 'station-honey-singh',
+    title: 'Yo Yo Honey Singh Radio',
+    supportingText: 'With Badshah, Guru Randhawa, Raftaar and more',
+    themeColor: '#8B5CF6',
+    artists: [
+      { name: 'Yo Yo Honey Singh', image: 'https://cdn-images.dzcdn.net/images/artist/7859b461c10352f02a11368905f0903f/1000x1000-000000-80-0-0.jpg' },
+      { name: 'Badshah', image: 'https://upload.wikimedia.org/wikipedia/commons/c/cb/Badshah_snapped_promoting_their_song_%28cropped%29.jpg' },
+      { name: 'Guru Randhawa', image: 'https://cdn-images.dzcdn.net/images/artist/812a64c48970420f1ce899557602be3b/1000x1000-000000-80-0-0.jpg' },
+    ],
+  },
+];
+
 export function generatePersonalizedFeed(
   profile: UserProfile | null,
   followedArtistsList: Artist[],
@@ -432,78 +501,7 @@ export function generatePersonalizedFeed(
   }
 
 
-  // Authentic Spotiz Radio & Recommended Stations
-  const defaultRecommendedStations: StationData[] = [
-    {
-      id: 'station-arijit-singh',
-      title: 'Arijit Singh Radio',
-      supportingText: 'With Atif Aslam, Pritam, Shreya Ghoshal and more',
-      themeColor: '#10B981',
-      artists: [
-        { name: 'Arijit Singh', image: 'https://image-cdn-fa.spotifycdn.com/image/ab67616100005174adfb0b2df04b77e43b5f7375' },
-        { name: 'Atif Aslam', image: 'https://cdn-images.dzcdn.net/images/artist/0ea90444148fff9c11d77f06a344724e/1000x1000-000000-80-0-0.jpg' },
-        { name: 'Shreya Ghoshal', image: 'https://cdn-images.dzcdn.net/images/artist/3bb832d37d10ff2affcfa9afdc7c68a0/1000x1000-000000-80-0-0.jpg' },
-      ],
-    },
-    {
-      id: 'station-kishore-kumar',
-      title: 'Kishore Kumar Radio',
-      supportingText: 'With Lata Mangeshkar, Mohammed Rafi, R.D. Burman and more',
-      themeColor: '#3B82F6',
-      artists: [
-        { name: 'Kishore Kumar', image: 'https://cdn-images.dzcdn.net/images/artist/5972263348ad902e29a4749e748ff452/1000x1000-000000-80-0-0.jpg' },
-        { name: 'Lata Mangeshkar', image: 'https://upload.wikimedia.org/wikipedia/commons/2/2f/LataMangeshkar10.jpg' },
-        { name: 'Mohammed Rafi', image: 'https://cdn-images.dzcdn.net/images/artist/9e79b89a9b2073fae0cc2f6bce278abe/1000x1000-000000-80-0-0.jpg' },
-      ],
-    },
-    {
-      id: 'station-the-weeknd',
-      title: 'The Weeknd Radio',
-      supportingText: 'With Post Malone, Bruno Mars, Drake and more',
-      themeColor: '#EF4444',
-      artists: [
-        { name: 'The Weeknd', image: 'https://image-cdn-fa.spotifycdn.com/image/ab67616100005174c1719ac9e6a75c1c25835018' },
-        { name: 'Post Malone', image: 'https://cdn-images.dzcdn.net/images/artist/a5a8cca44e7eab2db7d44e039bed2574/1000x1000-000000-80-0-0.jpg' },
-        { name: 'Bruno Mars', image: 'https://cdn-images.dzcdn.net/images/artist/c17b6a4a821e25e985b98df969438053/1000x1000-000000-80-0-0.jpg' },
-      ],
-    },
-    {
-      id: 'station-taylor-swift',
-      title: 'Taylor Swift Radio',
-      supportingText: 'With Olivia Rodrigo, Billie Eilish, Selena Gomez and more',
-      themeColor: '#EC4899',
-      artists: [
-        { name: 'Taylor Swift', image: 'https://image-cdn-ak.spotifycdn.com/image/ab67616100005174e2e8e7ff002a4afda1c7147e' },
-        { name: 'Olivia Rodrigo', image: 'https://image-cdn-ak.spotifycdn.com/image/ab67616100005174b14eb4dcfd2f3858bed06e44' },
-        { name: 'Billie Eilish', image: 'https://cdn-images.dzcdn.net/images/artist/e71b26859dd2aaae73eb492f254e0c40/1000x1000-000000-80-0-0.jpg' },
-      ],
-    },
-    {
-      id: 'station-diljit-dosanjh',
-      title: 'Diljit Dosanjh Radio',
-      supportingText: 'With Karan Aujla, AP Dhillon, Sidhu Moose Wala and more',
-      themeColor: '#F59E0B',
-      artists: [
-        { name: 'Diljit Dosanjh', image: 'https://cdn-images.dzcdn.net/images/artist/79b85e695e0ca6529e56bf3b628e92bd/1000x1000-000000-80-0-0.jpg' },
-        { name: 'Karan Aujla', image: 'https://cdn-images.dzcdn.net/images/artist/a91a1d5ea91e85e4f0966569b50e8d6a/1000x1000-000000-80-0-0.jpg' },
-        { name: 'AP Dhillon', image: 'https://cdn-images.dzcdn.net/images/artist/b6f5cfd71e21b2d713c723f66c0e5a95/1000x1000-000000-80-0-0.jpg' },
-      ],
-    },
-    {
-      id: 'station-honey-singh',
-      title: 'Yo Yo Honey Singh Radio',
-      supportingText: 'With Badshah, Guru Randhawa, Raftaar and more',
-      themeColor: '#8B5CF6',
-      artists: [
-        { name: 'Yo Yo Honey Singh', image: 'https://cdn-images.dzcdn.net/images/artist/7859b461c10352f02a11368905f0903f/1000x1000-000000-80-0-0.jpg' },
-        { name: 'Badshah', image: 'https://upload.wikimedia.org/wikipedia/commons/c/cb/Badshah_snapped_promoting_their_song_%28cropped%29.jpg' },
-        { name: 'Guru Randhawa', image: 'https://cdn-images.dzcdn.net/images/artist/812a64c48970420f1ce899557602be3b/1000x1000-000000-80-0-0.jpg' },
-      ],
-    },
-  ];
-
   const dynamicStations: StationData[] = [...defaultRecommendedStations];
-
   const favouriteArtists: Artist[] = [];
   const favArtSeen = new Set<string>();
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { ViewState } from '../../types';
 import { useTheme } from '../../context/ThemeContext';
 import { useUser } from '../../context/UserContext';
@@ -43,6 +44,11 @@ export const TopBar: React.FC<TopBarProps> = ({
   const isSearch = currentView.type === 'search';
   const isLibrary = currentView.type === 'library';
 
+  // Completely remove top header from Home page (as requested) and Settings view
+  if (isHome || currentView.type === 'settings') {
+    return null;
+  }
+
   return (
     <header className={`sticky top-0 z-30 items-center justify-between px-3 sm:px-6 md:px-8 py-3 liquid-glass-topbar select-none ${
       isHome || isSearch || isLibrary || currentView.type === 'playlist' || currentView.type === 'album' || currentView.type === 'artist' || currentView.type === 'blend-setup' || currentView.type === 'blend-invite' ? 'hidden md:flex' : 'flex'
@@ -77,6 +83,10 @@ export const TopBar: React.FC<TopBarProps> = ({
         </div>
 
         {/* Search bar is ONLY inside the Search tab (Never shown on Home, Library, Premium, Create) */}
+      </div>
+
+      {/* Center Signature */}
+      <div className="hidden sm:flex items-center justify-center flex-1 px-4">
       </div>
 
       {/* Right: PWA Install Button, Theme Toggle, Settings & Profile Avatar */}

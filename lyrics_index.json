@@ -48,7 +48,7 @@
       "explicit": false,
       "releaseYear": 2026,
       "genre": "Haryanvi",
-      "plays": 1749467,
+      "plays": 1906048,
       "color": "#1DB954"
     }
   },
@@ -141,8 +141,8 @@
         "large": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/02/e7/77/02e77709-a5f6-5470-9e5b-70a0d6ff45ed/25UM1IM13936.rgb.jpg/600x600bb.jpg"
       },
       "provider": "open-authorized-music",
-      "playbackAvailability": true,
-      "streamUrl": "https://aac.saavncdn.com/504/a70f9144a360aa064fadffa886e7c8b6_320.mp4",
+      "playbackAvailability": false,
+      "streamUrl": "",
       "mimeType": "audio/mp4",
       "explicit": false,
       "releaseYear": 2025,
@@ -463,14 +463,8 @@
       "mimeType": "audio/mp4",
       "explicit": false,
       "releaseYear": 2024,
-      "releaseDate": "2024-01-01",
-      "release_date": "2024-01-01",
-      "createdAt": "2024-01-01",
-      "created_at": "2024-01-01",
       "genre": "Hindi",
-      "plays": 53747623,
-      "play_count": 53747623,
-      "views": 53747623,
+      "plays": 53761750,
       "color": "#1DB954"
     }
   },
@@ -498,14 +492,672 @@
       "mimeType": "audio/mp4",
       "explicit": true,
       "releaseYear": 2024,
+      "genre": "Hindi",
+      "plays": 9947982,
+      "color": "#1DB954"
+    }
+  },
+  {
+    "trackId": "saavn-W-d2FbBr",
+    "title": "Alag Aasmaan",
+    "artist": "Anuv Jain, AP Dhillon, Satinderpal Singh",
+    "plainLyrics": "नयी नहीं हैं ये बातें वही\nफिर इस मोड़ पर हम मिले हैं\nना जाने अब मिलेंगे हम कभी\nतो रुक जाओ एक पल यहाँ पे\n\nये नर्म चादरों की सिल्वटें\nतुझे अभी बुला रही हैं\nना जाओ दूर इनसे ये कहें\nये सुकून कहाँ पे हैं हासिल?\n\nदिल को मेरे ये है पता\nके मीलों का ये फ़ासला है\nअलग आसमां भी है तो क्या?\nये दिल ना माने\n\nये गाड़ियों की ऐसी दौड़ सा\nतेरा भी दिल दौड़ता है\nहाँ जा रहे हो दूर तुम तो क्या?\nमैं ही तो दिल का मुसाफ़िर\n\nतो एक बार फिर तू हँस के ज़रा\nदेख ले मेरी इन आँखों में\nमैं क़ैद कर लूँ हर वो पल तेरा\nतेरी ये बातें जो हैं\nतो और क्या है ये बातें बता?\nक्यूँ अब दिल भी ढलता नहीं ये ना हो तो?\n\nतुम उड़े जा रहे\nये आसमां में खिड़कियों से देख तू पहाड़ों को यूँ छोटे से लगे\nहै कितने बड़े जो हो सामने!\n\nदूर जो हैं खड़े\nउन्हें भी ये हमारी ज़िंदगी\nयूँ तितलियों सी छोटी-छोटी सी लगे\nहै कितनी बड़ी नहीं जानते\n\nखाली घर तेरा\nये चाबियों की गूँज ऐसे\nतुझे डरा रही, तू डरना नहीं\nमैं हूँ यहीं पर\n\nअब अलग आसमान है\nऔर है ज़मीं भी कुछ अलग सी\nपर मिलोगे जब कभी, तो देखना तभी\nमैं कुछ अलग नहीं",
+    "trackData": {
+      "id": "saavn-W-d2FbBr",
+      "title": "Alag Aasmaan",
+      "artist": "Anuv Jain, AP Dhillon, Satinderpal Singh",
+      "artistId": "saavn-artist-4878402",
+      "album": "Alag Aasmaan",
+      "albumId": "album-21494967",
+      "duration": 213,
+      "images": {
+        "small": "https://c.saavncdn.com/879/Alag-Aasmaan-Unknown-2020-20200716212927-500x500.jpg",
+        "medium": "https://c.saavncdn.com/879/Alag-Aasmaan-Unknown-2020-20200716212927-500x500.jpg",
+        "large": "https://c.saavncdn.com/879/Alag-Aasmaan-Unknown-2020-20200716212927-500x500.jpg"
+      },
+      "provider": "open-authorized-music",
+      "playbackAvailability": true,
+      "streamUrl": "https://aac.saavncdn.com/879/72ded7665bbd5f8947f014de81e5fc1d_320.mp4",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "releaseYear": 2020,
+      "releaseDate": "2020-01-01",
+      "release_date": "2020-01-01",
+      "createdAt": "2020-01-01",
+      "created_at": "2020-01-01",
+      "genre": "Hindi",
+      "plays": 11018813,
+      "play_count": 11018813,
+      "views": 11018813,
+      "color": "#1DB954"
+    }
+  },
+  {
+    "trackId": "saavn-4GGV39K7",
+    "title": "Baarishein",
+    "artist": "Anuv Jain, AP Dhillon, Satinderpal Singh",
+    "plainLyrics": "हौले से, धीमे से\nमुझको बाँहों में भर लो ना तुम\nनर्म सी साँसों में\nमुझको आहों में भर लो ना तुम\n\nसुन ज़रा मेरे पास आ\nअब बैठे हैं हम भी यहाँ\nदिल के दरमियाँ\n\nबारिशें हैं, बारिशें हैं\nतेरी ही बातों पे मैंने सजा ली है दुनिया यहाँ\nदिल के दरमियाँ\nबारिशें हैं, बारिशें\n\nअब तू आती है, बुलाती है, बिस्तर से यूँ गिराती है\nकि सोऊँ मैं बाँहों में बस तेरी, हाँ\nजब बारिशें बरसती हैं, पागल जैसे थिरकती है\nतुम जैसी हो, बस वैसी ही रहो\n\nअब तेरे बिना यहाँ मेरी साँसें जैसे बिना निंदिया की रातें हैं तो\nऔर तू ही मेरे दिल की रज़ा है, तेरे बिना दिल भी ख़फ़ा है तो\n\nतेरी आँखों का काजल ना फैले अब कभी भी\nतुझे इतना प्यार दूँ, हाँ\nतेरी ख़ुशियों की ख़ातिर ये दुनिया मैं मेरी\nएक पल में वार दूँ, मैं\n\nअब बिख़री तेरी ये ज़ुल्फ़ों से आँखें तेरी जब दिखती हैं\nदिखता है मुझे वो आसमाँ\nकि खोलूँ पंख मैं मेरे, उड़ जाऊँ मैं, खो जाऊँ मैं\nइस आसमाँ में पतंगों की तरह, हाँ",
+    "trackData": {
+      "id": "saavn-4GGV39K7",
+      "title": "Baarishein",
+      "artist": "Anuv Jain, AP Dhillon, Satinderpal Singh",
+      "artistId": "saavn-artist-4878402",
+      "album": "Baarishein",
+      "albumId": "album-12921656",
+      "duration": 207,
+      "images": {
+        "small": "https://c.saavncdn.com/520/Baarishein-English-2018-20180522204131-500x500.jpg",
+        "medium": "https://c.saavncdn.com/520/Baarishein-English-2018-20180522204131-500x500.jpg",
+        "large": "https://c.saavncdn.com/520/Baarishein-English-2018-20180522204131-500x500.jpg"
+      },
+      "provider": "open-authorized-music",
+      "playbackAvailability": true,
+      "streamUrl": "https://aac.saavncdn.com/520/060f65240088865166a061f2942ef92e_320.mp4",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "releaseYear": 2018,
+      "releaseDate": "2018-01-01",
+      "release_date": "2018-01-01",
+      "createdAt": "2018-01-01",
+      "created_at": "2018-01-01",
+      "genre": "Hindi",
+      "plays": 18749901,
+      "play_count": 18749901,
+      "views": 18749901,
+      "color": "#1DB954"
+    }
+  },
+  {
+    "trackId": "1606935277",
+    "title": "Headlights (feat. KIDDO)",
+    "artist": "Alok & Alan Walker",
+    "plainLyrics": "hela\nhela, hela, headlights\nhela, hela, headlights\nhela, hela, headlights\n\noh, oh, i'm gonna use every heartbeat\noh, oh, today not tomorrow\noh, oh, i'm diving in so deep\noh, oh, far from the shallows\n\nbaby, i'm all about headlights\nblinded by, blinded by the headlights\nrunning in, running in the headlights\nlight me up, light me up, headlights\n\nbaby, i'm all about headlights\nblinded by, blinded by the headlights\nrunning in, running in the headlights\nlight me up, light me up, headlights\n\nbaby, i'm all about headlights\nhela, hela, headlights\nhela, hela, headlights\nhela, hela, headlights\n\nbaby, i'm all about headlights\nhela, hela, headlights\nhela, hela, headlights\nhela, hela, headlights\n\noh, oh, i got a taste of the good life\nwhoa-oh, i'll never let it go\na wild cat, gotta use all my nine lives\nwhoa-oh, i'm gonna do it all\n\nand oh, i'm tipping on the edge\nand oh, i don't wanna be saved\nand oh, don't you pull the breaks\nand oh, just take me all the way\n\nbaby, i'm all about headlights\nblinded by, blinded by the headlights\nrunning in, running in the headlights\nlight me up, light me up, headlights\n\nbaby, i'm all about headlights\nblinded by, blinded by the headlights\nrunning in, running in the headlights\nlight me up, light me up, headlights\n\nbaby, i'm all about headlights\nhela, hela, headlights\nhela, hela, headlights\nhela, hela, headlights\n\nbaby, i'm all about headlights\nhela, hela, headlights\nhela, hela, headlights\nhela, hela, headlights\n\noh, oh, i got a taste of the good life\nwhoa-oh, i'll never let it go",
+    "trackData": {
+      "id": "1606935277",
+      "title": "Headlights (feat. KIDDO)",
+      "artist": "Alok & Alan Walker",
+      "artistId": "324709167",
+      "album": "Headlights (feat. KIDDO) - Single",
+      "albumId": "1606935060",
+      "duration": 158,
+      "images": {
+        "small": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/48/a3/90/48a390ec-2069-e88b-cb48-21d1c4c68d4c/190296249723.jpg/300x300bb.jpg",
+        "medium": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/48/a3/90/48a390ec-2069-e88b-cb48-21d1c4c68d4c/190296249723.jpg/300x300bb.jpg",
+        "large": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/48/a3/90/48a390ec-2069-e88b-cb48-21d1c4c68d4c/190296249723.jpg/600x600bb.jpg"
+      },
+      "provider": "open-authorized-music",
+      "playbackAvailability": false,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "releaseYear": 2022,
+      "releaseDate": "2022-02-18T12:00:00Z",
+      "release_date": "2022-02-18T12:00:00Z",
+      "createdAt": "2022-02-18T12:00:00Z",
+      "created_at": "2022-02-18T12:00:00Z",
+      "genre": "Dance",
+      "plays": 5000000,
+      "play_count": 5000000,
+      "views": 5000000,
+      "color": "#1DB954",
+      "lyricsMatchScore": 10
+    }
+  },
+  {
+    "trackId": "0DpUQ3mpAGy3bYsEKVy6t5",
+    "title": "Barsaat",
+    "artist": "Banjaare, Roni",
+    "plainLyrics": "छोड़के ने चाळ पड़या तू\nतोड़ के ने चाळ पड़या तू\nबण काळी रात छावेगी\nतन्ने मेरी याद, आवेगी\nके प्यार इसा, मिलणा नहीं\nकौन मेरे जिसा चाहवेगी?\n\nछोड़के ने चाळ पड़या तू\nतन्ने मेरी याद, आवेगी\nके तन्ने मेरी याद, आवेगी?\nतन्ने मेरी याद आवेगी\nछोड़के ने चाळ पड़या तू\nतन्ने मेरी याद, आवेगी\n\nया तो मन्ने मार ज्यांदा रै\nन्यू क्यूं मन्ने, छोड़ के गया?\nआंसू मेरे रुकते नहीं\nइसा दिल तोड़ के गया\n\nमैं खुल के ने रोया करूंगी\nजब बरसात आवेगी\n\nछोड़ के ने चाळ पड़या तू\nतन्ने मेरी याद, आवेगी\n\nके प्यार इसा, मिलना नहीं\nकौन मेरे जिसा चाहवेगी?\nछोड़ के ने चाळ पड़या तू, हाय\nतन्ने मेरी याद आवेगी\n\nसपने सजाएं जांदे ना\nअपने भुलाएं जांदे ना\nएक बार छोड़ गए जो\nमुड़ के दोबारा आंदे ना\n\nकि सपने सजाएं जांदे ना\nअपने भुलाएं जांदे ना\nएक बार छोड़ गए जो\nमुड़ के दोबारा आंदे ना\n\nमैं तेरी ऐ थी, तेरी ऐ रहूं\nजब तक सांस आवेगी\n\nछोड़ के ने चाळ पड़या तू\nतन्ने मेरी याद आवेगी\nकि तने मेरी\n\nतू जड़े रवे, राजी रहिए रै\nजान ते भी प्यारा था रै तू\nबसदे उजाड़ के गया\nकिसा banjara था रै तू?",
+    "trackData": {
+      "id": "0DpUQ3mpAGy3bYsEKVy6t5",
+      "title": "Barsaat",
+      "artist": "Banjaare, Roni",
+      "artistId": "spotify-artist-7IbxsPdlYelceWNyHAor55",
+      "album": "Barsaat",
+      "albumId": "spotify-album-3wm8qhMYXqteXNc8PgOiCo",
+      "duration": 185,
+      "images": {
+        "small": "https://i.scdn.co/image/ab67616d00004851a0b110307ee3dc10a74e3562",
+        "medium": "https://i.scdn.co/image/ab67616d00001e02a0b110307ee3dc10a74e3562",
+        "large": "https://i.scdn.co/image/ab67616d0000b273a0b110307ee3dc10a74e3562"
+      },
+      "provider": "spotify",
+      "playbackAvailability": true,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "color": "#980808",
+      "spotifyId": "0DpUQ3mpAGy3bYsEKVy6t5",
+      "spotifyUri": "spotify:track:0DpUQ3mpAGy3bYsEKVy6t5"
+    }
+  },
+  {
+    "trackId": "saavn-mrA6S75F",
+    "title": "Bairan",
+    "artist": "Banjaare",
+    "plainLyrics": "o manne sambh-sambh rakhe tere jhanjhara ke jode\nmeri gail ro-roye bhi chhori bawle se hore\nmanne aaye jaave khyaal tere khaye jaave khyaal tere\njeene koni deti haye bairi tanhaai manne\ngeeta mein gayi kade chhaati ke lagayi manne\njid bhi gaya re teri yaad khadi paayi manne\nsambh-sambh rakhi bahut chhaati ke lagayi manne\njid bhi gaya re teri yaad khadi paayi manne\n[instrumental]\no maara-maara phire dekh haal tu bechare ka\ntere bina jeena bhi ke jeena banjaare ka\nkhoya rahun yaad teri karke nadaaniyan\nbatue mein rakhun teri sambh ke nishaniyan\ntere bina kaal hora thik kona haal mera\nhaath jodu ram dede sasah te rihaayi manne\ngeeta mein gayi kade chhaati ke lagayi manne\njid bhi gaya re teri yaad khadi paayi manne\nsambh-sambh rakhi bahut chhaati ke lagayi manne\njid bhi gaya re teri yaad khadi paayi manne\n[instrumental]\nje tu thodi ghabra ja meri yaad tanne aajya\ntu de diye awaaz re main aajyunga\ntodhu duniya ki reet re ke haar re ke jeet\nmanne chahiye teri preet main nibha jayunga\ndekh bawla banagi manne likhna sikha gayi haye\nnoch-noch kha gayi teri bairan judayi manne\ngeeta mein gayi kade chhaati ke lagayi manne\njid bhi gaya re teri yaad khadi paayi manne\naaj te nibhaun jo si kasam thi khaayi manne\nzindagi saari aa meri tere lekhe laayi manne",
+    "trackData": {
+      "id": "saavn-mrA6S75F",
+      "title": "Bairan",
+      "artist": "Banjaare",
+      "artistId": "saavn-artist-23845344",
+      "album": "Bairan",
+      "albumId": "album-72717346",
+      "duration": 150,
+      "images": {
+        "small": "https://c.saavncdn.com/238/Bairan-Unknown-2026-20260223182954-500x500.jpg",
+        "medium": "https://c.saavncdn.com/238/Bairan-Unknown-2026-20260223182954-500x500.jpg",
+        "large": "https://c.saavncdn.com/238/Bairan-Unknown-2026-20260223182954-500x500.jpg"
+      },
+      "provider": "open-authorized-music",
+      "playbackAvailability": true,
+      "streamUrl": "https://aac.saavncdn.com/238/a7604f7d49918d0e11520cc03e33c267_320.mp4",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "releaseYear": 2026,
+      "genre": "Haryanvi",
+      "plays": 19950971,
+      "color": "#1DB954"
+    }
+  },
+  {
+    "trackId": "0q4442eIt44kTWEhkoTlh8",
+    "title": "Safar",
+    "artist": "Bayaan, Sherazam",
+    "plainLyrics": "o sanam, o jigar, tumko ho kya hi khabar\nkaise kati yeh raatein hain\nkehte hain sab magar, koi chalaa naa inn par\nraste jo maine naape hain\n\nkabhi hai taaron ki jhilmil\nkabhi naa dikhti manzil\naisa safar mera\n\nmain bhaaga-bhaaga, sadiyon se jaaga\naayaa hoon meelon gaaon se\nnaa humsafar koi, naa apna ghar, yaara\nrehta hoon behti naaon pe\n\ndikhte hain khwaab jo jaagti aankhon ko\nsapne nahi, iraade hain\npoore woh karne ko chal pade nange pairon\nkhud se kiye jo waade hain\n\nrukna naa kabhi bhi tha hal\nchalna hi to hai manzil\nmain naa kaheen thehra\n\nmain bhaaga-bhaaga, sadiyon se jaaga\naayaa hoon meelon gaaon se\nnaa humsafar koi, naa apna ghar, yaara\nrehta hoon behti naaon pe\n\nmain bhaaga-bhaaga, sadiyon se jaaga\naayaa hoon meelon kaarke iraada\nmain bhaaga-bhaaga, sadiyon se jaaga\naayaa hoon meelon kaarke iraada\n\nsafar likha haath ki lakeeron mein\nnaa khone diya khwaabon ko taabeeron mein\nsheher ki hawa ne mujh mein rang bhare\nmain bhola sa purani tasweeron mein\n\nsafar likha haath ki lakeeron mein\nnaa khone diya khwaabon ko taabeeron mein\ndekh ke rab ne azm, mujhe par diye\nke udd sakoon buland taqdeeron se\n\nsafar likha haath ki lakeeron mein\nnaa khone diya khwaabon ko taabeeron mein\nsheher ki hawa ne mujh mein rang bhare\nmain bhola sa purani tasweeron mein\n\nsafar likha haath ki lakeeron mein\nnaa khone diya khwaabon ko taabeeron mein\ndekh ke rab ne azm, mujhe par diye\nke udd sakoon buland taqdeeron se\n\nsafar likha haath ki lakeeron mein\nnaa khone diya khwaabon ko taabeeron mein\nsheher ki hawa ne mujh mein rang bhare\nmain bhola sa purani tasweeron mein\n\nsafar likha haath ki lakeeron mein\nnaa khone diya khwaabon ko taabeeron mein\ndekh ke rab ne azm, mujhe par diye\nke udd sakoon buland taqdeeron se\n\nsafar likha haath ki lakeeron mein\nnaa khone diya khwaabon ko taabeeron mein\nsheher ki hawa ne mujh mein rang bhare\nmain bhola sa purani tasweeron mein\n\nsafar likha haath ki lakeeron mein\nnaa khone diya khwaabon ko taabeeron mein\ndekh ke rab ne azm, mujhe par diye\nke udd sakoon buland taqdeeron se",
+    "trackData": {
+      "id": "0q4442eIt44kTWEhkoTlh8",
+      "title": "Safar",
+      "artist": "Bayaan, Sherazam",
+      "artistId": "spotify-artist-3atMq790wQ7IqjeSO0HFeP",
+      "album": "Safar",
+      "albumId": "spotify-album-6E5pORwJWiSggsnzD1yWfU",
+      "duration": 217,
+      "images": {
+        "small": "https://i.scdn.co/image/ab67616d00004851b0e468596edd122e283259db",
+        "medium": "https://i.scdn.co/image/ab67616d00001e02b0e468596edd122e283259db",
+        "large": "https://i.scdn.co/image/ab67616d0000b273b0e468596edd122e283259db"
+      },
+      "provider": "spotify",
+      "playbackAvailability": true,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "color": "#204858",
+      "spotifyId": "0q4442eIt44kTWEhkoTlh8",
+      "spotifyUri": "spotify:track:0q4442eIt44kTWEhkoTlh8"
+    }
+  },
+  {
+    "trackId": "2iUPgbjfgsnqzaFBgtuXfx",
+    "title": "Barsaat",
+    "artist": "Banjaare, Roni",
+    "plainLyrics": "छोड़के ने चाळ पड़या तू\nतोड़ के ने चाळ पड़या तू\nबण काळी रात छावेगी\nतन्ने मेरी याद, आवेगी\nके प्यार इसा, मिलणा नहीं\nकौन मेरे जिसा चाहवेगी?\n\nछोड़के ने चाळ पड़या तू\nतन्ने मेरी याद, आवेगी\nके तन्ने मेरी याद, आवेगी?\nतन्ने मेरी याद आवेगी\nछोड़के ने चाळ पड़या तू\nतन्ने मेरी याद, आवेगी\n\nया तो मन्ने मार ज्यांदा रै\nन्यू क्यूं मन्ने, छोड़ के गया?\nआंसू मेरे रुकते नहीं\nइसा दिल तोड़ के गया\n\nमैं खुल के ने रोया करूंगी\nजब बरसात आवेगी\n\nछोड़ के ने चाळ पड़या तू\nतन्ने मेरी याद, आवेगी\n\nके प्यार इसा, मिलना नहीं\nकौन मेरे जिसा चाहवेगी?\nछोड़ के ने चाळ पड़या तू, हाय\nतन्ने मेरी याद आवेगी\n\nसपने सजाएं जांदे ना\nअपने भुलाएं जांदे ना\nएक बार छोड़ गए जो\nमुड़ के दोबारा आंदे ना\n\nकि सपने सजाएं जांदे ना\nअपने भुलाएं जांदे ना\nएक बार छोड़ गए जो\nमुड़ के दोबारा आंदे ना\n\nमैं तेरी ऐ थी, तेरी ऐ रहूं\nजब तक सांस आवेगी\n\nछोड़ के ने चाळ पड़या तू\nतन्ने मेरी याद आवेगी\nकि तने मेरी\n\nतू जड़े रवे, राजी रहिए रै\nजान ते भी प्यारा था रै तू\nबसदे उजाड़ के गया\nकिसा banjara था रै तू?",
+    "trackData": {
+      "id": "2iUPgbjfgsnqzaFBgtuXfx",
+      "title": "Barsaat",
+      "artist": "Banjaare, Roni",
+      "artistId": "spotify-artist-7IbxsPdlYelceWNyHAor55",
+      "album": "Barsaat",
+      "albumId": "spotify-album-05jrzEkewvqM1WAWD07bKI",
+      "duration": 185,
+      "images": {
+        "small": "https://i.scdn.co/image/ab67616d0000485174cc3243eb5ea39cb42f1376",
+        "medium": "https://i.scdn.co/image/ab67616d00001e0274cc3243eb5ea39cb42f1376",
+        "large": "https://i.scdn.co/image/ab67616d0000b27374cc3243eb5ea39cb42f1376"
+      },
+      "provider": "spotify",
+      "playbackAvailability": true,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "color": "#980808",
+      "spotifyId": "2iUPgbjfgsnqzaFBgtuXfx",
+      "spotifyUri": "spotify:track:2iUPgbjfgsnqzaFBgtuXfx"
+    }
+  },
+  {
+    "trackId": "0TsyaaM73GAKIxv38yzHV4",
+    "title": "The Last Letter",
+    "artist": "Maan Panu, Mazaak",
+    "plainLyrics": "x-audio\n\nek baat reh gayi thi \nchup chaap reh gayi thi \ntum sham subah sab le gaye \nbas raat reh gayi thi\n\nbas yaad reh gayi thi \nbe hisaab reh gayi thi \ntum saare mausam le gaye \nbarsaat reh gayi thi\n\nek baat reh gayi thi \nchup chaap reh gayi thi \ntum shaam subah sab le gaye \nbas raat reh gayi thi\n\n\ntune na jaana tere \njaane se kya kya hua \nkitni kahani bani \nkitna tamasha hua \n\njaane tu kaisi hogi \naur voh deewana tera \nkhush tu bhi kya hi hogi \naur kya salona jahan\n\nmera sara badan tha so raha \nbas aankh reh gayi thi \naisa lag raha tha mar gaye \nbas saans reh gayi thi\n\ntum phool chura ke chal diye \nbas shaakh reh gayi thi \ntum shama bujha ke chal diye \nbas raakh reh gayi thi\n\nek baat reh gayi thi \nchup chaap reh gayi thi \ntum shaam subah sab le gaye \nbas raat reh gayi thi\n\nbas yaad reh gayi thi \nbe hisaab reh gayi thi \ntum saare mausam le gaye \nbarsaat reh gayi thi\n\nmere haathon ki laqeerein \nlikh di uss khuda ne \nbas tera naam reh gaya \n\nmere haathon ki laqeerein \nlikh di uss khuda ne \nbas tera naam reh gaya \nbas tera naam reh gaya \nbas tera naam reh gaya \nbas tera naam reh gaya",
+    "trackData": {
+      "id": "0TsyaaM73GAKIxv38yzHV4",
+      "title": "The Last Letter",
+      "artist": "Maan Panu, Mazaak",
+      "artistId": "spotify-artist-3lRhKw5gfTNnpnPFFE7TfQ",
+      "album": "The Last Letter",
+      "albumId": "spotify-album-713AvxcNnVOUQnp4LRcc5G",
+      "duration": 170,
+      "images": {
+        "small": "https://i.scdn.co/image/ab67616d0000485112381985e85b110bfcb2be12",
+        "medium": "https://i.scdn.co/image/ab67616d00001e0212381985e85b110bfcb2be12",
+        "large": "https://i.scdn.co/image/ab67616d0000b27312381985e85b110bfcb2be12"
+      },
+      "provider": "spotify",
+      "playbackAvailability": true,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "releaseYear": 2026,
+      "color": "#1DB954",
+      "spotifyId": "0TsyaaM73GAKIxv38yzHV4",
+      "spotifyUri": "spotify:track:0TsyaaM73GAKIxv38yzHV4"
+    }
+  },
+  {
+    "trackId": "6GKGoi0FHzldk1ZRQoV1fv",
+    "title": "Jalebi Baby",
+    "artist": "Tesher",
+    "plainLyrics": "aquí\ny ahora latino te viene\nagárrate\ntesher\n\naye (yeah), aye\nyou got what i wanted, ਸੋਹਣੀਏ\nਮਿੱਠੀ ਗੱਲਾਂ ਕਰਕੇ ਤੂੰ ਨਾ ਜਾ ਛੱਡ ਕੇ (ਛੱਡ ਕੇ)\naye, i think about it every day\nbaby lookin' like ਖਾਨਾ ਖ਼ਜ਼ਾਨਾ on a plate\n\naye, like ਮਿਠਾਈ, like ਮਿਠਾਈ\nlike ਕੁਲਫ਼ੀ\nਰਸ ਮਲਾਈ (aye), ਪਿਸਤਾ-ਬਰਫ਼ੀ\nਸਰਦੀਆਂ ਵਿੱਚ ਗਰਮੀ ਲਗਦੀ\nਜਦ ਵੀ ਤੂੰ ਮੇਰੇ ਰਾਹਾਂ ਵਿੱਚੋਂ ਚੱਲਦੀ\n\n(yah) club ਵਿੱਚ ਮੇਰੇ ਕੋਲੋਂ ਲੰਘਦੀ\nthrow it back, and\nbu-bu-bubble up in front of me\neverybody tryna figure out your recipe\ni'm just tryna get a piece, baby\n\ni know that you wanna get crazy, crazy\nshawty, take it slow then ਛੇਤੀ-ਛੇਤੀ\nਬਣ ਜਾ ਤੂੰ ਮੇਰੀ ਜਲੇਬੀ baby, ba-ba-ba-ba...\n\naye, baby, let me see it (ਜਲੇਬੀ baby)\ni just wanna eat it (ਜਲੇਬੀ baby)\nbaby, let me see it (ਜਲੇਬੀ baby)\nknow i really need it (ਜਲੇਬੀ)\n\noh, baby, let me see it (ਜਲੇਬੀ baby)\ni just wanna eat it (ਜਲੇ...)\n(ਜਲੇਬੀ) i, i know the things\nthe things that you like\n\noh, baby, let me see it\n\nyah, aye\ntell me how you feel\nlookin' like a movie star doin' it for reels\nlookin' like a snack, lookin' like a whole meal\ngucci and chanel with your red bottom heels\n\nice drip, like ਪਾਨੀ, ਬਣ ਜਾ ਤੂੰ ਮੇਰੀ ਰਾਣੀ\nshawty bad, she my ਦੀਵਾਨੀ ਮਸਤਾਨੀ\nlight it up i'm livin' every day like it's ਦੀਵਾਲੀ\nyoung tesher, young shahrukh, i'm at every party\n\nand you got what i wanted, ਸੋਹਣੀਏ\nਮਿੱਠੀ ਗੱਲਾਂ ਕਰਕੇ ਤੂੰ ਨਾ ਜਾ ਛੱਡ ਕੇ\nਰੱਬ ਤੋਂ ਮੈਂ ਮੰਗਾਂ ਤੇਰਾ ਪਿਆਰ, ਹਾਣੀਏ\ngirl, you know what i'ma say\n\naye, baby, let me see it (ਜਲੇਬੀ baby)\ni just wanna eat it (ਜਲੇਬੀ baby)\nbaby, let me see it (ਜਲੇਬੀ baby)\nknow i really need it (ਜਲੇਬੀ)\n\noh, baby, let me see it (ਜਲੇਬੀ baby)\ni just wanna eat it\n(ਜਲੇਬੀ) i, i know the things\nthe things that you like\n\nbaby, let me see it (ਜਲੇਬੀ baby)\ni just wanna eat it (ਜਲੇਬੀ baby)\nbaby, let me see it (ਜਲੇਬੀ baby)\nknow i really need it (ਜਲੇਬੀ)\n\noh, baby, let me see it (ਜਲੇਬੀ baby)\ni just wanna eat it (ਜਲੇਬੀ baby)\nbaby, let me see it (ਜਲੇਬੀ)\n\nte-te-te-te-te-te...\ntesher (tesher, tesher...)",
+    "trackData": {
+      "id": "6GKGoi0FHzldk1ZRQoV1fv",
+      "title": "Jalebi Baby",
+      "artist": "Tesher",
+      "artistId": "spotify-artist-49YbNTLaaAbZHLtDI2aPGL",
+      "album": "Jalebi Baby",
+      "albumId": "spotify-album-2k8nShpibT4psqEQV7Smqc",
+      "duration": 189,
+      "images": {
+        "small": "https://i.scdn.co/image/ab67616d0000485158ad3c6d598cb14b31c334dc",
+        "medium": "https://i.scdn.co/image/ab67616d00001e0258ad3c6d598cb14b31c334dc",
+        "large": "https://i.scdn.co/image/ab67616d0000b27358ad3c6d598cb14b31c334dc"
+      },
+      "provider": "spotify",
+      "playbackAvailability": true,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "releaseYear": 2020,
+      "color": "#1DB954",
+      "spotifyId": "6GKGoi0FHzldk1ZRQoV1fv",
+      "spotifyUri": "spotify:track:6GKGoi0FHzldk1ZRQoV1fv"
+    }
+  },
+  {
+    "trackId": "saavn-zND_RkED",
+    "title": "Jo Tum Mere Ho",
+    "artist": "Anuv Jain",
+    "plainLyrics": "हैरान हूँ कि कुछ भी ना माँगूँ कभी मैं\nजो तुम मेरे हो\nऐसा हो क्यूँ कि लगता है हासिल सभी है\nजो तुम मेरे हो\nजो तुम मेरे हो\nतो मैं कुछ नहीं माँगूँ दुनिया से\nऔर तुम हो ही नहीं\nतो मैं जीना नहीं चाहूँ दुनिया में\nऔर नज़रों में मेरे\nइक जहाँ है जहाँ तू और मैं अब साथ हैं\nऔर वहाँ कोई नहीं\nतू और मैं ही, हाए\nऔर आओगे, ऐसे आओगे\nतेरी-मेरी क्या ये राहें यूँ जुड़ी हैं?\nऔर राहों में ही जो तुम आए कभी\nहम तो प्यार से ही मर जाएँगे\nऔर आओगे, ऐसे आओगे\nतेरी-मेरी क्या ये राहें यूँ जुड़ी हैं?\nऔर राहों में ही जो तुम आए नहीं\nहम तो फिर भी तुम्हें ही चाहेंगे\nजो तुम मेरे हो\nतो मैं कुछ नहीं माँगूँ दुनिया से\nपूछे ये तू कि तुझमें मैं क्या देखता हूँ\nजब चारों तरफ़ आज कितने ही सारे नज़ारे हैं\nजाने ना तू ख़ुद को यूँ ना जाने क्यूँ\nनज़रों से मेरी यहाँ देखो ना ख़ुद को ज़रा\nदेखो ना, देखो ना\nज़ुल्फ़ों से, कैसे ज़ुल्फ़ों से\nतेरी छुपती प्यारी-प्यारी सी मुस्कान है\nऔर नज़रें झुकी, और नज़रें उठी\nतो मैं क्या ही करूँ, बर्बाद मैं\nतेरे होंठों को, तेरे होंठों को\nजिनसे रखती मेरे प्यारे-प्यारे नाम हैं\nऔर दिल का तेरे, और दिल का तेरे\nअब मैं क्या ही कहूँ, क्या बात है\nऔर हाँ, देखो यहाँ\nकैसे आई दो दिलों की ये बारात है\nपर क्या खुला आसमाँ\nया फिर लाई यहाँ ज़ोरों से बरसात है?\nचाहे हो छाए भी बादल तो\nचाहें फिर भी तुम्हें, क्या पता तुमको\nमाँगूँ ना कुछ और\nजो तुम मेरे हो",
+    "trackData": {
+      "id": "saavn-zND_RkED",
+      "title": "Jo Tum Mere Ho",
+      "artist": "Anuv Jain",
+      "artistId": "saavn-artist-4878402",
+      "album": "Jo Tum Mere Ho",
+      "albumId": "album-56692135",
+      "duration": 252,
+      "images": {
+        "small": "https://c.saavncdn.com/401/Jo-Tum-Mere-Ho-Hindi-2024-20240731053953-500x500.jpg",
+        "medium": "https://c.saavncdn.com/401/Jo-Tum-Mere-Ho-Hindi-2024-20240731053953-500x500.jpg",
+        "large": "https://c.saavncdn.com/401/Jo-Tum-Mere-Ho-Hindi-2024-20240731053953-500x500.jpg"
+      },
+      "provider": "open-authorized-music",
+      "playbackAvailability": true,
+      "streamUrl": "https://aac.saavncdn.com/401/1e4444c13f76ac543c19b01d7ea0423a_320.mp4",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "releaseYear": 2024,
       "releaseDate": "2024-01-01",
       "release_date": "2024-01-01",
       "createdAt": "2024-01-01",
       "created_at": "2024-01-01",
       "genre": "Hindi",
-      "plays": 9946317,
-      "play_count": 9946317,
-      "views": 9946317,
+      "plays": 59660515,
+      "play_count": 59660515,
+      "views": 59660515,
+      "color": "#1DB954"
+    }
+  },
+  {
+    "trackId": "3A4FRzgve9BjfKbvVXRIFO",
+    "title": "Sparkle - movie ver.",
+    "artist": "RADWIMPS",
+    "plainLyrics": "mada kono sekai wa boku o kainara shi tetai mitaida \nnozomi tōri īdarou utsukushiku mogaku yo \ntagai no sunadokei nagamenagara kisuwoshiyōyo \n`sayonara' kara ichiban tōi basho de machiawaseyou \njisho ni aru kotoba de dekiagatta sekai o nnikunda\nmangekyō no naka de hachigatsu no aru asa \nkimi wa boku no mae de hanikande wa sumashite miseta \nkono sekai no kyōkasho no yōna egao de \ntsuini toki wa kita kinō made wa joshō no joshō de \ntobashi yomide īkara koko kara ga bokuda yyo\nkeiken to chishiki to kabi no hae kakatta yūki o motte \nimada katsute nai supīdo de kiminomotohe daibu o \nmadoromi no naka de namanurui kōra ni \nkokodenai doko ka o yumemita yyo\nkyōshitsu no mado no soto ni \ndensha ni yura re hakoba reru asa ni oh \naishi-kata sae mo kimi no nioi ga sshita\naruki-kata sae mo sono waraigoe ga shita \nitsuka kiete nakunaru kimi no subete o \nkono me ni yakitsukete oku koto wa \nmō kenri nanka janai gimuda to omou nda \nunmeida toka mirai to katte kotoba ga dore dake te o \nnobasou to todokanai basho de bokura koi o suru \ntokei no hari mo futari o yokome ni minagara susumu \nson'na sekai o futari de isshō iya, nan-shō demo \nikinuite ikou oh\n",
+    "trackData": {
+      "id": "3A4FRzgve9BjfKbvVXRIFO",
+      "title": "Sparkle - movie ver.",
+      "artist": "RADWIMPS",
+      "artistId": "spotify-artist-1EowJ1WwkMzkCkRomFhui7",
+      "album": "Your Name.",
+      "albumId": "spotify-album-4qApTp9557qYZzRLEih4uP",
+      "duration": 538,
+      "images": {
+        "small": "https://i.scdn.co/image/ab67616d000048513d1869d8c477d291a205a2d6",
+        "medium": "https://i.scdn.co/image/ab67616d00001e023d1869d8c477d291a205a2d6",
+        "large": "https://i.scdn.co/image/ab67616d0000b2733d1869d8c477d291a205a2d6"
+      },
+      "provider": "spotify",
+      "playbackAvailability": true,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "color": "#406888",
+      "spotifyId": "3A4FRzgve9BjfKbvVXRIFO",
+      "spotifyUri": "spotify:track:3A4FRzgve9BjfKbvVXRIFO"
+    }
+  },
+  {
+    "trackId": "4vpxGoV033jSRvVqxIdVnR",
+    "title": "Sparkle",
+    "artist": "GARETH FERNANDEZ, Dru Chen, NDPeeps",
+    "plainLyrics": "well, come on, sparkle\ncome on, sparkle\ncome on, sparkle (oh, oh, yeah)\nshine on me\nyou've been searchin' for your special sign\nbut look within yourself, you'll see there's treasure deep inside\nwhy waste your time chasin' someone's fantasy\nwhen you could be the one you're meant to be?\nso get up off your feet\ndon't let nobody bring you down\nyou got the soul, the skills to turn that frown around\nand when your journey (ooh) just feels so rough\npressure makes diamonds, kid, so remember you're enough\ncain't nobody move it like you move\ngroove it like you groove, it's alright (it's alright)\ncain't nobody do the things you do\nfinally found it's you, it's alright (it's alright)\nso come on, sparkle (sparkle)\ncome on, sparkle (sparkle)\ncome on, sparkle (sparkle)\nshine on me\nso come on, sparkle (ooh; sparkle)\ncome on, sparkle (sparkle)\ncome on, sparkle (sparkle)\nshine on me\nyou know that you're magic\ndon't forget that you are\nseasons come and reasons go\nand you could be a star (clap your hands)\nso clap your hands and stomp your feet\nit's your life, not make-believe (ah)\nso lift me up, and yourself too, and fly\ndon't let nobody (don't let nobody) bring you down (yeah)\n'cause you got the soul, the skills to turn that frown around\nand when that journey (ooh), it gets so rough\npressure makes diamonds, kid, and you know that you're enough\ncain't nobody move it like you move\ngroove it like you groove, it's alright (it's alright)\ncain't nobody do the things you do\nfinally found it's you, it's alright (it's alright)\nso come on, sparkle (sparkle)\ncome on, sparkle (sparkle)\ncome on, sparkle (sparkle)\nshine on me\nso come on, sparkle (ooh; sparkle)\ncome on, sparkle (sparkle)\ncome on, sparkle (sparkle)\nshine on me\nso come on, sparkle (sparkle)\ncome on, sparkle (ah; sparkle)\ncome on, sparkle (sparkle)\nshine on me\nso come on, sparkle (sparkle)\ncome on, sparkle (sparkle; come on, sparkle, baby)\ncome on, sparkle (sparkle)\nshine, shine, shine on me\n",
+    "trackData": {
+      "id": "4vpxGoV033jSRvVqxIdVnR",
+      "title": "Sparkle",
+      "artist": "GARETH FERNANDEZ, Dru Chen, NDPeeps",
+      "artistId": "spotify-artist-5OCCRySomkXZXoE1JQ5Hkb",
+      "album": "Sparkle",
+      "albumId": "spotify-album-0ZhvvAH97X5L6iqfhhBh7i",
+      "duration": 176,
+      "images": {
+        "small": "https://i.scdn.co/image/ab67616d0000485129e60e1ec1677aacfa2a746a",
+        "medium": "https://i.scdn.co/image/ab67616d00001e0229e60e1ec1677aacfa2a746a",
+        "large": "https://i.scdn.co/image/ab67616d0000b27329e60e1ec1677aacfa2a746a"
+      },
+      "provider": "spotify",
+      "playbackAvailability": true,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "color": "#A82820",
+      "spotifyId": "4vpxGoV033jSRvVqxIdVnR",
+      "spotifyUri": "spotify:track:4vpxGoV033jSRvVqxIdVnR"
+    }
+  },
+  {
+    "trackId": "6Sjg6cp8yXtKX5DrcEl7HV",
+    "title": "Landmine",
+    "artist": "Post Malone",
+    "plainLyrics": "and all my friends take vitamins\nbreak off perfect pieces with violence\n\nand outside\ni'm burning my way through a stoplight\nbaby, i'm fine\ni'm just working my way through a deadline\n\nand all my friends invite 'em in\nlight my cigarette and hope someone's watching\nbut to be honest, i fumble for the thrill of it\ninnocent, militant-like\n\nand outside\ni'm burning my way through a stoplight\n(la-la, la, la-la)\nbaby, i'm fine\ni'm just thumbin' my way through a landmine\n(la-la, la, la-la)\n\nand if you're getting sick of it\nimagine how i must feel (ooh, ooh)\nbut if you're getting rid of it\nthen maybe i'll just keep some myself\n\n(la-la, la, la-la)\n\n(la-la, la, la-la)\n\nand outside\ni'm burning my way through a stoplight\nbaby, i'm fine\ni'm just thumbin' my through a landmine\nah, ah, ah-ah, ah",
+    "trackData": {
+      "id": "6Sjg6cp8yXtKX5DrcEl7HV",
+      "title": "Landmine",
+      "artist": "Post Malone",
+      "artistId": "spotify-artist-246dkjvS1zLTtiykXe5h60",
+      "album": "AUSTIN",
+      "albumId": "spotify-album-6r1lh7fHMB499vGKtIyJLy",
+      "duration": 185,
+      "images": {
+        "small": "https://i.scdn.co/image/ab67616d0000485171cae34ad5a39bdab78af13e",
+        "medium": "https://i.scdn.co/image/ab67616d00001e0271cae34ad5a39bdab78af13e",
+        "large": "https://i.scdn.co/image/ab67616d0000b27371cae34ad5a39bdab78af13e"
+      },
+      "provider": "spotify",
+      "playbackAvailability": true,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "color": "#298198",
+      "spotifyId": "6Sjg6cp8yXtKX5DrcEl7HV",
+      "spotifyUri": "spotify:track:6Sjg6cp8yXtKX5DrcEl7HV"
+    }
+  },
+  {
+    "trackId": "1bMkimTb47umgNP6xCi4A1",
+    "title": "Arz Kiya Hai | Coke Studio Bharat",
+    "artist": "Anuv Jain",
+    "plainLyrics": "कायर जो थे, वो शायर बने\nअब क्या-क्या करें ये इश्क़ में\nना कहते थे कुछ जो, लगे खोज में\nक्या लफ़्ज़ चुने नए आशिक़ ये\n\nइश्क़ में तेरे हैं faiz बने\nअर्ज़ किया है\nहमने भी लिखा कुछ तेरे बारे में है\n\nऐसे तू लगे कि गुलाब है\nऔर ऐसे तू लगे कि गुलाब है\nबाग़ों में दिल के खिल के\nइन फ़िज़ाओं में छाए हो, हाय\n\nऔर वैसे हम तो तेरे ही ग़ुलाम हैं\nऔर वैसे हम तो तेरे ही ग़ुलाम हैं\nबादशाह दिल के\nतेरी बाज़ी में जो तू चाहे तो\n\nडूबे दिलों की क्या नाव बनूँ?\nमैं ख़ुद तैर पाऊँ ना आँखों में\nशायर की फ़ितरत में ही डूबना\nमैं क्या ही लड़ूँ तूफ़ानों से\n\nइश्क़ में तेरे हैं faiz बने\nअर्ज़ किया है\nहमने भी लिखा कुछ तेरे बारे में है\n\nहाथों को सँभालें मेरे हाथों में\nकैसे हाथों को सँभालें मेरे हाथों में\nजब तक नींद ना आए\nइन लकीरों में बातें हों, हाय\n\nसा-रे-प-ग-रे-सा, रे-ग-प-ग, प-नि, प-नि\nसा-रे-प-नि, प-ग, प-म, ग-म, ग-रे, ग-रे, सा-नि-सा\nसा-रे-सा-नि-प-नि, स-ग-रे, रे-ग-प-नि-सा-ग\nग-रे-सा-रे-सा-नी, म-ध-प\nप-नि-स-नि-प-नि, प-ग-प-रे-रे-सा\nरे-ग, रे-ग, म-ध, प-नि, प-नि, सा-नि-धा\nसा-नि, सा-नि, प-ध, प-म, ग-म-ग\nहाँ, हाँ, mmm\n\nहाँ, सब ने तो सब कह दिया है\nक्या ही कहूँ, जो अभी भी अनकहा है\nमैं, हाय, ना mirza, ना mir\nना mahir, ना zahir\n\nकरूँ कुछ नया मैं\nहाय, पर जो भी लिखा है, जिया है\nहाँ, जिया है\nऐसे, ऐसे, ऐसे, कैसे, वैसे, जैसे\n\nजैसे मैं पढ़ूँ मेरे दिल में जो\nमेरी आँखें भी पढ़ें तेरी आँखों को\nक्या यह महफ़िल में बैठें\nया उठें दौड़ जाने को? हाय\n\nतेरी आँखों में तारीफ़ों की तलाश है\nमेरी महफ़िल तेरे जाने से वीरान है\nमैं बस शायर बना हूँ\nसिर्फ़ तू सुनने आए तो\n\nशायद शायर बना हूँ\nसिर्फ़ तू सुनने आए तो",
+    "trackData": {
+      "id": "1bMkimTb47umgNP6xCi4A1",
+      "title": "Arz Kiya Hai | Coke Studio Bharat",
+      "artist": "Anuv Jain",
+      "artistId": "spotify-artist-4gdMJYnopf2nEUcanAwstx",
+      "album": "Arz Kiya Hai | Coke Studio Bharat",
+      "albumId": "spotify-album-5JnqJs94bARmhFoOSW3H5h",
+      "duration": 295,
+      "images": {
+        "small": "https://i.scdn.co/image/ab67616d0000485125fa2d19b2363a9520a34409",
+        "medium": "https://i.scdn.co/image/ab67616d00001e0225fa2d19b2363a9520a34409",
+        "large": "https://i.scdn.co/image/ab67616d0000b27325fa2d19b2363a9520a34409"
+      },
+      "provider": "spotify",
+      "playbackAvailability": true,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "color": "#E82030",
+      "spotifyId": "1bMkimTb47umgNP6xCi4A1",
+      "spotifyUri": "spotify:track:1bMkimTb47umgNP6xCi4A1"
+    }
+  },
+  {
+    "trackId": "2bkKbZlNc88Kw3Ddd2oN5p",
+    "title": "Arz Kiya Hai",
+    "artist": "sohmm",
+    "plainLyrics": "कायर जो थे, वो शायर बने\nअब क्या-क्या करें ये इश्क़ में\nना कहते थे कुछ जो, लगे खोज में\nक्या लफ़्ज़ चुने नए आशिक़ ये\n\nइश्क़ में तेरे हैं faiz बने\nअर्ज़ किया है\nहमने भी लिखा कुछ तेरे बारे में है\n\nऐसे तू लगे कि गुलाब है\nऔर ऐसे तू लगे कि गुलाब है\nबाग़ों में दिल के खिल के\nइन फ़िज़ाओं में छाए हो, हाय\n\nऔर वैसे हम तो तेरे ही ग़ुलाम हैं\nऔर वैसे हम तो तेरे ही ग़ुलाम हैं\nबादशाह दिल के\nतेरी बाज़ी में जो तू चाहे तो\n\nडूबे दिलों की क्या नाव बनूँ?\nमैं ख़ुद तैर पाऊँ ना आँखों में\nशायर की फ़ितरत में ही डूबना\nमैं क्या ही लड़ूँ तूफ़ानों से\n\nइश्क़ में तेरे हैं faiz बने\nअर्ज़ किया है\nहमने भी लिखा कुछ तेरे बारे में है\n\nहाथों को सँभालें मेरे हाथों में\nकैसे हाथों को सँभालें मेरे हाथों में\nजब तक नींद ना आए\nइन लकीरों में बातें हों, हाय\n\nसा-रे-प-ग-रे-सा, रे-ग-प-ग, प-नि, प-नि\nसा-रे-प-नि, प-ग, प-म, ग-म, ग-रे, ग-रे, सा-नि-सा\nसा-रे-सा-नि-प-नि, स-ग-रे, रे-ग-प-नि-सा-ग\nग-रे-सा-रे-सा-नी, म-ध-प\nप-नि-स-नि-प-नि, प-ग-प-रे-रे-सा\nरे-ग, रे-ग, म-ध, प-नि, प-नि, सा-नि-धा\nसा-नि, सा-नि, प-ध, प-म, ग-म-ग\nहाँ, हाँ, mmm\n\nहाँ, सब ने तो सब कह दिया है\nक्या ही कहूँ, जो अभी भी अनकहा है\nमैं, हाय, ना mirza, ना mir\nना mahir, ना zahir\n\nकरूँ कुछ नया मैं\nहाय, पर जो भी लिखा है, जिया है\nहाँ, जिया है\nऐसे, ऐसे, ऐसे, कैसे, वैसे, जैसे\n\nजैसे मैं पढ़ूँ मेरे दिल में जो\nमेरी आँखें भी पढ़ें तेरी आँखों को\nक्या यह महफ़िल में बैठें\nया उठें दौड़ जाने को? हाय\n\nतेरी आँखों में तारीफ़ों की तलाश है\nमेरी महफ़िल तेरे जाने से वीरान है\nमैं बस शायर बना हूँ\nसिर्फ़ तू सुनने आए तो\n\nशायद शायर बना हूँ\nसिर्फ़ तू सुनने आए तो",
+    "trackData": {
+      "id": "2bkKbZlNc88Kw3Ddd2oN5p",
+      "title": "Arz Kiya Hai",
+      "artist": "sohmm",
+      "artistId": "spotify-artist-1EhbeRFWd54TorJCQXUxQs",
+      "album": "Arz Kiya Hai",
+      "albumId": "spotify-album-1AkQSqGBGNpcBNTf3VNZ8k",
+      "duration": 143,
+      "images": {
+        "small": "https://i.scdn.co/image/ab67616d00004851a1e1e736568071e07abc4304",
+        "medium": "https://i.scdn.co/image/ab67616d00001e02a1e1e736568071e07abc4304",
+        "large": "https://i.scdn.co/image/ab67616d0000b273a1e1e736568071e07abc4304"
+      },
+      "provider": "spotify",
+      "playbackAvailability": true,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "color": "#703008",
+      "spotifyId": "2bkKbZlNc88Kw3Ddd2oN5p",
+      "spotifyUri": "spotify:track:2bkKbZlNc88Kw3Ddd2oN5p"
+    }
+  },
+  {
+    "trackId": "0eLtIxPRNJfsmehITZ1qaJ",
+    "title": "Sahiba",
+    "artist": "Aditya Rikhari",
+    "plainLyrics": "साहिबा, आए घर काहे ना? ऐसे तो सताए ना\nदेखूँ तुझको, चैन आता है\nसाहिबा, नींदें-वींदें आए ना, रातें काटी जाए ना\nतेरा ही ख़याल दिन-रैन आता है\n\nसाहिबा, समुंदर मेरी आँखों में रह गए\nहम आते-आते, जानाँ, तेरी यादों में रह गए\nये पलकें गवाही हैं, हम रातों में रह गए\nजो वादे किए सारे बस बातों में रह गए\n\nबातों-बातों में ही, ख़्वाबों-ख़्वाबों में ही मेरे क़रीब है तू\nतेरी तलब मुझको, तेरी तलब, जानाँ, हो तू कभी रू-ब-रू\nशोर-शराबा जो सीने में है मेरे, कैसे बयाँ मैं करूँ?\nहाल जो मेरा है, मैं किस को बताऊँ?\n\nमेरे साहिबा, दिल ना किराए का, थोड़ा तो सँभालो ना\nनाज़ुक है ये, टूट जाता है\nसाहिबा, नींदें-वींदें आए ना, रातें काटी जाए ना\nतेरा ही ख़याल दिन-रैन आता है\n\nकैसी भला शब होगी वो संग जो तेरे ढलती है?\nदिल को कोई ख़्वाहिश नहीं, तेरी कमी खलती है\nआराम ना अब आँखों को, ख़्वाब भी ना बदलती है\nदिल को कोई ख़्वाहिश नहीं, तेरी कमी, जानाँ, खलती है\n\nसाहिबा, तू ही मेरा आईना, हाथों में भी मेरे, हाँ\nतेरा ही नसीब आता है\nसाहिबा, नींदें-वींदें आए ना, रातें काटी जाए ना\nतेरा ही ख़याल दिन-रैन आता है\nसाहिबा, नींदें-वींदें आए ना, रातें काटी जाए ना\nतेरा ही ख़याल दिन-रैन आता है",
+    "trackData": {
+      "id": "0eLtIxPRNJfsmehITZ1qaJ",
+      "title": "Sahiba",
+      "artist": "Aditya Rikhari",
+      "artistId": "spotify-artist-3ozYqVCLohfpXIhalkhM8D",
+      "album": "Sahiba",
+      "albumId": "spotify-album-250nGZusEhq33ZIZYJ7eVb",
+      "duration": 190,
+      "images": {
+        "small": "https://i.scdn.co/image/ab67616d000048510a47bbe7141fdfe0eb2cdba7",
+        "medium": "https://i.scdn.co/image/ab67616d00001e020a47bbe7141fdfe0eb2cdba7",
+        "large": "https://i.scdn.co/image/ab67616d0000b2730a47bbe7141fdfe0eb2cdba7"
+      },
+      "provider": "spotify",
+      "playbackAvailability": true,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "color": "#C00000",
+      "spotifyId": "0eLtIxPRNJfsmehITZ1qaJ",
+      "spotifyUri": "spotify:track:0eLtIxPRNJfsmehITZ1qaJ"
+    }
+  },
+  {
+    "trackId": "saavn-1PMMDWPq",
+    "title": "Popiya Tora",
+    "artist": "Zubeen Garg, Rahul Gautam",
+    "plainLyrics": "তুমি যেন পপীয়া তৰা\nআকাশৰ বোৱতী নৈ\nতুমি যেন আৱৰি ধৰা\nভিতৰে বাহিৰে বৈ\nউশাহৰ গভীৰ পিয়াহত\nতুমি যেন জীয়া চৰাই হৈ\nতুমি যেন পপীয়া তৰা\nআকাশৰ বোৱতী নৈ...\n\nতোমাতে আদি-অনাদি\nতোমাৰে নামৰ ৰাগিণী\nওঁঠৰে তৃষা সামৰি\nদুহাতৰ কোমল আঙুলি\nপৰশি উজাই নামনি\nআৱেগত বাগৰ সলনি\nউশাহৰ গভীৰ পিয়াহত\nতোমাতেই লিখা জীৱনী\nতুমি যেন পপীয়া তৰা\nআকাশৰ বোৱতী নৈ...\n\nবাঢ়ি আহিব দিয়ানা\nদুচকুত হেৰাই যোৱানা\nসাগৰৰ নাবিক হোৱানা\nজাগি উঠিব দিয়ানা\nবুকুতে শিপাই যোৱানা\nপথাৰৰ পলস হোৱানা\nউশাহৰ গভীৰ পিয়াহত\nআদৰৰ আঁচোৰ দিয়ানা\nতুমি যেন পপীয়া তৰা\nআকাশৰ বোৱতী নৈ...",
+    "trackData": {
+      "id": "saavn-1PMMDWPq",
+      "title": "Popiya Tora",
+      "artist": "Zubeen Garg, Rahul Gautam",
+      "artistId": "saavn-artist-455590",
+      "album": "Popiya Tora - Single",
+      "albumId": "album-15051691",
+      "duration": 249,
+      "images": {
+        "small": "https://c.saavncdn.com/644/Popiya-Tora-Single-Assamese-2019-20190206123642-500x500.jpg",
+        "medium": "https://c.saavncdn.com/644/Popiya-Tora-Single-Assamese-2019-20190206123642-500x500.jpg",
+        "large": "https://c.saavncdn.com/644/Popiya-Tora-Single-Assamese-2019-20190206123642-500x500.jpg"
+      },
+      "provider": "open-authorized-music",
+      "playbackAvailability": true,
+      "streamUrl": "https://aac.saavncdn.com/644/3a54012a611c8a3f3647ccc987440e0a_320.mp4",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "releaseYear": 2019,
+      "releaseDate": "2019-01-01",
+      "release_date": "2019-01-01",
+      "createdAt": "2019-01-01",
+      "created_at": "2019-01-01",
+      "genre": "Assamese",
+      "plays": 5164215,
+      "play_count": 5164215,
+      "views": 5164215,
+      "color": "#1DB954"
+    }
+  },
+  {
+    "trackId": "3bmsaFp11I9pbicxzlStf3",
+    "title": "nadaaniyan",
+    "artist": "Akshath",
+    "plainLyrics": "कैसे तू गुनगुनाए, मुस्कुराए\nछोटी-मोटी बातों पे मुँह फुलाए\nये नज़ाकत, मेरी आदत पास मुझे लाए\nनादानियाँ, नादानियाँ\nखींचें मुझे नादानियाँ\nनादानियाँ, नादानियाँ\nपागल करे तेरी हर अदा\nशाम-ओ-सुबह मैं तेरी याद करूँ\nतेरे ख़यालों से मैं बात करूँ\nतेरी नज़र में ये कैसा नशा?\nतेरी आवाज़ में ये कैसा सुकूँ?\nदिल के सारे इशारों पे\nबस तेरा ही नाम है\nकैसे तू गुनगुनाए, मुस्कुराए\nछोटी-मोटी बातों पे मुँह फुलाए\nये नज़ाकत, मेरी आदत पास मुझे लाए\nनादानियाँ, नादानियाँ\nखींचें मुझे नादानियाँ\nनादानियाँ, नादानियाँ\nपागल करे तेरी हर अदा\nआजा पास मेरे, लिखें १०० कहानियाँ\nतू जो साथ मेरे, लगे जहाँ पा लिया\nतेरी साँसों में बीते हर पल मेरा\nतेरी आँखों में देखूँ हर कल मेरा\nकभी होना नहीं दूर, ओ, जान-ए-जाँ\nज़रा पास तो आ फिर से दोहरा\nदिल के सारे इशारों पे\nबस तेरा ही नाम है\nनादानियाँ, नादानियाँ\nखींचें मुझे नादानियाँ\nनादानियाँ, नादानियाँ\nपागल करे तेरी हर अदा\npowered by aniplix & x-audio\npowered by aniplix & x-audio",
+    "trackData": {
+      "id": "3bmsaFp11I9pbicxzlStf3",
+      "title": "nadaaniyan",
+      "artist": "Akshath",
+      "artistId": "spotify-artist-35XjIi7RK4ckjgBrE6CcQo",
+      "album": "nadaaniyan",
+      "albumId": "spotify-album-5iB4wggqDR2cQSduJGBfUy",
+      "duration": 171,
+      "images": {
+        "small": "https://i.scdn.co/image/ab67616d00004851adff87184871346c715be4c7",
+        "medium": "https://i.scdn.co/image/ab67616d00001e02adff87184871346c715be4c7",
+        "large": "https://i.scdn.co/image/ab67616d0000b273adff87184871346c715be4c7"
+      },
+      "provider": "spotify",
+      "playbackAvailability": true,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "releaseYear": 2024,
+      "color": "#1DB954",
+      "spotifyId": "3bmsaFp11I9pbicxzlStf3",
+      "spotifyUri": "spotify:track:3bmsaFp11I9pbicxzlStf3"
+    }
+  },
+  {
+    "trackId": "5ByLpy1feHoHXoM4IC4BvW",
+    "title": "Paaro",
+    "artist": "Aditya Rikhari",
+    "plainLyrics": "पारो, मेरी पारो\nइशारों-इशारों में बात समझ लेना\nदिल के टुकड़े हज़ारों\nबिख़रने से पहले आज पकड़ लेना\n\nके शराबें ख़तम, दिए सारे ज़ख़म तेरे भर ना सके, ਸੋਹਣਿਆ\nहो ना रातें ख़तम, के सुला दे, सनम, मुझे बाँहों में मेरा\nएक जान गई, एक जाती नहीं, एक और सितम ना कर\nजिसे पाना था, उसे खो बैठे, ये काफ़ी नहीं है क्या?\nके अब कुछ होश नहीं है, तू मुझको पिला देगी क्या?\nमैं पी कर जो भी कहूँगा, तू सबह भुला देगी क्या?\nतू बाँहों में रख ले दो पल, फिर चाहे दूर हटा दे\nमैं गोद में रख लूँ अगर सर, तू मुझको सुला देगी क्या?\n\nजाती नहीं तेरी यादें, क़सम से, के दिल का भरम है तू\nबाक़ी नहीं अब कोई शरम, जानाँ, एक धरम है तू\nजो कहती थी, \"मत पियो ना, मेरी जान, ज़हर है ये\"\nउसे देखता हूँ कोई ग़ैर छुए अब, और ज़हर क्या पियूँ?",
+    "trackData": {
+      "id": "5ByLpy1feHoHXoM4IC4BvW",
+      "title": "Paaro",
+      "artist": "Aditya Rikhari",
+      "artistId": "spotify-artist-3ozYqVCLohfpXIhalkhM8D",
+      "album": "Paaro",
+      "albumId": "spotify-album-0PCzppXRIq0vcx2eDw8PdD",
+      "duration": 153,
+      "images": {
+        "small": "https://i.scdn.co/image/ab67616d0000485190c6e25ed80fd8a70c71e921",
+        "medium": "https://i.scdn.co/image/ab67616d00001e0290c6e25ed80fd8a70c71e921",
+        "large": "https://i.scdn.co/image/ab67616d0000b27390c6e25ed80fd8a70c71e921"
+      },
+      "provider": "spotify",
+      "playbackAvailability": true,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "color": "#303838",
+      "spotifyId": "5ByLpy1feHoHXoM4IC4BvW",
+      "spotifyUri": "spotify:track:5ByLpy1feHoHXoM4IC4BvW"
+    }
+  },
+  {
+    "trackId": "5QDLhrAOJJdNAmCTJ8xMyW",
+    "title": "Dynamite",
+    "artist": "BTS",
+    "plainLyrics": "'cause i, i, i'm in the stars tonight\nso, watch me bring the fire, and set the night alight\n\nyour shoes on, get up in the morn'\ncup of milk, let's rock 'n' roll\nking kong, kick the drum\nrolling on like a rolling stone\nsing-song when i'm walking home\njump up to the top, lebron\nding-dong, call me on my phone\nice tea and a game of ping pong\n\nthis is getting heavy, can you hear the bass boom? i'm ready (woo-hoo)\nlife is sweet as honey, yeah, this beat cha-ching like money, huh\ndisco overload, i'm into that, i'm good to go\ni'm diamond, you know i glow up\nhey, so let's go\n\n'cause i, i, i'm in the stars tonight\nso watch me bring the fire, and set the night alight (hey)\nshining through the city with a little funk and soul\nso i'ma light it up like dynamite, whoa-oh-oh\n\nbring a friend, join the crowd, whoever wanna come along\nword up, talk the talk, just move like we off the wall\nday or night, the sky's alight, so we dance to the break of dawn (hey)\nladies and gentlemen, i got the medicine\nso you should keep ya eyes on the ball, huh\n\nthis is getting heavy, can you hear the bass boom? i'm ready (woo-hoo)\nlife is sweet as honey, yeah, this beat cha-ching like money, huh\ndisco overload, i'm into that, i'm good to go\ni'm diamond, you know i glow up\nlet's go\n\n'cause i, i, i'm in the stars tonight\nso watch me bring the fire, and set the night alight (hey)\nshining through the city with a little funk and soul\nso i'ma light it up like dynamite, whoa-oh-oh\n\ndyn-na-na-na, na-na-na-na-na, na-na-na, life is dynamite\ndyn-na-na-na, na-na-na-na-na, na-na-na, life is dynamite\nshining through the city with a little funk and soul\nso i'ma light it up like dynamite, whoa-oh-oh\n\ndyn-na-na-na, na-na, na-na, ayy\ndyn-na-na-na, na-na, na-na, ayy\ndyn-na-na-na, na-na, na-na, ayy\nlight it up like dynamite\ndyn-na-na-na, na-na, na-na, ayy\ndyn-na-na-na, na-na, na-na, ayy\ndyn-na-na-na, na-na, na-na, ayy\nlight it up like dynamite\n\n'cause i, i, i'm in the stars tonight\nso watch me bring the fire, and set the night alight\nshining through the city with a little funk and soul\nso i'ma light it up like dynamite\n\n(this is ah) 'cause i, i, i'm in the stars tonight\nso watch me bring the fire, and set the night alight (alight, oh)\nshining through the city with a little funk and soul\nso i'ma light it up like dynamite, whoa-oh-oh (light it up like dynamite)\n\ndyn-na-na-na, na-na-na-na-na, na-na-na, life is dynamite (life is dynamite)\ndyn-na-na-na, na-na-na-na-na, na-na-na, life is dynamite (oh)\nshining through the city with a little funk and soul\nso i'ma light it up like dynamite, whoa-oh-oh",
+    "trackData": {
+      "id": "5QDLhrAOJJdNAmCTJ8xMyW",
+      "title": "Dynamite",
+      "artist": "BTS",
+      "artistId": "spotify-artist-3Nrfpe0tUJi4K4DXYWgMUX",
+      "album": "BE",
+      "albumId": "spotify-album-6nYfHQnvkvOTNHnOhDT3sr",
+      "duration": 199,
+      "images": {
+        "small": "https://i.scdn.co/image/ab67616d00004851c07d5d2fdc02ae252fcd07e5",
+        "medium": "https://i.scdn.co/image/ab67616d00001e02c07d5d2fdc02ae252fcd07e5",
+        "large": "https://i.scdn.co/image/ab67616d0000b273c07d5d2fdc02ae252fcd07e5"
+      },
+      "provider": "spotify",
+      "playbackAvailability": true,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "color": "#535353",
+      "spotifyId": "5QDLhrAOJJdNAmCTJ8xMyW",
+      "spotifyUri": "spotify:track:5QDLhrAOJJdNAmCTJ8xMyW"
+    }
+  },
+  {
+    "trackId": "2HI1eYwbbiJGqi0XaeByOI",
+    "title": "Shaky",
+    "artist": "Sanju Rathod, G-SPXRK",
+    "plainLyrics": "ti boley bala\ntu kuthe challya\njaa tu tar already ushira aala\nyou don't even love me, kasli re kami?\nsaangu ka mummy la, tu banto shana\n\nmajhi saasu tujhi mother\nae majhi honari humsafar\ni like your beauty, i like your fashion\ntujhyavar thambun hai majhi nazar\n\nek number tujhi kambar\nhaay chaal shaky shaky\nhaay kiti sundar tujhya dimple\nje paahije take it take it\nek number tujhi kambar\nhaay chaal shaky shaky\nhaay kiti sundar tujhya dimple\nje paahije take it take it\n\nokay 1, 2, 3 start the already start\nkillings by eyes, the og gangster\ni love tujhya fashion, tu viral sensation\nrepresenting nation par nakhre hazar\n\nkitni saadi simple tujhya disti stylish\ntujhya samne fiki baby billie eilish\ntujhya diamond diamond tujha sath hi kai padn\ntujhya nakhre happened i like it like it\n\ntujhya nosepin, earing, eyelashes bling bling\nhighlighter, blush, ani lipstick pink pink\nae majhi girl jaan-e-jigar\nae chhammak chhallo mi tuzha king king king\n\njaadu mantar oh mantar\ntujhya swag og og\nek number tujhi kambar\ntula shambar shambar paiki\n\nek number tujhi kambar\nhaay chaal shaky shaky\nhaay kiti sundar tujhya dimple\nje paahije take it take it\n\nek jhappi paahije mhane na na na na\npappa pappi paahije mhane na na na na\nae tu bhaari diste mhane ya ya ya ya\nkitti nakhre karte na saglyanchi hatke\n\nti lai bhari natleli laakhancha sona ani chandi na\nti chhat leli woh woh\n\nek number tujhi kambar\nhaay chaal wavy wavy\nhaay kiti sundar tujhya dimple\nmaajhi chaan baby baby haay\nek number tujhi kambar\nhaay chaal shaky shaky\nhaay kiti sundar tujhya dimple\nje paahije take it take it",
+    "trackData": {
+      "id": "2HI1eYwbbiJGqi0XaeByOI",
+      "title": "Shaky",
+      "artist": "Sanju Rathod, G-SPXRK",
+      "artistId": "spotify-artist-4B9efXsA6sv4w3vts8E0T7",
+      "album": "Shaky",
+      "albumId": "spotify-album-1Ws1Vt9nXhYx43sKw3h9Fi",
+      "duration": 175,
+      "images": {
+        "small": "https://i.scdn.co/image/ab67616d00004851c05d5034282ebb1a0d94a26c",
+        "medium": "https://i.scdn.co/image/ab67616d00001e02c05d5034282ebb1a0d94a26c",
+        "large": "https://i.scdn.co/image/ab67616d0000b273c05d5034282ebb1a0d94a26c"
+      },
+      "provider": "spotify",
+      "playbackAvailability": true,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "releaseYear": 2025,
+      "color": "#1DB954",
+      "spotifyId": "2HI1eYwbbiJGqi0XaeByOI",
+      "spotifyUri": "spotify:track:2HI1eYwbbiJGqi0XaeByOI"
+    }
+  },
+  {
+    "trackId": "1717140552",
+    "title": "Husn",
+    "artist": "Anuv Jain",
+    "plainLyrics": "देखो-देखो, कैसी बातें यहाँ की, हैं साथ पर हैं साथ ना भी\nक्या इतनी आसान हैं?\nदेखो-देखो, जैसे मेरे इरादे, वैसे कहाँ तेरे यहाँ थे\nहाँ, कितनी नादान मैं\n\nमेरे हुस्न के इलावा कभी दिल भी माँग लो ना\nहाय, पल में मैं पिघल जाऊँ, हाँ\nअब ऐसा ना करो कि दिल जुड़ ना पाए वापिस\nतेरी बातों से बिख़र जाऊँ, हाँ\n\nमाना, ज़माना है दीवाना, इसीलिए तूने ना जाना\nतेरे लिए मैं काफ़ी हूँ\nदेखो-देखो, ये ज़माने से थक कर, आते हो क्यूँ मासूम बन कर?\nतेरे लिए मैं क्या ही हूँ?\n\nफ़िर आते क्यूँ यहाँ करने आँखों में हो बारिश?\nअब आए तो ठहर जाओ ना\nऔर पूछो ना ज़रा मेरे दिन के बारे में भी\nबस इतने में सँभल जाऊँ, हाँ\n\nहाँ, एक दिन कभी कोई\nजब भी पढ़े कहानी तेरी\nलगता मुझे, मेरे नाम का\nज़िक्र कहीं भी होगा नहीं\n\nहाँ, मैं यहीं\nमेरी ये आँखो में, आँखों में तो देखो\nदेखो, ये दिल का हाल क्या, होंठों से होता ना बयाँ\nमेरी ये आँखो में, आँखों में तो देखो\n\nकैसा नसीब है मेरा, मिलके भी ना मुझे मिला\nमेरी ये आँखो में, आँखों में तो देखो\nतेरी अधूरी सी वफ़ा, माँगूँ, मैं माँगूँ और ना\nमेरी ये आँखो में, आँखों में तो देखो\n\nदेखो-देखो, कैसी खींची लकीरें, चाहे भी दिल तो भी ना जीते\nमैं इस दौड़ में नहीं\nदेखो-देखो, कैसी बातें यहाँ की, बातें यही देखूँ जहाँ भी\nमैं इस दौर से नहीं",
+    "trackData": {
+      "id": "1717140552",
+      "title": "Husn",
+      "artist": "Anuv Jain",
+      "artistId": "1388609753",
+      "album": "Husn - Single",
+      "albumId": "1717140538",
+      "duration": 218,
+      "images": {
+        "small": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/b6/3d/12/b63d1218-7bc1-f4f2-5fdd-5d1909abda1c/23UM1IM56437.rgb.jpg/300x300bb.jpg",
+        "medium": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/b6/3d/12/b63d1218-7bc1-f4f2-5fdd-5d1909abda1c/23UM1IM56437.rgb.jpg/300x300bb.jpg",
+        "large": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/b6/3d/12/b63d1218-7bc1-f4f2-5fdd-5d1909abda1c/23UM1IM56437.rgb.jpg/600x600bb.jpg"
+      },
+      "provider": "open-authorized-music",
+      "playbackAvailability": false,
+      "streamUrl": "",
+      "mimeType": "audio/mp4",
+      "explicit": false,
+      "releaseYear": 2023,
+      "releaseDate": "2023-12-01T12:00:00Z",
+      "release_date": "2023-12-01T12:00:00Z",
+      "createdAt": "2023-12-01T12:00:00Z",
+      "created_at": "2023-12-01T12:00:00Z",
+      "genre": "Pop",
+      "plays": 5000000,
+      "play_count": 5000000,
+      "views": 5000000,
       "color": "#1DB954"
     }
   }

@@ -2,6 +2,7 @@ import React from 'react';
 import { Album, ViewState } from '../../types';
 import { Play, Disc3 } from 'lucide-react';
 import { usePlayer } from '../../context/PlayerContext';
+import { useUser } from '../../context/UserContext';
 
 interface AlbumCardProps {
   album: Album;
@@ -10,6 +11,7 @@ interface AlbumCardProps {
 
 export const AlbumCard: React.FC<AlbumCardProps> = ({ album, onNavigate }) => {
   const { playTrack } = usePlayer();
+  const { isTrackHidden } = useUser();
 
   const handleClick = () => {
     if (onNavigate) {
@@ -19,8 +21,9 @@ export const AlbumCard: React.FC<AlbumCardProps> = ({ album, onNavigate }) => {
 
   const handlePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (album.tracks && album.tracks.length > 0) {
-      playTrack(album.tracks[0], album.tracks);
+    const visibleTracks = album.tracks ? album.tracks.filter(t => !isTrackHidden(t.id)) : [];
+    if (visibleTracks.length > 0) {
+      playTrack(visibleTracks[0], visibleTracks);
     } else {
       handleClick();
     }
@@ -29,7 +32,7 @@ export const AlbumCard: React.FC<AlbumCardProps> = ({ album, onNavigate }) => {
   return (
     <div
       onClick={handleClick}
-      className="group relative flex-shrink-0 w-40 sm:w-44 p-3 rounded-2xl liquid-glass-card transition-all duration-300 cursor-pointer flex flex-col"
+      className="group relative flex-shrink-0 w-[140px] xs:w-[150px] sm:w-[176px] p-3 rounded-2xl liquid-glass-card transition-all duration-300 cursor-pointer flex flex-col"
     >
       <div className="relative aspect-square w-full rounded-xl overflow-hidden mb-3 bg-neutral-800 shadow-md flex items-center justify-center">
         {album.images?.large || album.images?.medium || album.images?.small || (album as any).coverImage || (album as any).coverImage ? (

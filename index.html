@@ -3,32 +3,37 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>Spotiz - Music & Podcasts</title>
-    <meta name="description" content="Stream high-fidelity music, curated playlists, synchronized lyrics, and podcasts anywhere." />
+    <title>Spotiz</title>
+    <meta name="description" content="A high-fidelity Progressive Web App (PWA) music streaming application with offline caching, installable home-screen experience, custom acoustic soundwave emblem logo, real audio playback, synchronized lyrics, global search, and personalized playlists." />
     
     <!-- PWA & Mobile Web App Meta Tags -->
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="alternate icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/pwa-512x512.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
     
-    <meta name="theme-color" content="#1DB954" />
-    <meta name="color-scheme" content="dark light" />
+    <!-- Android System Bar Styling (Status Bar & Navigation Bar Black Blending) -->
+    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#000000" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
+    <meta name="color-scheme" content="dark" />
+    
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="apple-mobile-web-app-title" content="Spotiz" />
     <meta name="application-name" content="Spotiz" />
-    <meta name="msapplication-TileColor" content="#121212" />
+    <meta name="msapplication-TileColor" content="#000000" />
 
     <!-- Open Graph & Social -->
-    <meta property="og:title" content="Spotiz - Music Streaming" />
-    <meta property="og:description" content="Stream high-fidelity music, synchronized lyrics, and personalized playlists." />
+    <meta property="og:title" content="Spotiz" />
+    <meta property="og:description" content="A high-fidelity Progressive Web App (PWA) music streaming application with offline caching, installable home-screen experience, custom acoustic soundwave emblem logo, real audio playback, synchronized lyrics, global search, and personalized playlists." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/icon-512.svg" />
+    <meta property="og:image" content="/pwa-512x512.png" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Spotiz" />
-    <meta name="twitter:image" content="/icon-512.svg" />
+    <meta name="twitter:image" content="/pwa-512x512.png" />
   </head>
   <body class="bg-black text-white selection:bg-emerald-500 selection:text-black">
     <div id="root">

@@ -414,7 +414,7 @@ export const CanvasBackground: React.FC<CanvasBackgroundProps> = ({ track, domin
     >
       {/* LAYER 1: STATIC ARTWORK FALLBACK (Visible when Canvas is not verified, not ready, or disabled) */}
       <AnimatePresence mode="wait">
-        {(!isCanvasVerified || !isVideoReady) && (
+        {(!isCanvasVerified || !isVideoReady || isArtworkVisible) && (
           <motion.div
             id="canvas-artwork-fallback"
             key={`fallback-${track.id}`}
@@ -498,7 +498,7 @@ export const CanvasBackground: React.FC<CanvasBackgroundProps> = ({ track, domin
           }}
           onEnded={handleEnded}
           className={`absolute inset-0 w-full h-full object-cover z-0 transition-opacity duration-500 ${
-            isVideoReady && !videoPlaybackError ? 'opacity-100' : 'opacity-0'
+            isVideoReady && !videoPlaybackError && !isArtworkVisible ? 'opacity-100' : 'opacity-0'
           }`}
           style={{
             objectFit: 'cover',

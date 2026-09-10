@@ -194,6 +194,90 @@ const pageContent: Record<string, { title: string; content: React.ReactNode }> =
       </div>
     )
   },
+  'terms': {
+    title: 'Terms and Conditions of Use',
+    content: (
+      <div className="space-y-6 text-neutral-300">
+        <p className="text-base sm:text-lg">Welcome to Spotiz. By signing up or otherwise using any of Spotiz services, apps, or websites, you enter into a binding contract with Spotiz.</p>
+        <h3 className="text-xl font-bold text-white mt-6 mb-2">1. The Spotiz Service</h3>
+        <p>We provide streaming of music, audio tracks, synchronized lyrics, and personalized recommendation services. Premium features include ad-free high-fidelity streaming (up to 320 kbps) and offline audio cache management.</p>
+        <h3 className="text-xl font-bold text-white mt-6 mb-2">2. User Guidelines</h3>
+        <p>You agree not to redistribute, reproduce, or create derivative works from the audio files streamed via the service. Offline downloads are encrypted and intended strictly for personal, non-commercial playback.</p>
+        <h3 className="text-xl font-bold text-white mt-6 mb-2">3. Account & Privacy</h3>
+        <p>You are responsible for maintaining the security of your account and credentials. Private sessions allow you to listen anonymously without affecting your recommendation profile.</p>
+        <h3 className="text-xl font-bold text-white mt-6 mb-2">4. Service Modifications</h3>
+        <p>Spotiz continuously improves streaming technologies and catalog availability. We reserve the right to modify or terminate features with reasonable notice.</p>
+      </div>
+    )
+  },
+  'terms-and-conditions': {
+    title: 'Terms and Conditions of Use',
+    content: (
+      <div className="space-y-6 text-neutral-300">
+        <p className="text-base sm:text-lg">Welcome to Spotiz. By signing up or otherwise using any of Spotiz services, apps, or websites, you enter into a binding contract with Spotiz.</p>
+        <h3 className="text-xl font-bold text-white mt-6 mb-2">1. The Spotiz Service</h3>
+        <p>We provide streaming of music, audio tracks, synchronized lyrics, and personalized recommendation services. Premium features include ad-free high-fidelity streaming (up to 320 kbps) and offline audio cache management.</p>
+        <h3 className="text-xl font-bold text-white mt-6 mb-2">2. User Guidelines</h3>
+        <p>You agree not to redistribute, reproduce, or create derivative works from the audio files streamed via the service. Offline downloads are encrypted and intended strictly for personal, non-commercial playback.</p>
+        <h3 className="text-xl font-bold text-white mt-6 mb-2">3. Account & Privacy</h3>
+        <p>You are responsible for maintaining the security of your account and credentials. Private sessions allow you to listen anonymously without affecting your recommendation profile.</p>
+        <h3 className="text-xl font-bold text-white mt-6 mb-2">4. Service Modifications</h3>
+        <p>Spotiz continuously improves streaming technologies and catalog availability. We reserve the right to modify or terminate features with reasonable notice.</p>
+      </div>
+    )
+  },
+  'third-party': {
+    title: 'Third-Party Software & Licenses',
+    content: (
+      <div className="space-y-6 text-neutral-300">
+        <p>Spotiz relies on open-source libraries and open web standards to deliver high-performance streaming.</p>
+        <ul className="list-disc pl-5 space-y-2">
+          <li><strong>React & TypeScript</strong> — UI foundation under MIT License</li>
+          <li><strong>Tailwind CSS</strong> — Modern styling architecture under MIT License</li>
+          <li><strong>Motion (Framer Motion)</strong> — Fluid native animations under MIT License</li>
+          <li><strong>Lucide Icons</strong> — Clean vector iconography under ISC License</li>
+          <li><strong>IndexedDB & Web Audio API</strong> — High-definition offline audio caching engine</li>
+        </ul>
+      </div>
+    )
+  },
+  'third-party-software': {
+    title: 'Third-Party Software & Licenses',
+    content: (
+      <div className="space-y-6 text-neutral-300">
+        <p>Spotiz relies on open-source libraries and open web standards to deliver high-performance streaming.</p>
+        <ul className="list-disc pl-5 space-y-2">
+          <li><strong>React & TypeScript</strong> — UI foundation under MIT License</li>
+          <li><strong>Tailwind CSS</strong> — Modern styling architecture under MIT License</li>
+          <li><strong>Motion (Framer Motion)</strong> — Fluid native animations under MIT License</li>
+          <li><strong>Lucide Icons</strong> — Clean vector iconography under ISC License</li>
+          <li><strong>IndexedDB & Web Audio API</strong> — High-definition offline audio caching engine</li>
+        </ul>
+      </div>
+    )
+  },
+  'help': {
+    title: 'Spotiz Support & Help Center',
+    content: (
+      <div className="space-y-6 text-neutral-300">
+        <p className="text-base sm:text-lg">Need help with playback, audio quality, offline downloads, or your account?</p>
+        <div className="space-y-4 pt-2">
+          <div className="p-4 bg-white/5 rounded-xl border border-white/5">
+            <h4 className="font-bold text-white mb-1">Audio & Playback Troubleshooting</h4>
+            <p className="text-sm">Ensure your browser or device audio is enabled. If a song stops unexpectedly, check your connection or switch Wi-Fi streaming quality in Settings.</p>
+          </div>
+          <div className="p-4 bg-white/5 rounded-xl border border-white/5">
+            <h4 className="font-bold text-white mb-1">Offline Downloads & Storage</h4>
+            <p className="text-sm">Tracks downloaded for offline listening are saved locally in your browser storage. You can manage or clear cached files under Settings &gt; Data-saving and offline.</p>
+          </div>
+          <div className="p-4 bg-white/5 rounded-xl border border-white/5">
+            <h4 className="font-bold text-white mb-1">Recommendations & Taste Profile</h4>
+            <p className="text-sm">If you dislike a song, hide it from the track options menu. You can view, search, and unhide hidden songs anytime under Settings &gt; Hide Songs.</p>
+          </div>
+        </div>
+      </div>
+    )
+  },
   'legal': {
     title: 'Legal Information',
     content: (
@@ -271,7 +355,7 @@ export const InfoView: React.FC<InfoViewProps> = ({ pageId, onNavigate, onGoBack
   const page = pageContent[pageId] || pageContent['not-found'];
 
   return (
-    <div className="relative min-h-full bg-neutral-900/40 flex flex-col pb-24">
+    <div className="relative min-h-full bg-neutral-900/40 flex flex-col">
       {/* Header */}
       <div className="flex-shrink-0 px-4 py-4 sm:px-6 sm:py-5 flex items-center sticky top-0 z-10 border-b border-white/5 bg-black/40 backdrop-blur-md">
         <button

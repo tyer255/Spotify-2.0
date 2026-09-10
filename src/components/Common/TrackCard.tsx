@@ -82,7 +82,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
     <>
       <div
         onClick={() => playTrack(track, queueContext || [track])}
-        className="group relative flex-shrink-0 w-40 sm:w-44 p-3 rounded-2xl liquid-glass-card transition-all duration-300 cursor-pointer flex flex-col"
+        className="group relative flex-shrink-0 w-[140px] xs:w-[150px] sm:w-[176px] p-3 rounded-2xl liquid-glass-card transition-all duration-300 cursor-pointer flex flex-col"
       >
         {/* Cover Artwork */}
         <div className="relative aspect-square w-full rounded-xl overflow-hidden mb-3 bg-neutral-800 shadow-md">

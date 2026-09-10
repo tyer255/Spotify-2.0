@@ -42,6 +42,7 @@ export class LyricsIndexService {
   public indexLyrics(track: Track, plainLyrics: string) {
     if (!plainLyrics || !plainLyrics.trim()) return;
     
+    if (this.indexedTracks.size > 5000) { const firstKey = this.indexedTracks.keys().next().value; if (firstKey) this.indexedTracks.delete(firstKey); }
     this.indexedTracks.set(track.id, {
       trackId: track.id,
       title: track.title,

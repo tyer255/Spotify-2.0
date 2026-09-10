@@ -282,7 +282,7 @@ export const ARTIST_ALIAS_DATABASE: ArtistAliasEntry[] = [
     spotifyNames: ['Anuv Jain'],
     aliases: ['Anuv', 'Baarishein', 'Husn', 'Alag Aasmaan', 'Mishri'],
     genres: ['Indie Pop', 'Acoustic Folk'],
-    portraitUrl: 'https://cdn-images.dzcdn.net/images/artist/eb0c0e91c8ad621b41178e0d66c81057/1000x1000-000000-80-0-0.jpg',
+    portraitUrl: 'https://i.scdn.co/image/ab6761610000e5eba837a6cb82dd949d5e1f9b53',
     bio: 'Anuv Jain is an Indian singer-songwriter celebrated for intimate acoustic storytelling and viral hits like Husn and Baarishein.',
   },
   {

@@ -53,7 +53,7 @@ export const ARTIST_PORTRAIT_CATALOG: Record<string, string> = {
   'sid sriram': 'https://cdn-images.dzcdn.net/images/artist/fbe3e1d17fc6958e047f011f74233f82/1000x1000-000000-80-0-0.jpg',
 
   // Indie & Contemporary
-  'anuv jain': 'https://cdn-images.dzcdn.net/images/artist/eb0c0e91c8ad621b41178e0d66c81057/1000x1000-000000-80-0-0.jpg',
+  'anuv jain': 'https://i.scdn.co/image/ab6761610000e5eba837a6cb82dd949d5e1f9b53',
   'prateek kuhad': 'https://cdn-images.dzcdn.net/images/artist/7f69b3905ae630b3f7bcd826bd2dc46f/1000x1000-000000-80-0-0.jpg',
   'ritviz': 'https://cdn-images.dzcdn.net/images/artist/8cb1b1f44ddb751ecf955da759d78395/1000x1000-000000-80-0-0.jpg',
   'the local train': 'https://cdn-images.dzcdn.net/images/artist/57826ed4eb4c69f2574493274711faa8/1000x1000-000000-80-0-0.jpg',
@@ -122,10 +122,10 @@ export function cacheArtistPortrait(nameOrId: string, url: string): void {
  * Dynamically fetches live HD artist portrait from server (/api/artist-image)
  * and saves into cache for seamless real-time rendering.
  */
-export async function fetchArtistPortraitLive(nameOrId: string): Promise<string> {
-  if (!nameOrId || typeof nameOrId !== 'string') return '';
-  const clean = nameOrId.toLowerCase().trim().replace(/^artist-/, '');
-  const slug = clean.replace(/[^a-z0-9]+/g, ' ').trim();
+export async function fetchArtistPortraitLive(name: string, id?: string): Promise<string> {
+  if (!name || typeof name !== 'string') return '';
+  const clean = name.toLowerCase().trim().replace(/^artist-/, '');
+  const slug = (id || clean).replace(/[^a-z0-9]+/gi, ' ').trim();
 
   const cached = getArtistPortrait(slug);
   if (cached) return cached;
@@ -136,7 +136,9 @@ export async function fetchArtistPortraitLive(nameOrId: string): Promise<string>
 
   const p = (async () => {
     try {
-      const res = await fetch(`/api/artist-image?name=${encodeURIComponent(nameOrId)}`);
+      const queryParams = new URLSearchParams({ name });
+      if (id) queryParams.append('id', id);
+      const res = await fetch(`/api/artist-image?${queryParams.toString()}`);
       if (res.ok) {
         const data = await res.json();
         if (data && data.imageUrl && data.imageUrl.startsWith('http')) {

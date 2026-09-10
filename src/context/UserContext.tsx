@@ -1,11 +1,13 @@
 import { auth, db, loginWithGoogle, logout } from '../services/firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot, collection, writeBatch, query, where, deleteDoc } from 'firebase/firestore';
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { UserProfile, Track, Playlist, Artist, InteractionStats, RecentSearchItem } from '../types';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { UserProfile, Track, Playlist, Artist, Album, InteractionStats, RecentSearchItem } from '../types';
 import { api } from '../services/apiClient';
 import { isArtistAliasMatch, normalizeSearchString } from '../utils/searchRanker';
 import { offlineStorage } from '../services/offlineStorage';
+import { getArtistPortrait } from '../utils/artistPortraits';
+import { resolveArtist } from '../utils/artistAliases';
 
 export interface ToastData {
   message: string;
@@ -38,6 +40,16 @@ interface UserContextType {
   followedArtistIds: Set<string>;
   followedArtistsList: Artist[];
   followedArtistsMap: Record<string, Artist>;
+  savedAlbumIds: Set<string>;
+  savedAlbumsList: Album[];
+  savedAlbumsMap: Record<string, Album>;
+  toggleSaveAlbum: (album: Album) => Promise<boolean>;
+  isAlbumSaved: (albumId: string) => boolean;
+  savedPodcastIds: Set<string>;
+  savedPodcastsList: any[];
+  savedPodcastsMap: Record<string, any>;
+  toggleSavePodcast: (podcast: any) => Promise<boolean>;
+  isPodcastSaved: (podcastId: string) => boolean;
   downloadedTrackIds: Set<string>;
   downloadingProgress: Record<string, number>;
   isDownloadingTrack: (trackId: string) => boolean;
@@ -48,7 +60,16 @@ interface UserContextType {
   toggleFollowArtist: (artist: Artist | { id: string; name: string; image?: string; [key: string]: any }) => Promise<boolean>;
   isArtistFollowed: (artistIdOrName: string) => boolean;
   toggleDownloadTrack: (track: Track) => Promise<boolean>;
+  downloadSingleTrack: (track: Track) => Promise<boolean>;
+  downloadPlaylistTracks: (tracks: Track[], playlistId?: string, playlistTitle?: string) => Promise<void>;
+  playlistDownloadProgress: { isDownloading: boolean; playlistId?: string; current: number; total: number } | null;
   isTrackDownloaded: (trackId: string) => boolean;
+  hiddenTrackIds: Set<string>;
+  hiddenTracksMap: Record<string, Track>;
+  hideTrack: (trackId: string, trackObj?: Track) => Promise<boolean>;
+  unhideTrack: (trackId: string) => Promise<boolean>;
+  saveHiddenTrackMeta: (track: Track) => void;
+  isTrackHidden: (trackId: string) => boolean;
   createPlaylist: (
     title: string, 
     description?: string, 
@@ -107,8 +128,36 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [likedTracksMap, setLikedTracksMap] = useState<Record<string, Track>>({});
   const [followedArtistIds, setFollowedArtistIds] = useState<Set<string>>(new Set());
   const [followedArtistsMap, setFollowedArtistsMap] = useState<Record<string, Artist>>({});
+  const [savedAlbumIds, setSavedAlbumIds] = useState<Set<string>>(new Set());
+  const [savedAlbumsMap, setSavedAlbumsMap] = useState<Record<string, Album>>({});
+  const [savedPodcastIds, setSavedPodcastIds] = useState<Set<string>>(new Set());
+  const [savedPodcastsMap, setSavedPodcastsMap] = useState<Record<string, any>>({});
   const [downloadedTrackIds, setDownloadedTrackIds] = useState<Set<string>>(new Set());
   const [downloadedTracksMap, setDownloadedTracksMap] = useState<Record<string, Track>>({});
+  const downloadedTrackIdsRef = useRef<Set<string>>(new Set());
+  const downloadedTracksMapRef = useRef<Record<string, Track>>({});
+  const [playlistDownloadProgress, setPlaylistDownloadProgress] = useState<{
+    isDownloading: boolean;
+    playlistId?: string;
+    current: number;
+    total: number;
+  } | null>(null);
+  const [hiddenTrackIds, setHiddenTrackIds] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('spotiz_hidden_tracks');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+  const [hiddenTracksMap, setHiddenTracksMap] = useState<Record<string, Track>>(() => {
+    try {
+      const saved = localStorage.getItem('spotiz_hidden_tracks_data');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
   const [downloadingProgress, setDownloadingProgress] = useState<Record<string, number>>({});
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -121,8 +170,26 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const followedArtistsList = useMemo(() => {
-    return Object.values(followedArtistsMap);
+    const seen = new Set<string>();
+    const list: Artist[] = [];
+    for (const art of Object.values(followedArtistsMap)) {
+      if (!art || !art.name) continue;
+      const key = normalizeSearchString(art.name) || art.id;
+      if (!seen.has(key)) {
+        seen.add(key);
+        list.push(art);
+      }
+    }
+    return list;
   }, [followedArtistsMap]);
+
+  const savedAlbumsList = useMemo(() => {
+    return Object.values(savedAlbumsMap);
+  }, [savedAlbumsMap]);
+
+  const savedPodcastsList = useMemo(() => {
+    return Object.values(savedPodcastsMap);
+  }, [savedPodcastsMap]);
 
   const showComingSoon = useCallback((title: string = 'Coming Soon', desc?: string) => {
     setComingSoonTitle(title);
@@ -213,6 +280,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setFollowedArtistIds(new Set());
         setFollowedArtistsMap({});
         setPlaylists([]);
+        setSavedAlbumIds(new Set());
+        setSavedAlbumsMap({});
+        setSavedPodcastIds(new Set());
+        setSavedPodcastsMap({});
         
         const userRef = doc(db, 'users', user.uid);
         const userSnap = await getDoc(userRef);
@@ -361,16 +432,66 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setLikedTracksMap(newMap);
         });
 
-        const unsubFollowed = onSnapshot(collection(db, 'users', user.uid, 'followedArtists'), (snapshot) => {
-          const newMap = {};
-          const newSet = new Set<string>();
-          snapshot.forEach(doc => {
-            newSet.add(doc.id);
-            newMap[doc.id] = doc.data().artistData;
-          });
-          setFollowedArtistIds(newSet);
-          setFollowedArtistsMap(newMap);
-        });
+        const unsubFollowed = onSnapshot(
+          collection(db, 'users', user.uid, 'followedArtists'),
+          (snapshot) => {
+            const newMap: Record<string, any> = {};
+            const newSet = new Set<string>();
+            snapshot.forEach((docSnap) => {
+              const data = docSnap.data() || {};
+              const artistData = data.artistData || {};
+              const docId = docSnap.id;
+              const originalId = data.artistId || artistData.id || docId;
+
+              if (artistData.name) {
+                const canonical =
+                  getArtistPortrait(artistData.id) ||
+                  getArtistPortrait(artistData.name) ||
+                  resolveArtist(artistData.name)?.entry?.portraitUrl ||
+                  '';
+                if (
+                  canonical &&
+                  (!artistData.image ||
+                    artistData.image.includes('placeholder') ||
+                    artistData.image.includes('d41d8cd98f00b204e9800998ecf8427e') ||
+                    (artistData.name.toLowerCase().includes('anuv jain') && !artistData.image.includes('scdn.co')))
+                ) {
+                  artistData.image = canonical;
+                }
+              }
+
+              newSet.add(docId);
+              newMap[docId] = artistData;
+
+              if (originalId) {
+                newSet.add(originalId);
+                newMap[originalId] = artistData;
+              }
+              if (artistData.id) {
+                newSet.add(artistData.id);
+                newMap[artistData.id] = artistData;
+              }
+              if (artistData.name) {
+                const nameKey = artistData.name.trim();
+                newSet.add(nameKey);
+                if (!newMap[nameKey]) {
+                  newMap[nameKey] = artistData;
+                }
+              }
+            });
+
+            setFollowedArtistIds(newSet);
+            setFollowedArtistsMap(newMap);
+
+            try {
+              localStorage.setItem('spotify_followed_artists', JSON.stringify(Array.from(newSet)));
+              localStorage.setItem('spotify_followed_artists_data', JSON.stringify(newMap));
+            } catch (e) {}
+          },
+          (err) => {
+            console.warn('[UserContext] onSnapshot error on followedArtists:', err);
+          }
+        );
 
         let currentPlaylists: Record<string, any> = {};
         let sharedPlaylists: Record<string, any> = {};
@@ -419,7 +540,33 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setDownloadedTracksMap(newMap);
         });
 
-        unsubs.push(unsubUser, unsubLiked, unsubFollowed, unsubPlaylists, unsubDownloads);
+        const unsubAlbums = onSnapshot(collection(db, 'users', user.uid, 'savedAlbums'), (snapshot) => {
+          const newMap: Record<string, Album> = {};
+          const newSet = new Set<string>();
+          snapshot.forEach(doc => {
+            newSet.add(doc.id);
+            if (doc.data()?.albumData) {
+              newMap[doc.id] = doc.data().albumData;
+            }
+          });
+          setSavedAlbumIds(newSet);
+          setSavedAlbumsMap(newMap);
+        });
+
+        const unsubPodcasts = onSnapshot(collection(db, 'users', user.uid, 'savedPodcasts'), (snapshot) => {
+          const newMap: Record<string, any> = {};
+          const newSet = new Set<string>();
+          snapshot.forEach(doc => {
+            newSet.add(doc.id);
+            if (doc.data()?.podcastData) {
+              newMap[doc.id] = doc.data().podcastData;
+            }
+          });
+          setSavedPodcastIds(newSet);
+          setSavedPodcastsMap(newMap);
+        });
+
+        unsubs.push(unsubUser, unsubLiked, unsubFollowed, unsubPlaylists, unsubDownloads, unsubAlbums, unsubPodcasts);
         setLoading(false);
         setAuthResolved(true);
       } else {
@@ -430,6 +577,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setFollowedArtistIds(new Set());
         setFollowedArtistsMap({});
         setPlaylists([]);
+        setSavedAlbumIds(new Set());
+        setSavedAlbumsMap({});
+        setSavedPodcastIds(new Set());
+        setSavedPodcastsMap({});
         loadProfile(); // Load guest profile
         setAuthResolved(true);
       }
@@ -519,13 +670,13 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Cleanup legacy bad images from local storage
           Object.keys(parsedMap).forEach(key => {
             const art = parsedMap[key];
-            if (art && art.image) {
-               if (art.image.includes('unsplash.com') || art.image.includes('placeholder') || art.image.includes('d41d8cd98f00b204e9800998ecf8427e')) {
+            if (art) {
+               if (art.image && (art.image.includes('unsplash.com') || art.image.includes('placeholder') || art.image.includes('d41d8cd98f00b204e9800998ecf8427e'))) {
                   art.image = '';
                }
-               // Specifically fix Anuv Jain if incorrect
+               // Specifically fix Anuv Jain
                if (art.name && art.name.toLowerCase().includes('anuv jain')) {
-                  art.image = 'https://cdn-images.dzcdn.net/images/artist/eb0c0e91c8ad621b41178e0d66c81057/1000x1000-000000-80-0-0.jpg';
+                  art.image = 'https://i.scdn.co/image/ab6761610000e5eba837a6cb82dd949d5e1f9b53';
                }
                // Specifically fix Noor if incorrect
                if (art.name && (art.name.toLowerCase() === 'noor' || art.name.toLowerCase() === 'noor khan')) {
@@ -535,6 +686,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
                if (art.name && (art.name.toLowerCase() === 'madhurxo' || art.name.toLowerCase() === 'madhur sharma')) {
                   art.image = 'https://i.scdn.co/image/ab6761610000e5ebfc25b09e6a4ca0fae1ce7adb';
                }
+               // Auto heal missing image
+               if (!art.image && art.name) {
+                  art.image = getArtistPortrait(art.id) || getArtistPortrait(art.name) || (resolveArtist(art.name)?.entry?.portraitUrl) || '';
+               }
             }
           });
           initialFollowedMap = parsedMap;
@@ -542,6 +697,38 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Re-save cleaned map
           localStorage.setItem('spotify_followed_artists_data', JSON.stringify(parsedMap));
         }
+      }
+
+      const savedAlbums = localStorage.getItem('spotify_saved_albums');
+      if (savedAlbums) {
+        try {
+          const parsed = JSON.parse(savedAlbums);
+          if (Array.isArray(parsed)) {
+            setSavedAlbumIds(new Set(parsed));
+          }
+        } catch (e) {}
+      }
+      const savedAlbumsData = localStorage.getItem('spotify_saved_albums_data');
+      if (savedAlbumsData) {
+        try {
+          setSavedAlbumsMap(JSON.parse(savedAlbumsData));
+        } catch (e) {}
+      }
+
+      const savedPodcasts = localStorage.getItem('spotify_saved_podcasts');
+      if (savedPodcasts) {
+        try {
+          const parsed = JSON.parse(savedPodcasts);
+          if (Array.isArray(parsed)) {
+            setSavedPodcastIds(new Set(parsed));
+          }
+        } catch (e) {}
+      }
+      const savedPodcastsData = localStorage.getItem('spotify_saved_podcasts_data');
+      if (savedPodcastsData) {
+        try {
+          setSavedPodcastsMap(JSON.parse(savedPodcastsData));
+        } catch (e) {}
       }
 
       const historyRaw = localStorage.getItem('spotify_recent_history');
@@ -641,7 +828,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (savedDownloads) {
         const parsed = JSON.parse(savedDownloads);
         setDownloadedTracksMap(parsed);
-        setDownloadedTrackIds(new Set(Object.keys(parsed)));
+        const ids = new Set<string>(Object.keys(parsed));
+        setDownloadedTrackIds(ids);
+        downloadedTracksMapRef.current = parsed;
+        downloadedTrackIdsRef.current = ids;
       }
     } catch (e) {
       // Ignore parse errors
@@ -650,14 +840,19 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Deep sync with IndexedDB offline storage
     offlineStorage.getAllOfflineTracks().then((idbTracks) => {
       if (idbTracks && idbTracks.length > 0) {
-        const map: Record<string, Track> = {};
-        const ids = new Set<string>();
+        const map: Record<string, Track> = { ...downloadedTracksMapRef.current };
+        const ids = new Set<string>(downloadedTrackIdsRef.current);
         idbTracks.forEach((t) => {
           map[t.id] = t;
           ids.add(t.id);
         });
-        setDownloadedTracksMap((prev) => ({ ...prev, ...map }));
-        setDownloadedTrackIds((prev) => new Set([...Array.from(prev), ...Array.from(ids)]));
+        downloadedTracksMapRef.current = map;
+        downloadedTrackIdsRef.current = ids;
+        setDownloadedTracksMap(map);
+        setDownloadedTrackIds(ids);
+        try {
+          localStorage.setItem('spotify_offline_tracks', JSON.stringify(map));
+        } catch (e) {}
       }
     }).catch(() => {});
   }, []);
@@ -692,9 +887,114 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [followedArtistIds, followedArtistsMap]
   );
 
-  const isTrackDownloaded = useCallback((trackId: string) => downloadedTrackIds.has(trackId), [downloadedTrackIds]);
+  const isTrackDownloaded = useCallback((trackId: string) => {
+    if (!trackId) return false;
+    return downloadedTrackIdsRef.current.has(trackId) || downloadedTrackIds.has(trackId);
+  }, [downloadedTrackIds]);
   const isDownloadingTrack = useCallback((trackId: string) => downloadingProgress[trackId] !== undefined, [downloadingProgress]);
   const getTrackDownloadProgress = useCallback((trackId: string) => downloadingProgress[trackId], [downloadingProgress]);
+
+  const isTrackHidden = useCallback((trackId: string) => hiddenTrackIds.has(trackId), [hiddenTrackIds]);
+
+  const saveHiddenTrackMeta = useCallback((track: Track) => {
+    if (!track?.id) return;
+    setHiddenTracksMap((prev) => {
+      const next = { ...prev, [track.id]: track };
+      try {
+        localStorage.setItem('spotiz_hidden_tracks_data', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  }, []);
+
+  const hideTrack = useCallback(async (trackId: string, trackObj?: Track): Promise<boolean> => {
+    setHiddenTrackIds((prev) => {
+      const next = new Set(prev);
+      next.add(trackId);
+      try {
+        localStorage.setItem('spotiz_hidden_tracks', JSON.stringify(Array.from(next)));
+      } catch (e) {}
+      return next;
+    });
+
+    if (trackObj) {
+      setHiddenTracksMap((prev) => {
+        const next = { ...prev, [trackId]: trackObj };
+        try {
+          localStorage.setItem('spotiz_hidden_tracks_data', JSON.stringify(next));
+        } catch (e) {}
+        return next;
+      });
+    }
+
+    if (auth.currentUser) {
+      try {
+        const userRef = doc(db, 'users', auth.currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const currentHidden = userSnap.data()?.hiddenTrackIds || [];
+          const currentHiddenMap = userSnap.data()?.hiddenTracksMap || {};
+          if (!currentHidden.includes(trackId)) {
+            await setDoc(userRef, { 
+              hiddenTrackIds: [...currentHidden, trackId],
+              hiddenTracksMap: trackObj ? { ...currentHiddenMap, [trackId]: trackObj } : currentHiddenMap
+            }, { merge: true });
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to sync hidden track to firestore:', err);
+      }
+    }
+
+    showToast('Song hidden from your recommendations');
+    return true;
+  }, [showToast]);
+
+  const unhideTrack = useCallback(async (trackId: string): Promise<boolean> => {
+    setHiddenTrackIds((prev) => {
+      const next = new Set(prev);
+      next.delete(trackId);
+      try {
+        localStorage.setItem('spotiz_hidden_tracks', JSON.stringify(Array.from(next)));
+      } catch (e) {}
+      return next;
+    });
+
+    setHiddenTracksMap((prev) => {
+      const next = { ...prev };
+      delete next[trackId];
+      try {
+        localStorage.setItem('spotiz_hidden_tracks_data', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+
+    if (auth.currentUser) {
+      try {
+        const userRef = doc(db, 'users', auth.currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const currentHidden = userSnap.data()?.hiddenTrackIds || [];
+          const currentHiddenMap = userSnap.data()?.hiddenTracksMap || {};
+          const nextHiddenMap = { ...currentHiddenMap };
+          delete nextHiddenMap[trackId];
+          await setDoc(
+            userRef,
+            { 
+              hiddenTrackIds: currentHidden.filter((id: string) => id !== trackId),
+              hiddenTracksMap: nextHiddenMap
+            },
+            { merge: true }
+          );
+        }
+      } catch (err) {
+        console.warn('Failed to sync unhide track to firestore:', err);
+      }
+    }
+
+    showToast('Song unhidden');
+    return true;
+  }, [showToast]);
 
   const addTrackToHistory = useCallback((track: Track) => {
     if (!profile) return;
@@ -863,7 +1163,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     try {
-      await api.toggleLikeTrack(track.id);
+      // await api.toggleLikeTrack(track.id);
     } catch (e) {}
     return !wasLiked;
   };
@@ -894,6 +1194,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
+    const safeDocId = artistId.trim().replace(/[\/\s#?\[\]]/g, '_').slice(0, 120) || 'art_unknown';
+
     if (wasFollowed) {
       // Remove all matching keys
       matchingKeys.forEach((k) => {
@@ -901,9 +1203,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         delete newMap[k];
       });
       newSet.delete(artistId);
-      if (newMap[artistId]) {
-        delete newMap[artistId];
-      }
+      newSet.delete(artistName);
+      newSet.delete(safeDocId);
+      if (newMap[artistId]) delete newMap[artistId];
+      if (newMap[artistName]) delete newMap[artistName];
+      if (newMap[safeDocId]) delete newMap[safeDocId];
 
       // Also prune any leftover artist IDs from newSet that match by normalization
       for (const id of Array.from(newSet)) {
@@ -914,20 +1218,22 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (auth.currentUser) {
-        const allDocIds = Array.from(new Set([artistId, ...matchingKeys]));
+        const allDocIds = Array.from(new Set([artistId, safeDocId, ...matchingKeys]));
         for (const docId of allDocIds) {
-          const safeDocId = docId.replace(/\//g, '_');
-          deleteDoc(doc(db, 'users', auth.currentUser.uid, 'followedArtists', safeDocId)).catch(() => {});
+          const sId = docId.trim().replace(/[\/\s#?\[\]]/g, '_').slice(0, 120);
+          if (sId) {
+            deleteDoc(doc(db, 'users', auth.currentUser.uid, 'followedArtists', sId)).catch(() => {});
+          }
         }
       }
       showToast(`Unfollowed ${artistName}`);
     } else {
-      newSet.add(artistId);
       const safeImage = (artistInput as any).image || (artistInput as any).headerImage || '';
+      const resolvedPortrait = safeImage || getArtistPortrait(artistId) || getArtistPortrait(artistName) || (resolveArtist(artistName)?.entry?.portraitUrl) || '';
       const newArtist: Artist = {
         id: artistId,
         name: artistName,
-        image: safeImage,
+        image: resolvedPortrait,
         headerImage: (artistInput as any).headerImage || '',
         followers: Number((artistInput as any).followers) || 0,
         monthlyListeners: Number((artistInput as any).monthlyListeners) || 0,
@@ -948,15 +1254,20 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         albums: [],
         singles: [],
       };
+
+      newSet.add(artistId);
+      newSet.add(artistName);
+      newSet.add(safeDocId);
       newMap[artistId] = newArtist;
+      newMap[artistName] = newArtist;
+      newMap[safeDocId] = newArtist;
 
       if (auth.currentUser) {
-        const safeDocId = artistId.replace(/\//g, '_');
-        const sanitizedPayload = JSON.parse(JSON.stringify({
+        const sanitizedPayload = {
           artistId,
           artistData: newArtist,
           createdAt: new Date().toISOString()
-        }));
+        };
         setDoc(doc(db, 'users', auth.currentUser.uid, 'followedArtists', safeDocId), sanitizedPayload).catch((err) => {
           console.warn('[UserContext] Error saving followed artist to Firestore:', err);
         });
@@ -967,15 +1278,20 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setFollowedArtistIds(newSet);
     setFollowedArtistsMap(newMap);
 
-    const updatedCount = newSet.size;
+    const uniqueCount = new Set(
+      Object.values(newMap)
+        .filter(Boolean)
+        .map((a) => normalizeSearchString(a?.name || a?.id || ''))
+        .filter(Boolean)
+    ).size;
 
     setProfile((prev) => {
       if (!prev) return prev;
       return {
         ...prev,
-        followingCount: updatedCount,
+        followingCount: uniqueCount,
         followedArtistIds: Array.from(newSet),
-        stats: prev.stats ? { ...prev.stats, followingCount: updatedCount } : prev.stats,
+        stats: prev.stats ? { ...prev.stats, followingCount: uniqueCount } : prev.stats,
       };
     });
 
@@ -992,174 +1308,392 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const toggleDownloadTrack = async (track: Track): Promise<boolean> => {
-    let wasDownloaded = downloadedTrackIds.has(track.id);
-    let hasPhysicalBlob = false;
-    try {
-      const blob = await offlineStorage.getOfflineAudioBlob(track.id);
-      hasPhysicalBlob = !!(blob && blob.size > 0);
-    } catch(e) {}
-    
-    // If it's in Firebase but missing locally, treat as NOT downloaded so clicking will re-download the physical file
-    if (wasDownloaded && !hasPhysicalBlob) {
-      wasDownloaded = false;
+  const isAlbumSaved = useCallback(
+    (albumId: string) => {
+      if (!albumId) return false;
+      return savedAlbumIds.has(albumId) || Boolean(savedAlbumsMap[albumId]);
+    },
+    [savedAlbumIds, savedAlbumsMap]
+  );
+
+  const toggleSaveAlbum = async (album: Album): Promise<boolean> => {
+    if (!album || !album.id) return false;
+    const albumId = album.id;
+    const wasSaved = isAlbumSaved(albumId);
+    const newSet = new Set(savedAlbumIds);
+    const newMap = { ...savedAlbumsMap };
+
+    if (wasSaved) {
+      newSet.delete(albumId);
+      delete newMap[albumId];
+      if (auth.currentUser) {
+        const safeDocId = albumId.replace(/\//g, '_');
+        deleteDoc(doc(db, 'users', auth.currentUser.uid, 'savedAlbums', safeDocId)).catch(() => {});
+      }
+      showToast({ message: 'Removed from Your Library', iconType: 'info' });
+    } else {
+      newSet.add(albumId);
+      newMap[albumId] = album;
+      if (auth.currentUser) {
+        const safeDocId = albumId.replace(/\//g, '_');
+        const sanitizedPayload = JSON.parse(
+          JSON.stringify({
+            albumId,
+            albumData: album,
+            createdAt: new Date().toISOString(),
+          })
+        );
+        setDoc(doc(db, 'users', auth.currentUser.uid, 'savedAlbums', safeDocId), sanitizedPayload).catch((err) => {
+          console.warn('[UserContext] Error saving album to Firestore:', err);
+        });
+      }
+      showToast({ message: 'Saved to Your Library', iconType: 'info' });
     }
 
-    const newSet = new Set(downloadedTrackIds);
-    const newMap = { ...downloadedTracksMap };
+    setSavedAlbumIds(newSet);
+    setSavedAlbumsMap(newMap);
 
-    if (wasDownloaded) {
+    setProfile((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        savedAlbumIds: Array.from(newSet),
+      };
+    });
+
+    try {
+      localStorage.setItem('spotify_saved_albums', JSON.stringify(Array.from(newSet)));
+      localStorage.setItem('spotify_saved_albums_data', JSON.stringify(newMap));
+    } catch (e) {}
+
+    return !wasSaved;
+  };
+
+  const isPodcastSaved = useCallback(
+    (podcastId: string) => {
+      if (!podcastId) return false;
+      return savedPodcastIds.has(podcastId) || Boolean(savedPodcastsMap[podcastId]);
+    },
+    [savedPodcastIds, savedPodcastsMap]
+  );
+
+  const toggleSavePodcast = async (podcast: any): Promise<boolean> => {
+    if (!podcast || !podcast.id) return false;
+    const podcastId = podcast.id;
+    const wasSaved = isPodcastSaved(podcastId);
+    const newSet = new Set(savedPodcastIds);
+    const newMap = { ...savedPodcastsMap };
+
+    if (wasSaved) {
+      newSet.delete(podcastId);
+      delete newMap[podcastId];
       if (auth.currentUser) {
-        const downloadRef = doc(db, 'users', auth.currentUser.uid, 'downloads', track.id);
-        await deleteDoc(downloadRef).catch(() => {});
+        const safeDocId = podcastId.replace(/\//g, '_');
+        deleteDoc(doc(db, 'users', auth.currentUser.uid, 'savedPodcasts', safeDocId)).catch(() => {});
       }
-      newSet.delete(track.id);
-      delete newMap[track.id];
-      showToast(`Removed from offline downloads`);
-      
-      // Clean up from IndexedDB & caches
-      try {
-        await offlineStorage.removeOfflineTrack(track.id);
-      } catch (e) {
-        // ignore
-      }
+      showToast({ message: 'Removed from Your Library', iconType: 'info' });
     } else {
-      // Start download with visual progress
-      setDownloadingProgress((prev) => ({ ...prev, [track.id]: 10 }));
-      showToast(`Downloading "${track.title}" for offline...`);
-      
-      let playableUrl = track.streamUrl || '';
+      newSet.add(podcastId);
+      newMap[podcastId] = podcast;
+      if (auth.currentUser) {
+        const safeDocId = podcastId.replace(/\//g, '_');
+        const sanitizedPayload = JSON.parse(
+          JSON.stringify({
+            podcastId,
+            podcastData: podcast,
+            createdAt: new Date().toISOString(),
+          })
+        );
+        setDoc(doc(db, 'users', auth.currentUser.uid, 'savedPodcasts', safeDocId), sanitizedPayload).catch((err) => {
+          console.warn('[UserContext] Error saving podcast to Firestore:', err);
+        });
+      }
+      showToast({ message: 'Saved to Your Library', iconType: 'info' });
+    }
+
+    setSavedPodcastIds(newSet);
+    setSavedPodcastsMap(newMap);
+
+    try {
+      localStorage.setItem('spotify_saved_podcasts', JSON.stringify(Array.from(newSet)));
+      localStorage.setItem('spotify_saved_podcasts_data', JSON.stringify(newMap));
+    } catch (e) {}
+
+    return !wasSaved;
+  };
+
+  /**
+   * Download a single track offline.
+   * If the track is already downloaded with physical data, it is SKIPPED immediately without re-downloading.
+   * Updates state, refs, and storage synchronously per-track.
+   */
+  const downloadSingleTrack = async (track: Track): Promise<boolean> => {
+    if (!track || !track.id) return false;
+
+    // Fast check: If already downloaded and has physical audio blob, DO NOTHING
+    if (downloadedTrackIdsRef.current.has(track.id)) {
       try {
-        // Step 1: Resolve high quality playback URL
-        try {
-          const resolveRes = await api.resolvePlayback(track.id, track.title, track.artist, track.duration);
-          if (resolveRes.success && resolveRes.data?.stream?.url) {
-            playableUrl = resolveRes.data.stream.url;
-          }
-        } catch (resolveErr) {
-          // Fallback to existing streamUrl
+        const existingBlob = await offlineStorage.getOfflineAudioBlob(track.id);
+        if (existingBlob && existingBlob.size > 0) {
+          return true; // Already safely stored offline! Skip.
         }
+      } catch (e) {
+        // ignore check error
+      }
+    }
 
-        if (!playableUrl) {
-          throw new Error('No playable stream URL available for this track');
+    // Start download with live visual progress
+    setDownloadingProgress((prev) => ({ ...prev, [track.id]: 10 }));
+
+    let playableUrl = track.streamUrl || '';
+    try {
+      // Step 1: Resolve playable audio stream
+      try {
+        const resolveRes = await api.resolvePlayback(track.id, track.title, track.artist, track.duration);
+        if (resolveRes.success && resolveRes.data?.stream?.url) {
+          playableUrl = resolveRes.data.stream.url;
         }
+      } catch (resolveErr) {
+        // Fallback to track.streamUrl
+      }
 
-        setDownloadingProgress((prev) => ({ ...prev, [track.id]: 25 }));
+      if (!playableUrl) {
+        throw new Error('No playable stream URL found for this track');
+      }
 
-        // Step 2: Fetch and cache the raw audio binary
-        let audioBlob: Blob | null = null;
-        try {
-          // Attempt 1: Fetch via audio download endpoint (CORS-safe, complete stream)
-          const downloadEndpoint = `/api/audio-download?url=${encodeURIComponent(playableUrl)}`;
-          const response = await fetch(downloadEndpoint);
-          if (response.ok && response.body) {
-            const contentLength = +(response.headers.get('Content-Length') || 0);
-            const reader = response.body.getReader();
-            let received = 0;
-            const chunks: Uint8Array[] = [];
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              if (value) {
-                chunks.push(value);
-                received += value.length;
-                if (contentLength > 0) {
-                  const percent = Math.min(90, Math.round(25 + (received / contentLength) * 65));
-                  setDownloadingProgress((prev) => ({ ...prev, [track.id]: percent }));
-                }
+      setDownloadingProgress((prev) => ({ ...prev, [track.id]: 25 }));
+
+      // Step 2: Fetch audio binary stream with download progress
+      let audioBlob: Blob | null = null;
+      try {
+        const downloadEndpoint = `/api/audio-download?url=${encodeURIComponent(playableUrl)}`;
+        const response = await fetch(downloadEndpoint);
+        if (response.ok && response.body) {
+          const contentLength = +(response.headers.get('Content-Length') || 0);
+          const reader = response.body.getReader();
+          let received = 0;
+          const chunks: Uint8Array[] = [];
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (value) {
+              chunks.push(value);
+              received += value.length;
+              if (contentLength > 0) {
+                const percent = Math.min(90, Math.round(25 + (received / contentLength) * 65));
+                setDownloadingProgress((prev) => ({ ...prev, [track.id]: percent }));
               }
             }
-            if (chunks.length > 0) {
-              audioBlob = new Blob(chunks, { type: response.headers.get('Content-Type') || 'audio/mp4' });
-            }
           }
-        } catch (proxyErr) {
-          console.warn('[Download] Proxy download note, trying direct fetch:', proxyErr);
-        }
-
-        // Attempt 2: Direct fetch fallback if proxy failed
-        if (!audioBlob || audioBlob.size === 0) {
-          try {
-            setDownloadingProgress((prev) => ({ ...prev, [track.id]: 50 }));
-            const directRes = await fetch(playableUrl);
-            if (directRes.ok) {
-              audioBlob = await directRes.blob();
-            }
-          } catch (directErr) {
-            console.warn('[Download] Direct fetch note:', directErr);
+          if (chunks.length > 0) {
+            audioBlob = new Blob(chunks, { type: response.headers.get('Content-Type') || 'audio/mp4' });
           }
         }
+      } catch (proxyErr) {
+        console.warn('[Download] Proxy download note, trying direct fetch:', proxyErr);
+      }
 
-        if (!audioBlob || audioBlob.size === 0) {
-          throw new Error('Could not download audio stream');
-        }
-
-        // Step 3: Fetch artwork image for offline display
-        setDownloadingProgress((prev) => ({ ...prev, [track.id]: 92 }));
-        let artworkBlob: Blob | null = null;
-        const artUrl = track.images?.large || track.images?.medium || '';
-        if (artUrl) {
-          try {
-            const artRes = await fetch(artUrl);
-            if (artRes.ok) {
-              artworkBlob = await artRes.blob();
-            }
-          } catch (artErr) {
-            // Artwork fetching failure is non-blocking
+      // Direct fetch fallback if proxy failed
+      if (!audioBlob || audioBlob.size === 0) {
+        try {
+          setDownloadingProgress((prev) => ({ ...prev, [track.id]: 50 }));
+          const directRes = await fetch(playableUrl);
+          if (directRes.ok) {
+            audioBlob = await directRes.blob();
           }
+        } catch (directErr) {
+          console.warn('[Download] Direct fetch note:', directErr);
         }
+      }
 
-        // Step 4: Persist in IndexedDB
-        setDownloadingProgress((prev) => ({ ...prev, [track.id]: 96 }));
-        const downloadedTrack: Track = { ...track, streamUrl: playableUrl };
-        await offlineStorage.saveOfflineTrack(downloadedTrack, audioBlob, artworkBlob);
+      if (!audioBlob || audioBlob.size === 0) {
+        throw new Error('Could not download audio stream');
+      }
 
-        // Finalize download state
-        if (auth.currentUser) {
-          const downloadRef = doc(db, 'users', auth.currentUser.uid, 'downloads', track.id);
-          const sanitizedDownloadedTrack = JSON.parse(JSON.stringify(downloadedTrack));
-          await setDoc(downloadRef, {
-            trackId: track.id,
-            trackData: sanitizedDownloadedTrack,
-            createdAt: new Date().toISOString()
-          });
+      // Step 3: Fetch artwork image for offline view
+      setDownloadingProgress((prev) => ({ ...prev, [track.id]: 92 }));
+      let artworkBlob: Blob | null = null;
+      const artUrl = track.images?.large || track.images?.medium || '';
+      if (artUrl) {
+        try {
+          const artRes = await fetch(artUrl);
+          if (artRes.ok) {
+            artworkBlob = await artRes.blob();
+          }
+        } catch (artErr) {
+          // Artwork fetch failure is non-blocking
         }
-        
-        newSet.add(track.id);
-        newMap[track.id] = downloadedTrack;
-        setDownloadingProgress((prev) => ({ ...prev, [track.id]: 100 }));
-        showToast(`Downloaded "${track.title}" for offline playback`);
+      }
 
-        // Smooth transition out of progress
-        setTimeout(() => {
-          setDownloadingProgress((prev) => {
-            const next = { ...prev };
-            delete next[track.id];
-            return next;
-          });
-        }, 600);
-      } catch (err) {
-        console.warn('[Download] Failed to cache audio offline:', err);
+      // Step 4: Persist in IndexedDB
+      setDownloadingProgress((prev) => ({ ...prev, [track.id]: 96 }));
+      const downloadedTrack: Track = { ...track, streamUrl: playableUrl };
+      await offlineStorage.saveOfflineTrack(downloadedTrack, audioBlob, artworkBlob);
+
+      // Save to Firestore if user logged in
+      if (auth.currentUser) {
+        const downloadRef = doc(db, 'users', auth.currentUser.uid, 'downloads', track.id);
+        const sanitizedDownloadedTrack = JSON.parse(JSON.stringify(downloadedTrack));
+        setDoc(downloadRef, {
+          trackId: track.id,
+          trackData: sanitizedDownloadedTrack,
+          createdAt: new Date().toISOString(),
+        }).catch(() => {});
+      }
+
+      // Synchronize in-memory refs immediately (protecting against stale closures in loops)
+      downloadedTrackIdsRef.current.add(track.id);
+      downloadedTracksMapRef.current[track.id] = downloadedTrack;
+
+      // Update React state with fresh instances for instant UI re-renders
+      setDownloadedTrackIds(new Set(downloadedTrackIdsRef.current));
+      setDownloadedTracksMap({ ...downloadedTracksMapRef.current });
+
+      // Keep localStorage in sync
+      try {
+        localStorage.setItem('spotify_offline_tracks', JSON.stringify(downloadedTracksMapRef.current));
+      } catch (e) {}
+
+      setDownloadingProgress((prev) => ({ ...prev, [track.id]: 100 }));
+
+      // Clean up download progress badge
+      setTimeout(() => {
         setDownloadingProgress((prev) => {
           const next = { ...prev };
           delete next[track.id];
           return next;
         });
-        showToast(`Download failed for offline playback`);
-        return false;
+      }, 500);
+
+      try {
+        // api.toggleDownloadTrack(track.id).catch(() => {});
+      } catch (e) {}
+
+      return true;
+    } catch (err) {
+      console.warn('[Download] Failed to download song:', err);
+      setDownloadingProgress((prev) => {
+        const next = { ...prev };
+        delete next[track.id];
+        return next;
+      });
+      return false;
+    }
+  };
+
+  /**
+   * Remove an already downloaded track from offline storage
+   */
+  const removeDownloadedTrack = async (track: Track): Promise<boolean> => {
+    if (!track || !track.id) return false;
+
+    if (auth.currentUser) {
+      const downloadRef = doc(db, 'users', auth.currentUser.uid, 'downloads', track.id);
+      deleteDoc(downloadRef).catch(() => {});
+    }
+
+    downloadedTrackIdsRef.current.delete(track.id);
+    delete downloadedTracksMapRef.current[track.id];
+
+    setDownloadedTrackIds(new Set(downloadedTrackIdsRef.current));
+    setDownloadedTracksMap({ ...downloadedTracksMapRef.current });
+
+    try {
+      localStorage.setItem('spotify_offline_tracks', JSON.stringify(downloadedTracksMapRef.current));
+    } catch (e) {}
+
+    showToast(`Removed "${track.title}" from offline downloads`);
+
+    try {
+      await offlineStorage.removeOfflineTrack(track.id);
+    } catch (e) {}
+
+    try {
+      // api.toggleDownloadTrack(track.id).catch(() => {});
+    } catch (e) {}
+
+    return false;
+  };
+
+  /**
+   * Toggle download for a single track: if downloaded, removes it; if not downloaded, downloads it.
+   */
+  const toggleDownloadTrack = async (track: Track): Promise<boolean> => {
+    const isDownloaded = downloadedTrackIdsRef.current.has(track.id);
+    if (isDownloaded) {
+      return await removeDownloadedTrack(track);
+    } else {
+      showToast(`Downloading "${track.title}" for offline playback...`);
+      const success = await downloadSingleTrack(track);
+      if (success) {
+        showToast(`Downloaded "${track.title}" for offline playback`);
+      } else {
+        showToast(`Download failed for "${track.title}"`);
+      }
+      return success;
+    }
+  };
+
+  /**
+   * Download tracks of a playlist sequentially with real-time UI synchronization.
+   * Tracks that are ALREADY downloaded are strictly SKIPPED.
+   */
+  const downloadPlaylistTracks = async (
+    tracks: Track[],
+    playlistId?: string,
+    playlistTitle?: string
+  ): Promise<void> => {
+    if (!tracks || tracks.length === 0) return;
+
+    // Deduplication: Only download songs that are NOT yet downloaded
+    const pendingTracks = tracks.filter((tr) => !downloadedTrackIdsRef.current.has(tr.id));
+
+    if (pendingTracks.length === 0) {
+      showToast({
+        message: 'All songs in this playlist are already downloaded',
+        iconType: 'info',
+      });
+      return;
+    }
+
+    const totalToDownload = pendingTracks.length;
+    showToast({
+      message: `Downloading ${totalToDownload} song${totalToDownload === 1 ? '' : 's'} from "${playlistTitle || 'Playlist'}" for offline playback`,
+      iconType: 'download',
+    });
+
+    setPlaylistDownloadProgress({
+      isDownloading: true,
+      playlistId,
+      current: 0,
+      total: totalToDownload,
+    });
+
+    let completedCount = 0;
+    for (const tr of pendingTracks) {
+      // Re-verify in real time
+      if (!downloadedTrackIdsRef.current.has(tr.id)) {
+        const success = await downloadSingleTrack(tr);
+        if (success) {
+          completedCount++;
+        }
+        setPlaylistDownloadProgress({
+          isDownloading: true,
+          playlistId,
+          current: completedCount,
+          total: totalToDownload,
+        });
+      } else {
+        completedCount++;
       }
     }
 
-    setDownloadedTrackIds(newSet);
-    setDownloadedTracksMap(newMap);
-    localStorage.setItem('spotify_offline_tracks', JSON.stringify(newMap));
+    setPlaylistDownloadProgress(null);
 
-    try {
-      await api.toggleDownloadTrack(track.id);
-      return !wasDownloaded;
-    } catch (e) {
-      return !wasDownloaded;
-    }
+    showToast({
+      message: `Downloaded ${completedCount} song${completedCount === 1 ? '' : 's'} for offline playback`,
+      iconType: 'download',
+    });
   };
 
   const createPlaylist = async (
@@ -1247,7 +1781,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Call API as well if it does other server-side stuff, though local state or firebase takes over
     try {
-      await api.createPlaylist(newPl.title, newPl.description, newPl.coverImage, newId);
+      // createPlaylist
     } catch(e) {}
 
     return newPl;
@@ -1408,12 +1942,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     showToast(`Playlist updated`);
     try {
-      await api.updatePlaylist(id, updates);
+      // updatePlaylist
     } catch (e) {}
     return true;
   };
 
   const deletePlaylist = async (id: string): Promise<boolean> => {
+    const pl = playlists.find((p) => p.id === id);
+    if (!pl) return false;
+
     setPlaylists((prev) => {
       const nextList = prev.filter((p) => p.id !== id);
       if (!auth.currentUser) {
@@ -1426,14 +1963,40 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (auth.currentUser) {
       try {
-        await deleteDoc(doc(db, 'playlists', id));
-      } catch(e) {}
+        const { doc, deleteDoc, updateDoc } = await import('firebase/firestore');
+        if (pl.userId === auth.currentUser.uid) {
+          // User is owner, delete the entire playlist
+          await deleteDoc(doc(db, 'playlists', id));
+        } else {
+          // User is a participant, leave the playlist
+          const plRef = doc(db, 'playlists', id);
+          const uid = auth.currentUser.uid;
+          const newParticipantIds = (pl.participantIds || []).filter(pid => pid !== uid);
+          const newCollabs = (pl.collaborators || []).filter(c => c.id !== uid);
+          const newBlendParticipants = (pl.blendParticipants || []).filter(c => c.id !== uid);
+
+          await updateDoc(plRef, {
+            participantIds: newParticipantIds,
+            collaborators: newCollabs,
+            blendParticipants: newBlendParticipants
+          });
+        }
+      } catch (e) {
+        console.error("Failed to delete/leave playlist", e);
+        // Revert optimistic update
+        setPlaylists((prev) => {
+          if (!prev.find(p => p.id === id)) {
+            return [...prev, pl];
+          }
+          return prev;
+        });
+        showToast("Failed to remove playlist. Please try again.");
+        return false;
+      }
     }
 
-    showToast(`Playlist deleted`);
-    try {
-      await api.deletePlaylist(id);
-    } catch (e) {}
+    const actionText = pl.isBlend ? (pl.userId === auth.currentUser?.uid ? 'Blend deleted' : 'Left Blend') : 'Playlist deleted';
+    showToast(actionText);
     return true;
   };
 
@@ -1486,7 +2049,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     showToast(`Added "${track.title}" to "${pl.title}"`);
 
     try {
-      await api.addTrackToPlaylist(playlistId, track.id, track);
+      // addTrackToPlaylist
     } catch (e) {}
     return true;
   };
@@ -1520,7 +2083,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     showToast(`Removed from "${pl.title}"`);
 
     try {
-      await api.removeTrackFromPlaylist(playlistId, trackId);
+      // removeTrackFromPlaylist
     } catch (e) {}
     return true;
   };
@@ -1560,7 +2123,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      await api.reorderPlaylistTracks(playlistId, trackIds);
+      // reorderPlaylistTracks
     } catch (e) {}
     return true;
   };
@@ -1569,24 +2132,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       if (name) localStorage.setItem('spotify_guest_name', name);
       if (avatar !== undefined) localStorage.setItem('spotify_guest_avatar', avatar);
-      setProfile((prev) => (prev ? { ...prev, name, username, avatar } : null));
-
-      const res = await api.updateProfile({ name, username, avatar });
-      if (res.success && res.data) {
-        setProfile((prev) => ({
-          ...res.data,
-          avatar: avatar || res.data.avatar || '',
-          name: name || res.data.name || 'Your Name',
-          email: (!res.data.email || res.data.id === 'guest-user') ? '' : res.data.email,
-        }));
-        showToast(`Profile updated successfully`);
-        return true;
+      if (auth.currentUser) {
+        await setDoc(doc(db, 'users', auth.currentUser.uid), { name, username, avatar, updatedAt: new Date().toISOString() }, { merge: true });
       }
+      setProfile((prev) => (prev ? { ...prev, name, username, avatar } : null));
+      showToast(`Profile updated successfully`);
+      return true;
     } catch (e) {
       showToast(`Profile updated locally`);
       return true;
     }
-    return true;
   };
 
   const updateProfileName = async (name: string): Promise<boolean> => {
@@ -1599,7 +2154,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile((prev) => (prev ? { ...prev, name } : null));
       }
       showToast(`Profile name updated`);
-      api.updateProfile({ name }).catch(() => {});
+      // api
       return true;
     } catch (e) {
       return false;
@@ -1615,7 +2170,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile((prev) => (prev ? { ...prev, avatar: avatarUrl } : null));
       }
       showToast(`Profile photo updated`);
-      api.updateProfile({ avatar: avatarUrl }).catch(() => {});
+      // api
       return true;
     } catch (e) {
       showToast(`Failed to update profile photo`);
@@ -1632,7 +2187,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile((prev) => (prev ? { ...prev, avatar: '' } : null));
       }
       showToast(`Profile photo removed`);
-      api.updateProfile({ avatar: '' }).catch(() => {});
+      // api
       return true;
     } catch (e) {
       return false;
@@ -1640,6 +2195,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const clearAllDownloads = async () => {
+    downloadedTrackIdsRef.current = new Set();
+    downloadedTracksMapRef.current = {};
     setDownloadedTrackIds(new Set());
     setDownloadedTracksMap({});
     localStorage.removeItem('spotify_offline_tracks');
@@ -1707,16 +2264,13 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const mergedSettings = { ...(profile?.settings || {}), ...newSettings };
         await setDoc(doc(db, 'users', auth.currentUser.uid), { settings: mergedSettings, updatedAt: new Date().toISOString() }, { merge: true });
       }
-      const res = await api.updateProfile({ settings: newSettings });
-      if (res.success && res.data) {
-        setProfile(prev => prev ? { ...prev, settings: { ...prev.settings, ...newSettings } } : res.data);
-        showToast(`Settings saved`);
-        return true;
-      }
+      setProfile(prev => prev ? { ...prev, settings: { ...prev.settings, ...newSettings } } : null);
+      showToast(`Settings saved`);
+      return true;
     } catch (e) {
       showToast(`Failed to save settings`);
+      return false;
     }
-    return false;
   };
 
   if (!authResolved) return null; // or a loading spinner
@@ -1738,6 +2292,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         followedArtistIds,
         followedArtistsList,
         followedArtistsMap,
+        savedAlbumIds,
+        savedAlbumsList,
+        savedAlbumsMap,
+        toggleSaveAlbum,
+        isAlbumSaved,
+        savedPodcastIds,
+        savedPodcastsList,
+        savedPodcastsMap,
+        toggleSavePodcast,
+        isPodcastSaved,
         downloadedTrackIds,
         downloadingProgress,
         isDownloadingTrack,
@@ -1748,7 +2312,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         toggleFollowArtist,
         isArtistFollowed,
         toggleDownloadTrack,
+        downloadSingleTrack,
+        downloadPlaylistTracks,
+        playlistDownloadProgress,
         isTrackDownloaded,
+        hiddenTrackIds,
+        hiddenTracksMap,
+        hideTrack,
+        unhideTrack,
+        saveHiddenTrackMeta,
+        isTrackHidden,
         createPlaylist,
         updatePlaylist,
         deletePlaylist,

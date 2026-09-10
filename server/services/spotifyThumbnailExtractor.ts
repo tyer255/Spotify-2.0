@@ -15,6 +15,15 @@ interface SpotifyThumbnailResult {
 
 // In-memory cache for extracted Spotiz thumbnails
 const thumbnailCache = new Map<string, string>();
+const MAX_THUMBNAIL_CACHE = 5000;
+
+function setThumbnailCache(key: string, val: string) {
+  if (thumbnailCache.size >= MAX_THUMBNAIL_CACHE) {
+    const firstKey = thumbnailCache.keys().next().value;
+    if (firstKey) thumbnailCache.delete(firstKey);
+  }
+  thumbnailCache.set(key, val);
+}
 
 // Genuine high-resolution CDN images for artists, stations, podcasts & charts
 const SPOTIFY_CDN_THUMBNAIL_MAP: Record<string, string> = {
@@ -109,7 +118,7 @@ export async function extractSpotifyThumbnail(
   if (type === 'artist') {
     const aliasMatch = resolveArtist(query);
     if (aliasMatch && aliasMatch.entry.portraitUrl && !aliasMatch.entry.portraitUrl.includes('unsplash.com')) {
-      thumbnailCache.set(cacheKey, aliasMatch.entry.portraitUrl);
+      setThumbnailCache(cacheKey, aliasMatch.entry.portraitUrl);
       return aliasMatch.entry.portraitUrl;
     }
   }
@@ -117,7 +126,7 @@ export async function extractSpotifyThumbnail(
   // 2. Check Spotiz CDN known mapping
   if (SPOTIFY_CDN_THUMBNAIL_MAP[normalized]) {
     const url = SPOTIFY_CDN_THUMBNAIL_MAP[normalized];
-    thumbnailCache.set(cacheKey, url);
+    setThumbnailCache(cacheKey, url);
     return url;
   }
 
@@ -142,7 +151,7 @@ export async function extractSpotifyThumbnail(
       if (res.ok) {
         const data = await res.json();
         if (data.thumbnail_url && (data.thumbnail_url.includes('scdn.co') || data.thumbnail_url.includes('spotifycdn.com'))) {
-          thumbnailCache.set(cacheKey, data.thumbnail_url);
+          setThumbnailCache(cacheKey, data.thumbnail_url);
           return data.thumbnail_url;
         }
       }
@@ -168,7 +177,7 @@ export async function extractSpotifyThumbnail(
             if (isArtistAliasMatch(item.title, query) || item.title.toLowerCase().trim() === query.toLowerCase().trim()) {
               if (item.image && !item.image.includes('default')) {
                 const imageUrl = item.image.replace('50x50', '500x500').replace('150x150', '500x500');
-                thumbnailCache.set(cacheKey, imageUrl);
+                setThumbnailCache(cacheKey, imageUrl);
                 return imageUrl;
               }
             }
@@ -193,7 +202,7 @@ export async function extractSpotifyThumbnail(
           let imageUrl = data.results[0].artworkUrl100;
           if (imageUrl) {
             imageUrl = imageUrl.replace('100x100bb', '600x600bb');
-            thumbnailCache.set(cacheKey, imageUrl);
+            setThumbnailCache(cacheKey, imageUrl);
             return imageUrl;
           }
         }
@@ -224,7 +233,7 @@ export async function extractSpotifyThumbnail(
         
         const imageUrl = item.picture_xl || item.cover_xl || item.album?.cover_xl;
         if (imageUrl) {
-          thumbnailCache.set(cacheKey, imageUrl);
+          setThumbnailCache(cacheKey, imageUrl);
           return imageUrl;
         }
       }
