@@ -1479,9 +1479,17 @@ requestId: ${playRequestIdRef.current}`);
            const idx = fallbackUrls.indexOf(playableUrl);
            if (idx > -1) {
              fallbackUrls.splice(idx, 1);
-             fallbackUrls.unshift(playableUrl);
+           }
+           if (fallbackUrls[0] !== playableUrl) {
+               fallbackUrls.unshift(playableUrl);
            }
         }
+      } else if (fallbackUrls.length === 1 && playableUrl && fallbackUrls[0] !== playableUrl) {
+           fallbackUrls.unshift(playableUrl);
+      }
+
+      if (fallbackUrls.length > 0 && playableUrl && !fallbackUrls.includes(playableUrl)) {
+          fallbackUrls.unshift(playableUrl);
       }
 
       fallbackStreamUrlsRef.current = fallbackUrls;
