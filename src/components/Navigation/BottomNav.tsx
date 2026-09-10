@@ -2,7 +2,7 @@ import React from 'react';
 import { ViewState } from '../../types';
 import { Home, Search, Plus, X } from 'lucide-react';
 import { SpotifyLogo } from '../Common/SpotifyLogo';
-import { useUser } from '../../context/UserContext';
+import { usePlayer } from '../../context/PlayerContext';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface BottomNavProps {
@@ -20,7 +20,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   isCreateMenuOpen = false,
   onToggleCreateMenu,
 }) => {
-  const { currentTrack } = useUser();
+  const { track: currentTrack } = usePlayer();
   const hasTrack = !!currentTrack;
 
   const isHome = currentView.type === 'home';
