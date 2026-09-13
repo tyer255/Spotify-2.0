@@ -26,7 +26,7 @@ export class MusicService {
         results = await provider.search(query);
       }
     } catch (err) {
-      console.warn(`[Search] Spotify search failed for "${query}", falling back to provider search:`, err);
+      console.info(`[Search] Spotify search fallback for "${query}":`, (err as any)?.message || err);
       results = await provider.search(query);
     }
     
@@ -35,7 +35,7 @@ export class MusicService {
     if (lyricMatches.length > 0) {
       const existingIds = new Set(results.songs.map(s => s.id));
       const addedMatches = lyricMatches.filter(t => !existingIds.has(t.id));
-      results.songs = [...addedMatches.map(m => ({...m, lyricsMatchScore: 100})), ...results.songs];
+      results.songs = [...results.songs, ...addedMatches.map(m => ({...m, lyricsMatchScore: 40}))];
     }
     
     // Resolve any missing artist thumbnails in the background so search responds instantly
@@ -61,7 +61,7 @@ export class MusicService {
         return suggestions;
       }
     } catch (err) {
-      console.warn(`[Search] Spotify suggestions failed for "${query}":`, err);
+      console.info(`[Search] Spotify suggestions fallback for "${query}":`, (err as any)?.message || err);
     }
     return provider.getSongSuggestions(query);
   }
@@ -90,6 +90,11 @@ export class MusicService {
   }
 
   static async getAlbum(id: string): Promise<Album | null> {
+    if (id.startsWith('spotify-') || /^[0-9A-Za-z]{22}$/.test(id.replace(/^(spotify-)?album-/, ''))) {
+      const spotifyAlbum = await SpotifySearchService.getAlbum(id);
+      if (spotifyAlbum) return spotifyAlbum;
+    }
+
     const provider = providerManager.getProvider();
     return provider.getAlbum(id);
   }

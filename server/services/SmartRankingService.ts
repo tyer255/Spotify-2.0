@@ -90,7 +90,15 @@ class SmartRankingService {
         userPreferenceScore = 15;
       }
       
-      const finalScore = textMatchScore + globalPopularityScore + trendingScore + userPreferenceScore;
+      // Boost iconic/renowned artists for broader user queries
+      const renowned = ['arijit singh', 'pritam', 'juss', 'atif aslam', 'kk', 'shreya ghoshal', 'sonu nigam', 'ar rahman'];
+      const artistLower = (song.artist || '').toLowerCase();
+      let iconBonus = 0;
+      if (renowned.some(r => artistLower.includes(r))) {
+        iconBonus = 80;
+      }
+
+      const finalScore = textMatchScore + globalPopularityScore + trendingScore + userPreferenceScore + iconBonus;
 
       return {
         song,

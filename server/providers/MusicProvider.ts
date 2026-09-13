@@ -4,7 +4,6 @@ export interface IMusicProvider {
   readonly id: string;
   readonly name: string;
   isConfigured(): boolean;
-
   search(query: string): Promise<SearchResults>;
   getSongSuggestions(query: string): Promise<SearchSuggestion[]>;
   getTrack(id: string): Promise<Track | null>;
@@ -13,30 +12,6 @@ export interface IMusicProvider {
   getPlaylist(id: string): Promise<Playlist | null>;
   getRecommendations(seedTrackId?: string, genre?: string): Promise<Track[]>;
   getLyrics(trackId: string, trackTitle?: string, artistName?: string, duration?: number): Promise<LyricsData>;
-  resolvePlayback(
-    trackId: string,
-    title?: string,
-    artist?: string,
-    duration?: number,
-    options?: { forceFresh?: boolean; discardUrl?: string }
-  ): Promise<{
-    id: string;
-    title: string;
-    artist: string;
-    album: string;
-    thumbnail: string;
-    duration: number;
-    stream: {
-      url: string;
-      mimeType: string;
-      bitrate: string;
-      fallbackUrls?: string[];
-      isFullLength?: boolean;
-      isDirectAudio?: boolean;
-      isMediaDescriptor?: boolean;
-      descriptorType?: string;
-      mediaUri?: string;
-    };
-  } | null>;
+  resolvePlayback(trackId: string, title?: string, artist?: string, duration?: number, ...rest: any[]): Promise<any>;
   getHomeFeed(): Promise<HomeFeedData>;
 }

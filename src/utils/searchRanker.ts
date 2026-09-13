@@ -303,7 +303,7 @@ export function isFollowedArtistMatch(
   const norm = normalizeSearchString(artistName);
   const clean = cleanSearchTitle(artistName);
 
-  for (const fa of followedArtists) {
+  for (const fa of Array.from(followedArtists)) {
     if (fa === artistId) return true;
     const faNorm = normalizeSearchString(fa);
     if (faNorm === norm || faNorm === clean) return true;
@@ -489,7 +489,8 @@ export function calculateRelevanceScore(
     exactTitleMatch = true;
     matchTier = 1;
   } else if (!candidateVersion.isVersion && (cleanTitle === qClean || cleanTitle === qNorm)) {
-    titleScore = weights.exactCleanTitle;
+    const isSoundtrackOrFrom = /\b(from|soundtrack|ost|film|movie)\b/i.test(rawTitle);
+    titleScore = isSoundtrackOrFrom ? weights.exactTitle : weights.exactCleanTitle;
     exactTitleMatch = true;
     matchTier = 1;
   } else if (!candidateVersion.isVersion && normTitle.replace(/\s+/g, '') === qNorm.replace(/\s+/g, '')) {
@@ -685,6 +686,12 @@ export function calculateRelevanceScore(
     if (plays < 500 && !exactArtistMatch) {
       popularityScore -= 120; // Penalize obscure same-name tracks with negligible listens
     }
+  }
+
+  // Authentic renowned artist boost for Indian & international icons
+  const renownedArtists = ['arijit singh', 'pritam', 'juss', 'atif aslam', 'kk', 'shreya ghoshal', 'sonu nigam', 'ar rahman', 'mohit chauhan', 'diljit', 'karan aujla', 'sidhu moose wala', 'badshah', 'honey singh', 'the weeknd', 'taylor swift', 'ed sheeran', 'drake', 'eminem'];
+  if (renownedArtists.some((ra) => normArtist.includes(ra) || cleanArtist.includes(ra))) {
+    popularityScore += 160;
   }
 
   // -------------------------------------------------------------

@@ -1,8 +1,7 @@
-import { SpotifyCanvasService } from './server/services/spotifyCanvasService.ts';
-
-async function run() {
-    console.log("Testing Angaaron...");
-    const res = await SpotifyCanvasService.getCanvasForTrack({ title: "Angaaron (from pushpa 2)", artist: "" });
-    console.log("Result:", res.status);
-}
-run().catch(console.error);
+import { spotifyCanvasService } from './server/services/spotifyCanvasService.ts';
+(async () => {
+  const result = await spotifyCanvasService.getCanvasForTrack({
+    id: "spotify-track-6jPbb2q9a9bYv2G48m7mB6", // Jhol track ID? Let me search and get the real track ID first.
+  });
+  console.log(result);
+})();

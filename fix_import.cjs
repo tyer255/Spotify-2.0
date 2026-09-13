@@ -1,6 +1,4 @@
 const fs = require('fs');
-let code = fs.readFileSync('src/components/Player/FullscreenPlayer.tsx', 'utf8');
-
-code = code.replace("import { api } from '../../services/apiClient'; from '../Common/CreatePlaylistModal';", "import { api } from '../../services/apiClient';");
-
-fs.writeFileSync('src/components/Player/FullscreenPlayer.tsx', code);
+let code = fs.readFileSync('server/providers/OpenMusicProvider.ts', 'utf-8');
+code = code.replace("import { AudioStreamResolver } from '../services/AudioStreamResolver';\nimport { validateAudioStream } from '../utils/audioUtils.js';", "import { AudioStreamResolver, validateAudioStream } from '../services/AudioStreamResolver';");
+fs.writeFileSync('server/providers/OpenMusicProvider.ts', code);

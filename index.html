@@ -34,7 +34,44 @@
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Spotiz" />
     <meta name="twitter:image" content="/pwa-512x512.png" />
-  </head>
+    <script type="module" src="/src/main.tsx"></script>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <style>
+    /* Global Performance Optimizations for Low-End Devices */
+    * {
+      text-rendering: optimizeSpeed !important;
+    }
+    body {
+      overscroll-behavior-y: none;
+    }
+    /* Containment hints to reduce DOM reflow costs */
+    #root {
+      contain: layout paint;
+    }
+    /* Crisp, Ultra High-Definition Artwork & Thumbnails (No blur) */
+    #fullscreen-artwork-container {
+      transform: none !important;
+      filter: none !important;
+      will-change: auto !important;
+      -webkit-backface-visibility: hidden !important;
+      backface-visibility: hidden !important;
+    }
+    #fullscreen-artwork-container img {
+      image-rendering: -webkit-optimize-contrast !important;
+      image-rendering: crisp-edges !important;
+      filter: none !important;
+      transform: none !important;
+      display: block !important;
+    }
+    #canvas-artwork-fallback,
+    #canvas-artwork-fallback div {
+      filter: none !important;
+      -webkit-filter: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+  </style>
+</head>
   <body class="bg-black text-white selection:bg-emerald-500 selection:text-black">
     <div id="root">
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;width:100vw;background-color:#0a0a0a;color:#ffffff;font-family:system-ui,-apple-system,sans-serif;">
@@ -55,7 +92,6 @@
         </style>
       </div>
     </div>
-    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
 

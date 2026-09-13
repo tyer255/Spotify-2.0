@@ -81,7 +81,10 @@ export class SpotifyMusicProvider implements IMusicProvider {
 
   private normalizeSpotifyTrack(item: any): Track {
     const images = item.album?.images || [];
-    const largeArt = images[0]?.url || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=80';
+    let largeArt = images[0]?.url || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=80';
+    if (largeArt.includes('ab67616d00004851') || largeArt.includes('ab67616d00001e02')) {
+      largeArt = largeArt.replace(/ab67616d0000(4851|1e02)/g, 'ab67616d0000b273');
+    }
     const mediumArt = images[1]?.url || largeArt;
     const smallArt = images[2]?.url || mediumArt;
 

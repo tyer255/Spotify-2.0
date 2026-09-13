@@ -1,1 +1,0 @@
-const { extractSpotifyThumbnail } = require('./dist/server.cjs').__esModule ? require('./dist/server.cjs') : import('./server/services/spotifyThumbnailExtractor.ts');

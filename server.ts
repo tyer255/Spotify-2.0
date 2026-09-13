@@ -18,10 +18,34 @@ import { RadioRecommendationService } from './server/services/RadioRecommendatio
 import { extractSpotifyThumbnail, resolveMissingSpotifyThumbnails } from './server/services/spotifyThumbnailExtractor';
 import { SpotifyCanvasService } from './server/services/spotifyCanvasService';
 import { ShareService } from './server/services/shareService';
+import { AudioStreamResolver } from './server/services/AudioStreamResolver';
+
+import ytdl from '@distube/ytdl-core';
+const ytdlCache = new Map<string, any>();
+const ytdlPromises = new Map<string, Promise<any>>();
+
+async function prefetchYtdlInfo(videoId: string) {
+  if (ytdlCache.has(videoId)) return ytdlCache.get(videoId);
+  if (ytdlPromises.has(videoId)) return ytdlPromises.get(videoId);
+  
+  const promise = ytdl.getInfo(videoId).then((info: any) => {
+    ytdlCache.set(videoId, info);
+    setTimeout(() => ytdlCache.delete(videoId), 1000 * 60 * 60); // 1 hr cache
+    return info;
+  }).catch((err: any) => {
+    console.error('Prefetch ytdl error:', err);
+    return null;
+  }).finally(() => {
+    ytdlPromises.delete(videoId);
+  });
+  
+  ytdlPromises.set(videoId, promise);
+  return promise;
+}
 
 const app = express();
 app.set('trust proxy', 1); // Trust first proxy (Cloud Run/Nginx)
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const PORT = 3000;
 
 // Set up CORS
 const allowedOrigins = process.env.NODE_ENV === 'production' 
@@ -148,6 +172,24 @@ app.get('/api/search', optionalAuth, async (req, res) => {
     const userId = req.user?.uid || (req.headers['x-user-id'] as string) || (req.headers['x-session-id'] as string) || 'anonymous';
     const results = await MusicService.search(q, userId);
     sendSuccess(res, results);
+
+    // Pre-resolve top track in background for instant 1s playback
+    if (results && results.topResult && results.topResult.type === 'track') {
+      MusicService.resolvePlayback(
+        results.topResult.data.id, 
+        results.topResult.data.title, 
+        results.topResult.data.artist, 
+        results.topResult.data.duration
+      ).catch(() => {});
+    }
+    if (results && results.songs && results.songs.length > 0) {
+      MusicService.resolvePlayback(
+        results.songs[0].id, 
+        results.songs[0].title, 
+        results.songs[0].artist, 
+        results.songs[0].duration
+      ).catch(() => {});
+    }
   } catch (err: any) {
     console.error('[API] /api/search error:', err);
     sendError(res, 'SEARCH_FAILED', 'Failed to execute search query', 500);
@@ -197,6 +239,9 @@ app.get('/api/track/:id', async (req, res) => {
       return sendError(res, 'TRACK_NOT_FOUND', `Track with id ${req.params.id} could not be found`, 404);
     }
     sendSuccess(res, track);
+
+    // Pre-resolve in background
+    MusicService.resolvePlayback(track.id, track.title, track.artist, track.duration).catch(() => {});
   } catch (err: any) {
     console.error('[API] /api/track error:', err);
     sendError(res, 'SERVER_ERROR', 'Failed to retrieve track details', 500);
@@ -268,17 +313,35 @@ app.post('/api/playback/resolve', async (req, res) => {
   }
 
   try {
-    const resolved = await MusicService.resolvePlayback(
+    let resolved = await MusicService.resolvePlayback(
       trackId,
       title,
       artist,
       duration ? parseInt(String(duration), 10) : undefined,
       { forceFresh: Boolean(forceFresh), discardUrl }
     );
+    if (!resolved && title) {
+      resolved = await MusicService.resolvePlayback(
+        trackId,
+        title,
+        '',
+        duration ? parseInt(String(duration), 10) : undefined,
+        { forceFresh: true, discardUrl }
+      );
+    }
     if (!resolved) {
       return sendError(res, 'PLAYBACK_UNAVAILABLE', 'Playback unavailable for this track.', 404);
     }
     sendSuccess(res, resolved);
+    
+    // Pre-fetch youtube info to make stream playback instant
+    if (resolved && resolved.url && resolved.url.includes('/api/stream/youtube/')) {
+      const vidId = resolved.url.split('/').pop();
+      if (vidId) prefetchYtdlInfo(vidId).catch(() => {});
+    } else if (resolved && resolved.url && resolved.url.startsWith('youtube:')) {
+      const vidId = resolved.url.split(':')[1];
+      if (vidId) prefetchYtdlInfo(vidId).catch(() => {});
+    }
   } catch (err: any) {
     console.error('[API] /api/playback/resolve error:', err);
     sendError(res, 'PLAYBACK_UNAVAILABLE', 'Playback unavailable for this track.', 500);
@@ -310,6 +373,7 @@ function isPrivateOrReservedIp(ip: string): boolean {
 }
 
 const isSafeStreamUrl = async (urlString: string): Promise<boolean> => {
+  if (urlString.startsWith('youtube:')) return true;
   try {
     const url = new URL(urlString);
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
@@ -378,44 +442,109 @@ async function safeStreamFetch(url: string, options: any, maxRedirects = 5): Pro
 
 // 15b. Audio Download Proxy (Fetches full audio buffer for reliable offline caching)
 app.get('/api/audio-download', async (req, res) => {
-  const audioUrl = req.query.url as string;
-  if (!audioUrl) {
-    return sendError(res, 'INVALID_INPUT', 'Audio url is required', 400);
-  }
-  if (!(await isSafeStreamUrl(audioUrl))) {
-    return sendError(res, 'INVALID_INPUT', 'Unsupported audio URL domain', 403);
-  }
+  let audioUrl = (req.query.url || '') as string;
+  const trackTitle = (req.query.title || '') as string;
+  const trackArtist = (req.query.artist || '') as string;
+  const trackId = (req.query.trackId || '') as string;
+  const duration = +(req.query.duration || 210);
 
-  try {
-    const audioRes = await safeStreamFetch(audioUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': '*/*',
-        'Referer': 'https://www.jiosaavn.com/',
-      },
-    });
+  let resolvedStream: any = null;
 
-    if (!audioRes.ok) {
-      return res.status(audioRes.status).send(`Failed to fetch audio stream: ${audioRes.statusText}`);
+  // If audioUrl is missing or is a youtube: descriptor or invalid, resolve direct audio stream
+  if (!audioUrl || !audioUrl.startsWith('http') || audioUrl.startsWith('youtube:')) {
+    if (trackTitle) {
+      try {
+        resolvedStream = await AudioStreamResolver.resolveFullTrack(
+          trackId || `dl-${Date.now()}`,
+          trackTitle,
+          trackArtist || '',
+          duration,
+          { directAudioOnly: true, allowFallbackTitle: true, forceFresh: true }
+        );
+        if (resolvedStream?.url && resolvedStream.url.startsWith('http')) {
+          audioUrl = resolvedStream.url;
+        }
+      } catch (rErr) {
+        console.warn('[API] /api/audio-download resolution fallback note:', rErr);
+      }
     }
-
-    const contentType = audioRes.headers.get('content-type') || 'audio/mp4';
-    const contentLength = audioRes.headers.get('content-length');
-
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    if (contentLength) {
-      res.setHeader('Content-Length', contentLength);
-    }
-
-    const arrayBuffer = await audioRes.arrayBuffer();
-    res.send(Buffer.from(arrayBuffer));
-  } catch (err: any) {
-    console.error('[API] /api/audio-download error:', err);
-    sendError(res, 'DOWNLOAD_FAILED', 'Failed to retrieve audio stream', 500);
   }
+
+  // If still no direct audioUrl, attempt a title-only resolution
+  if (!audioUrl || !audioUrl.startsWith('http')) {
+    if (trackTitle) {
+      try {
+        resolvedStream = await AudioStreamResolver.resolveFullTrack(
+          trackId || `dl-${Date.now()}`,
+          trackTitle,
+          '',
+          duration,
+          { directAudioOnly: true, allowFallbackTitle: true, forceFresh: true }
+        );
+        if (resolvedStream?.url && resolvedStream.url.startsWith('http')) {
+          audioUrl = resolvedStream.url;
+        }
+      } catch {}
+    }
+  }
+
+  if (!audioUrl || !audioUrl.startsWith('http')) {
+    return sendError(res, 'INVALID_INPUT', 'Playable audio stream could not be resolved for download', 400);
+  }
+
+  // Prepare ordered list of stream URLs to attempt (primary + quality fallbacks)
+  const candidateUrls: string[] = [audioUrl];
+  if (resolvedStream?.fallbackUrls && Array.isArray(resolvedStream.fallbackUrls)) {
+    for (const fb of resolvedStream.fallbackUrls) {
+      if (fb && fb.startsWith('http') && !candidateUrls.includes(fb)) {
+        candidateUrls.push(fb);
+      }
+    }
+  }
+
+  let lastError: any = null;
+  for (const streamCandidate of candidateUrls) {
+    try {
+      if (!(await isSafeStreamUrl(streamCandidate))) {
+        continue;
+      }
+
+      const audioRes = await safeStreamFetch(streamCandidate, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': '*/*',
+          'Referer': streamCandidate.includes('jiosaavn') || streamCandidate.includes('saavncdn') ? 'https://www.jiosaavn.com/' : 'https://audius.co/',
+        },
+      });
+
+      if (!audioRes.ok) {
+        continue;
+      }
+
+      const contentType = audioRes.headers.get('content-type') || 'audio/mp4';
+      const contentLength = audioRes.headers.get('content-length');
+      const ext = (contentType.includes('mpeg') || contentType.includes('mp3')) ? 'mp3' : 'm4a';
+
+      const cleanFilename = `${(trackTitle || 'track').replace(/[^a-zA-Z0-9_\-\s]/g, '')} - ${(trackArtist || 'Spotiz').replace(/[^a-zA-Z0-9_\-\s]/g, '')}.${ext}`.trim();
+
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${cleanFilename}"`);
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      if (contentLength) {
+        res.setHeader('Content-Length', contentLength);
+      }
+
+      const arrayBuffer = await audioRes.arrayBuffer();
+      return res.send(Buffer.from(arrayBuffer));
+    } catch (err: any) {
+      lastError = err;
+    }
+  }
+
+  console.error('[API] /api/audio-download error after candidate retries:', lastError);
+  return sendError(res, 'DOWNLOAD_FAILED', 'Failed to retrieve audio stream', 500);
 });
 
 // 15c. Real-Time Audio Streaming Range Proxy
@@ -430,6 +559,7 @@ app.get('/api/playback/stream', async (req, res) => {
 
   try {
     const rangeHeader = req.headers.range;
+
     const fetchHeaders: Record<string, string> = {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Accept': '*/*',
@@ -738,15 +868,30 @@ app.get(['/api/canvas/search', '/api/canvas'], async (req, res) => {
 // 24. YouTube Audio Proxy
 app.get('/api/stream/youtube/:id', async (req, res) => {
   try {
-    const ytdl = require('@distube/ytdl-core');
     const videoId = req.params.id;
     if (!ytdl.validateID(videoId)) {
       return res.status(400).send('Invalid YouTube ID');
     }
     res.setHeader('Content-Type', 'audio/mpeg');
     res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     
-    const stream = ytdl(videoId, { filter: 'audioonly', quality: 'highestaudio' });
+    let info = ytdlCache.get(videoId);
+    if (!info && ytdlPromises.has(videoId)) {
+      info = await ytdlPromises.get(videoId);
+    }
+    if (!info) {
+      info = await prefetchYtdlInfo(videoId);
+    }
+    
+    let stream;
+    if (info) {
+      stream = ytdl.downloadFromInfo(info, { filter: 'audioonly', quality: 'highestaudio' });
+    } else {
+      stream = ytdl(videoId, { filter: 'audioonly', quality: 'highestaudio' });
+    }
     stream.pipe(res);
     
     stream.on('error', (err: any) => {
@@ -755,7 +900,7 @@ app.get('/api/stream/youtube/:id', async (req, res) => {
     });
   } catch (err) {
     console.error('YouTube Proxy Error:', err);
-    res.status(500).send('Streaming error');
+    if (!res.headersSent) res.status(500).send('Streaming error');
   }
 });
 
@@ -842,11 +987,31 @@ async function startServer() {
       vite = await createServer({
         server: { middlewareMode: true },
         appType: 'spa',
+        optimizeDeps: { force: true }
       });
     } catch (err) {
       console.warn('Vite dev server failed to initialize, falling back to static build:', err);
     }
   }
+
+  // Explicitly serve Service Worker with proper headers
+  app.get('/sw.js', (req, res) => {
+    const swPath = path.join(process.cwd(), 'public', 'sw.js');
+    if (fs.existsSync(swPath)) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      res.setHeader('Service-Worker-Allowed', '/');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      return res.sendFile(swPath);
+    }
+    const distSwPath = path.join(process.cwd(), 'dist', 'sw.js');
+    if (fs.existsSync(distSwPath)) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      res.setHeader('Service-Worker-Allowed', '/');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      return res.sendFile(distSwPath);
+    }
+    res.status(404).set('Content-Type', 'text/plain').send('Service Worker not found');
+  });
 
   app.get('/share/:type/:id', async (req, res, next) => {
     try {
