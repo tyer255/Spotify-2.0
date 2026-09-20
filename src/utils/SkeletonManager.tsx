@@ -165,20 +165,30 @@ const SkeletonManager = () => {
       document.head.appendChild(style);
     }
 
-    const injectedSkeletons = new Map();
-    let rafId: number;
+    const injectedSkeletons = new Map<HTMLElement, { overlay: HTMLElement; parent: HTMLElement }>();
+    let scrollResizeAttached = false;
 
-    const updatePositions = () => {
+    const detachScrollResize = () => {
+       if (scrollResizeAttached && injectedSkeletons.size === 0) {
+           scrollResizeAttached = false;
+           window.removeEventListener('scroll', onScrollOrResize);
+           window.removeEventListener('resize', onScrollOrResize);
+       }
+    };
+
+    const updateAllPositions = () => {
+       if (injectedSkeletons.size === 0) return;
+       
+       const staleSpinners: HTMLElement[] = [];
        injectedSkeletons.forEach((data, spinner) => {
            const { overlay, parent } = data;
-           // If parent was unmounted from DOM but we missed the mutation somehow
-           if (!document.contains(parent)) {
-               overlay.style.opacity = '0';
+           if (!document.contains(parent) || !document.contains(spinner)) {
+               overlay.remove();
+               staleSpinners.push(spinner);
                return;
            }
            
            const rect = parent.getBoundingClientRect();
-           
            if (rect.width === 0 || rect.height === 0) {
                overlay.style.opacity = '0';
                return;
@@ -190,27 +200,82 @@ const SkeletonManager = () => {
            overlay.style.width = `${rect.width}px`;
            overlay.style.height = `${rect.height}px`;
        });
-       rafId = requestAnimationFrame(updatePositions);
-    };
-    
-    rafId = requestAnimationFrame(updatePositions);
 
-    const handleMutations = (mutations: MutationRecord[]) => {
-      mutations.forEach(mutation => {
+       if (staleSpinners.length > 0) {
+           staleSpinners.forEach(s => injectedSkeletons.delete(s));
+           if (injectedSkeletons.size === 0) {
+               detachScrollResize();
+           }
+       }
+    };
+
+    let throttledUpdateTimer: any = null;
+    const onScrollOrResize = () => {
+       if (throttledUpdateTimer || injectedSkeletons.size === 0) return;
+       throttledUpdateTimer = requestAnimationFrame(() => {
+           throttledUpdateTimer = null;
+           updateAllPositions();
+       });
+    };
+
+    const attachScrollResize = () => {
+       if (!scrollResizeAttached && injectedSkeletons.size > 0) {
+           scrollResizeAttached = true;
+           // IMPORTANT: Do NOT use capture: true so inner container scrolling (like the full player) is not intercepted
+           window.addEventListener('scroll', onScrollOrResize, { passive: true });
+           window.addEventListener('resize', onScrollOrResize, { passive: true });
+       }
+    };
+
+    const positionSingleSkeleton = (spinner: HTMLElement, overlay: HTMLElement, parent: HTMLElement) => {
+       const rect = parent.getBoundingClientRect();
+       if (rect.width === 0 || rect.height === 0) {
+           overlay.style.opacity = '0';
+           return;
+       }
+       overlay.style.opacity = '1';
+       overlay.style.top = `${rect.top}px`;
+       overlay.style.left = `${rect.left}px`;
+       overlay.style.width = `${rect.width}px`;
+       overlay.style.height = `${rect.height}px`;
+    };
+
+    const isExcludedPlayerElement = (el: Element | null): boolean => {
+      if (!el) return true;
+      if (el.closest('button, [role="button"], .mini-player, [data-player], aside, nav, header, footer, [class*="player"], [id*="player"], [id*="fullscreen"], [id*="canvas"], [aria-label*="Play"], [aria-label*="Pause"], [title*="Play"], [title*="Pause"], [data-track-id]')) {
+        return true;
+      }
+      return false;
+    };
+
+    let mutationRaf: any = null;
+    const pendingMutations: MutationRecord[] = [];
+
+    const processMutations = () => {
+      mutationRaf = null;
+      if (pendingMutations.length === 0) return;
+      const records = pendingMutations.splice(0, pendingMutations.length);
+
+      records.forEach(mutation => {
         mutation.addedNodes.forEach(node => {
           if (node.nodeType === Node.ELEMENT_NODE) {
             const el = node as HTMLElement;
+            // Skip player, controls, audio elements entirely
+            if (isExcludedPlayerElement(el)) {
+              return;
+            }
+
             const spinners = el.classList?.contains('animate-spin') ? [el] : Array.from(el.querySelectorAll('.animate-spin'));
             
             spinners.forEach(spinner => {
                const parent = spinner.parentElement;
-               if (!parent) return;
+               if (!parent || isExcludedPlayerElement(parent) || isExcludedPlayerElement(spinner)) return;
                
-               if (parent.tagName === 'BUTTON') return;
-               if (spinner.classList.contains('w-3') || spinner.classList.contains('w-4') || spinner.classList.contains('w-5')) return;
-               if (spinner.classList.contains('h-3') || spinner.classList.contains('h-4') || spinner.classList.contains('h-5')) return;
+               // Exclude buttons, player controls, mini player, audio playback indicators, small spinners
+               if (spinner.classList.contains('w-3') || spinner.classList.contains('w-4') || spinner.classList.contains('w-5') || spinner.classList.contains('w-6') || spinner.classList.contains('w-7') || spinner.classList.contains('w-8') || spinner.classList.contains('w-10') || spinner.classList.contains('w-12') || spinner.classList.contains('w-14') || spinner.classList.contains('w-16')) return;
+               if (spinner.classList.contains('h-3') || spinner.classList.contains('h-4') || spinner.classList.contains('h-5') || spinner.classList.contains('h-6') || spinner.classList.contains('h-7') || spinner.classList.contains('h-8') || spinner.classList.contains('h-10') || spinner.classList.contains('h-12') || spinner.classList.contains('h-14') || spinner.classList.contains('h-16')) return;
                
-               if (!injectedSkeletons.has(spinner)) {
+               if (!injectedSkeletons.has(spinner as HTMLElement)) {
                   (spinner as HTMLElement).style.opacity = '0';
                   
                   const pageType = getPageType(spinner as HTMLElement);
@@ -218,26 +283,14 @@ const SkeletonManager = () => {
                   
                   const overlay = document.createElement('div');
                   overlay.className = 'skeleton-overlay-container';
-                  
-                  let p = parent;
-                  while(p) {
-                     const bg = getComputedStyle(p).backgroundColor;
-                     if (bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
-                        overlay.style.backgroundColor = bg;
-                        break;
-                     }
-                     p = p.parentElement as HTMLElement;
-                  }
-                  if (!overlay.style.backgroundColor) {
-                     overlay.style.backgroundColor = '#121212';
-                  }
-                  
+                  overlay.style.backgroundColor = '#121212';
                   overlay.innerHTML = skeletonHtml;
                   
-                  // Append to document body instead of the React-managed parent to prevent React fatal errors!
                   document.body.appendChild(overlay);
+                  positionSingleSkeleton(spinner as HTMLElement, overlay, parent);
                   
-                  injectedSkeletons.set(spinner, { overlay, parent });
+                  injectedSkeletons.set(spinner as HTMLElement, { overlay, parent });
+                  attachScrollResize();
                }
             });
           }
@@ -249,24 +302,38 @@ const SkeletonManager = () => {
               for (const [spinner, data] of Array.from(injectedSkeletons.entries())) {
                  if (el === spinner || el.contains(spinner)) {
                     const { overlay } = data;
-                    overlay.style.transition = 'opacity 0.4s ease';
+                    overlay.style.transition = 'opacity 0.25s ease';
                     overlay.style.opacity = '0';
-                    setTimeout(() => overlay.remove(), 400);
+                    setTimeout(() => overlay.remove(), 250);
                     injectedSkeletons.delete(spinner);
                  }
+              }
+              if (injectedSkeletons.size === 0) {
+                 detachScrollResize();
               }
            }
         });
       });
     };
 
+    const handleMutations = (mutations: MutationRecord[]) => {
+      pendingMutations.push(...mutations);
+      if (!mutationRaf) {
+        mutationRaf = requestAnimationFrame(processMutations);
+      }
+    };
+
+    const targetContainer = document.getElementById('root') || document.body;
     const observer = new MutationObserver(handleMutations);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(targetContainer, { childList: true, subtree: true });
 
     return () => {
         observer.disconnect();
-        cancelAnimationFrame(rafId);
+        detachScrollResize();
+        if (mutationRaf) cancelAnimationFrame(mutationRaf);
+        if (throttledUpdateTimer) cancelAnimationFrame(throttledUpdateTimer);
         injectedSkeletons.forEach(({ overlay }) => overlay.remove());
+        injectedSkeletons.clear();
     };
   }, []);
 

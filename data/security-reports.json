@@ -1,0 +1,14 @@
+[
+  {
+    "reportId": "SEC-MUA54ZSM-8268",
+    "timestamp": "2026-09-20T18:19:33.046Z",
+    "status": "LOGGED",
+    "ip": "127.0.0.1",
+    "reporterName": "BugHunter",
+    "reporterEmail": "bughunter@example.com",
+    "reportType": "privacy_inquiry",
+    "severity": "low",
+    "description": "Checking data handling disclosure for client storage.",
+    "stepsToReproduce": "1. Open app 2. Check IndexedDB"
+  }
+]

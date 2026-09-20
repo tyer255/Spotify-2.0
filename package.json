@@ -12,6 +12,7 @@
   "dependencies": {
     "@distube/ytdl-core": "^4.16.12",
     "@emotion/is-prop-valid": "^1.4.0",
+    "acorn": "^8.18.0",
     "canvas-confetti": "^1.9.4",
     "cors": "^2.8.6",
     "crypto-js": "^4.2.0",

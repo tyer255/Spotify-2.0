@@ -84,7 +84,8 @@ async function safeFetchJson<T>(url: string, timeoutMs: number = 3000): Promise<
 async function decryptSaavnMediaUrl(encrypted: string): Promise<{ primaryUrl: string; fallbackUrls: string[] } | null> {
   try {
     if (!encrypted) return null;
-    const CryptoJS = (await import('crypto-js')) as any;
+    const cryptoModule = (await import('crypto-js')) as any;
+    const CryptoJS = cryptoModule.default || cryptoModule;
     const key = CryptoJS.enc.Utf8.parse('38346591');
     const cipherParams = CryptoJS.lib.CipherParams.create({
       ciphertext: CryptoJS.enc.Base64.parse(encrypted),
@@ -123,8 +124,8 @@ export class AudioStreamResolver {
     expectedDuration?: number,
     options?: { directAudioOnly?: boolean; allowFallbackTitle?: boolean; forceFresh?: boolean; discardUrl?: string }
   ): Promise<ResolvedStream | null> {
-    const cleanT = (title || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
-    const cleanA = (artist || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+    const cleanT = (title || '').toLowerCase().replace(/[^a-z0-9 \-]/g, '').trim();
+    const cleanA = (artist || '').toLowerCase().replace(/[^a-z0-9 \-]/g, '').trim();
     if (!cleanT) return null;
 
     const jioSaavnTask = (async () => {
@@ -142,22 +143,28 @@ export class AudioStreamResolver {
             let titleMatch = resTitle.includes(cleanT) || cleanT.includes(resTitle) || cleanT.split(' ').some(w => w.length > 3 && hasWord(resTitle, w));
             
             // STRICT ARTIST MATCHING to prevent "AUR" matching Hindi word "aur"
-            let artistMatch = true;
-            if (cleanA) {
+                        let artistMatch = true;
+            if (cleanA) { 
                const singersList = resSingers.split(',').map((s: string) => s.trim().toLowerCase());
-               const subtitleParts = resSubtitle.split('-').map((s: string) => s.trim());
+               const subtitleParts = resSubtitle.split(' - ').map((s: string) => s.trim());
                const subtitleArtists = subtitleParts[0].split(',').map((s: string) => s.trim().toLowerCase());
                
                const requestedArtistWords = cleanA.split(' ');
+               const cleanANoSpace = cleanA.replace(/[ \-]/g, '');
+               const singersNoSpace = singersList.map((s: string) => s.replace(/[^a-z0-9]/g, ''));
+               const subtitleArtistsNoSpace = subtitleArtists.map((s: string) => s.replace(/[^a-z0-9]/g, ''));
                
-               // Either the full requested artist is in the singers list exactly,
+               // Either the full requested artist is in the singers list exactly, 
                // OR it is in the subtitle artists exactly
                const exactMatch = singersList.includes(cleanA) || subtitleArtists.includes(cleanA);
                
-               // Or at least one word from the requested artist matches exactly in the singers list
-               const partialMatch = requestedArtistWords.some(w => w.length > 2 && (singersList.includes(w) || subtitleArtists.includes(w)));
+               // Match without spaces for cases like "highborn" vs "high born"
+               const noSpaceMatch = singersNoSpace.includes(cleanANoSpace) || subtitleArtistsNoSpace.includes(cleanANoSpace) || singersNoSpace.some((s: string) => s.includes(cleanANoSpace));
                
-               artistMatch = exactMatch || partialMatch || resTitle.includes('feat ' + cleanA);
+               // Or at least one word from the requested artist matches exactly in the singers list
+               const partialMatch = requestedArtistWords.some(w => w.length > 2 && (singersList.includes(w) || subtitleArtists.includes(w) || singersNoSpace.some((s: string) => s.includes(w))));
+               
+               artistMatch = exactMatch || noSpaceMatch || partialMatch || resTitle.includes('feat ' + cleanA);
             }
             
             if (!titleMatch || !artistMatch) continue; // MUST MATCH BOTH TITLE AND ARTIST STRICTLY
@@ -195,7 +202,7 @@ export class AudioStreamResolver {
     })();
 
     const youtubeTask = (async () => {
-      if (options?.directAudioOnly) throw new Error("Skipped YT");
+      // if (options?.directAudioOnly) throw new Error("Skipped YT");
       try {
         const ytSearch = (await import('yt-search')).default;
         const query = `${cleanT} ${cleanA} song`;
@@ -203,14 +210,49 @@ export class AudioStreamResolver {
         let videos = searchResults?.videos || [];
         if (videos.length > 0) {
           const scored = videos.map((vid, index) => {
-             const vidTitle = (vid.title || '').toLowerCase();
-             const vidAuthor = (vid.author?.name || '').toLowerCase();
+             const vidTitleRaw = (vid.title || '').toLowerCase();
+             const vidTitle = vidTitleRaw.replace(/[^a-z0-9 ]/g, '').trim();
+             const vidAuthorRaw = (vid.author?.name || '').toLowerCase();
+             const vidAuthor = vidAuthorRaw.replace(/[^a-z0-9 ]/g, '').trim();
+             
              let score = Math.max(0, (10 - index) * 10);
-             if (vidAuthor.includes('- topic')) score += 50;
-             if (vidTitle.includes('official audio') || vidTitle.includes('lyric')) score += 30;
+             
+             // Huge boost for official sources
+             if (vidAuthorRaw.includes('topic') || vidAuthorRaw.includes('vevo')) score += 80;
+             if (vidTitleRaw.includes('official audio') || vidTitleRaw.includes('lyric') || vidTitleRaw.includes('official video') || vidTitleRaw.includes('official music video')) score += 40;
+             
+             // Massive penalty for unofficial versions unless the user explicitly requested them
+             const badTerms = ['cover', 'remix', 'karaoke', 'live', '8d', 'slowed', 'reverb', 'mashup', 'parody', 'tiktok', 'sped up', 'bass boosted', 'instrumental', 'status', 'whatsapp', 'ringtone', 'lofi', 'lo-fi', 'bgm'];
+             for (const term of badTerms) {
+               if (vidTitleRaw.includes(term) && !cleanT.includes(term)) {
+                 score -= 150; // Strongly penalize so they fall to the very bottom
+               }
+             }
+             
              if (cleanT.split(' ').every(w => hasWord(vidTitle, w) || (w.length > 4 && vidTitle.includes(w.substring(0, w.length - 1))))) score += 100;
              else if (cleanT.split(' ').some(w => w.length > 3 && hasWord(vidTitle, w))) score += 50;
-             if (cleanA && cleanA.split(' ').some(w => w.length > 1 && (hasWord(vidAuthor, w) || hasWord(vidTitle, w)))) score += 100;
+             else score -= 200; // Penalty if NO words from title match
+             
+             if (cleanA) {
+                const cleanAWords = cleanA.split(' ');
+                const cleanANoSpace = cleanA.replace(/[ \-]/g, '');
+                
+                // Try normal word matching first
+                let artistMatch = cleanAWords.some(w => w.length > 1 && (hasWord(vidAuthor, w) || hasWord(vidTitle, w)));
+                // Also check without spaces for cases like "highborn" vs "high born"
+                
+                const vidAuthorNoSpace = vidAuthorRaw.replace(/[^a-z0-9]/g, '');
+                const vidTitleNoSpace = vidTitleRaw.replace(/[^a-z0-9]/g, '');
+                if (!artistMatch && cleanANoSpace.length > 3) {
+                   if (vidAuthorNoSpace.includes(cleanANoSpace) || vidTitleNoSpace.includes(cleanANoSpace)) {
+                      artistMatch = true;
+                   }
+                }
+  
+                
+                if (artistMatch) score += 100;
+             }
+             
              if (expectedDuration) {
                 const diff = Math.abs((vid.seconds || vid.duration?.seconds || 0) - expectedDuration);
                 if (diff <= 5) score += 80;
@@ -220,7 +262,9 @@ export class AudioStreamResolver {
              return { vid, score };
           });
           scored.sort((a, b) => b.score - a.score);
-          const bestVid = scored[0].vid;
+          const topPick = scored[0];
+          
+          const bestVid = topPick.vid;
           return {
             url: `youtube:${bestVid.videoId}`,
             fallbackUrls: [`youtube:${bestVid.videoId}`],
@@ -242,10 +286,15 @@ export class AudioStreamResolver {
       throw new Error("YouTube failed");
     })();
 
-    // Race JioSaavn and YouTube. First to return a valid stream wins.
+    // Wait for both JioSaavn and YouTube. Prefer JioSaavn if it succeeds.
     try {
-      const winner = await Promise.any([jioSaavnTask, youtubeTask]);
-      return winner;
+      const results = await Promise.allSettled([jioSaavnTask, youtubeTask]);
+      const jioResult = results[0].status === 'fulfilled' ? results[0].value : null;
+      const ytResult = results[1].status === 'fulfilled' ? results[1].value : null;
+      
+      if (jioResult) return jioResult;
+      if (ytResult) return ytResult;
+      throw new Error("Both failed");
     } catch {
       // If both fail, try Audius as a last resort
       try {

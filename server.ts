@@ -59,6 +59,18 @@ app.use(cors({
   credentials: false // Set to false if allowing wildcard origins to avoid security issues
 }));
 
+// Enforce top-level origin for MediaSession so embedded iframes (e.g. YouTube) cannot take over Android media notification artwork
+app.use((req, res, next) => {
+  res.setHeader('Permissions-Policy', 'mediasession=(self)');
+  // Prevent browser caching during dev/preview so edits are immediately visible
+  if (req.path.endsWith('.js') || req.path.endsWith('.css') || req.path === '/' || req.path.endsWith('.html')) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  next();
+});
+
 // Set up Rate Limiting
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
@@ -173,7 +185,7 @@ app.get('/api/search', optionalAuth, async (req, res) => {
     const results = await MusicService.search(q, userId);
     sendSuccess(res, results);
 
-    // Pre-resolve top track in background for instant 1s playback
+    // Pre-resolve top tracks in background for instant playback
     if (results && results.topResult && results.topResult.type === 'track') {
       MusicService.resolvePlayback(
         results.topResult.data.id, 
@@ -183,12 +195,14 @@ app.get('/api/search', optionalAuth, async (req, res) => {
       ).catch(() => {});
     }
     if (results && results.songs && results.songs.length > 0) {
-      MusicService.resolvePlayback(
-        results.songs[0].id, 
-        results.songs[0].title, 
-        results.songs[0].artist, 
-        results.songs[0].duration
-      ).catch(() => {});
+      results.songs.slice(0, 3).forEach(song => {
+        MusicService.resolvePlayback(
+          song.id, 
+          song.title, 
+          song.artist, 
+          song.duration
+        ).catch(() => {});
+      });
     }
   } catch (err: any) {
     console.error('[API] /api/search error:', err);
@@ -461,7 +475,7 @@ app.get('/api/audio-download', async (req, res) => {
           duration,
           { directAudioOnly: true, allowFallbackTitle: true, forceFresh: true }
         );
-        if (resolvedStream?.url && resolvedStream.url.startsWith('http')) {
+        if (resolvedStream?.url && (resolvedStream.url.startsWith("http") || resolvedStream.url.startsWith("youtube:"))) {
           audioUrl = resolvedStream.url;
         }
       } catch (rErr) {
@@ -471,7 +485,7 @@ app.get('/api/audio-download', async (req, res) => {
   }
 
   // If still no direct audioUrl, attempt a title-only resolution
-  if (!audioUrl || !audioUrl.startsWith('http')) {
+  if (!audioUrl || (!audioUrl.startsWith("http") && !audioUrl.startsWith("youtube:"))) {
     if (trackTitle) {
       try {
         resolvedStream = await AudioStreamResolver.resolveFullTrack(
@@ -481,19 +495,50 @@ app.get('/api/audio-download', async (req, res) => {
           duration,
           { directAudioOnly: true, allowFallbackTitle: true, forceFresh: true }
         );
-        if (resolvedStream?.url && resolvedStream.url.startsWith('http')) {
+        if (resolvedStream?.url && (resolvedStream.url.startsWith("http") || resolvedStream.url.startsWith("youtube:"))) {
           audioUrl = resolvedStream.url;
         }
       } catch {}
     }
   }
 
-  if (!audioUrl || !audioUrl.startsWith('http')) {
+  if (!audioUrl || (!audioUrl.startsWith("http") && !audioUrl.startsWith("youtube:"))) {
     return sendError(res, 'INVALID_INPUT', 'Playable audio stream could not be resolved for download', 400);
   }
 
   // Prepare ordered list of stream URLs to attempt (primary + quality fallbacks)
+  
+  if (audioUrl.startsWith('youtube:')) {
+    const videoId = audioUrl.split(':')[1];
+    res.setHeader('Content-Type', 'audio/mp4');
+    let info = ytdlCache.get(videoId);
+    if (!info && ytdlPromises.has(videoId)) {
+      info = await ytdlPromises.get(videoId);
+    }
+    if (!info) {
+      info = await prefetchYtdlInfo(videoId).catch(()=>null);
+    }
+    let stream;
+    try {
+      if (info) {
+        stream = ytdl.downloadFromInfo(info, { filter: 'audioonly', quality: 'highestaudio' });
+      } else {
+        stream = ytdl(videoId, { filter: 'audioonly', quality: 'highestaudio' });
+      }
+      stream.pipe(res);
+      stream.on('error', (err: any) => {
+        console.error('YTDL Stream Error:', err);
+        if (!res.headersSent) res.status(500).send('Streaming error');
+      });
+      return;
+    } catch(e) {
+      console.error(e);
+      return sendError(res, 'DOWNLOAD_FAILED', 'Failed to retrieve audio stream', 500);
+    }
+  }
+
   const candidateUrls: string[] = [audioUrl];
+
   if (resolvedStream?.fallbackUrls && Array.isArray(resolvedStream.fallbackUrls)) {
     for (const fb of resolvedStream.fallbackUrls) {
       if (fb && fb.startsWith('http') && !candidateUrls.includes(fb)) {
@@ -947,6 +992,165 @@ app.get('/api/share/:id/image.png', (req, res) => {
   res.end(img);
 });
 
+// ================= LEGAL & COMPLIANCE ENDPOINTS =================
+
+// Store notices safely in memory and disk
+const takedownNotices: any[] = [];
+const securityReports: any[] = [];
+
+const TAKEDOWN_FILE = path.join(process.cwd(), 'data', 'takedown-notices.json');
+const SECURITY_FILE = path.join(process.cwd(), 'data', 'security-reports.json');
+
+try {
+  const dataDir = path.join(process.cwd(), 'data');
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+  if (fs.existsSync(TAKEDOWN_FILE)) {
+    const raw = fs.readFileSync(TAKEDOWN_FILE, 'utf-8');
+    takedownNotices.push(...JSON.parse(raw));
+  }
+  if (fs.existsSync(SECURITY_FILE)) {
+    const raw = fs.readFileSync(SECURITY_FILE, 'utf-8');
+    securityReports.push(...JSON.parse(raw));
+  }
+} catch (e) {
+  console.warn('[LegalAPI] Initializing in-memory fallback for notices:', e);
+}
+
+// 1. Submit Copyright / DMCA Takedown Notice
+app.post('/api/legal/takedown', (req, res) => {
+  try {
+    const {
+      copyrightOwner,
+      claimantName,
+      claimantEmail,
+      claimantPhone,
+      claimantRole,
+      workTitle,
+      infringingWork,
+      jurisdiction,
+      goodFaithStatement,
+      accuracyStatement,
+      electronicSignature
+    } = req.body || {};
+
+    // Validate mandatory DMCA notice fields
+    if (!copyrightOwner || !claimantName || !claimantEmail || !workTitle || !infringingWork || !electronicSignature) {
+      return sendError(res, 'VALIDATION_ERROR', 'Missing mandatory DMCA notice fields. Please provide copyright owner, your name, contact email, original work description, infringing content identifier, and electronic signature.', 400);
+    }
+
+    if (!goodFaithStatement || !accuracyStatement) {
+      return sendError(res, 'DECLARATION_REQUIRED', 'Both the good-faith belief and accuracy/penalty-of-perjury statements must be confirmed.', 400);
+    }
+
+    const ticketId = `DMCA-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+    const notice = {
+      ticketId,
+      timestamp: new Date().toISOString(),
+      status: 'PENDING_REVIEW',
+      ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown',
+      userAgent: req.headers['user-agent'] || 'unknown',
+      copyrightOwner: String(copyrightOwner).trim(),
+      claimantName: String(claimantName).trim(),
+      claimantEmail: String(claimantEmail).trim(),
+      claimantPhone: claimantPhone ? String(claimantPhone).trim() : undefined,
+      claimantRole: claimantRole ? String(claimantRole).trim() : 'Authorized Representative',
+      workTitle: String(workTitle).trim(),
+      infringingWork: String(infringingWork).trim(),
+      jurisdiction: jurisdiction ? String(jurisdiction).trim() : 'International',
+      electronicSignature: String(electronicSignature).trim()
+    };
+
+    takedownNotices.push(notice);
+
+    try {
+      fs.writeFileSync(TAKEDOWN_FILE, JSON.stringify(takedownNotices, null, 2));
+    } catch (err) {
+      console.warn('[LegalAPI] Could not write takedown file to disk:', err);
+    }
+
+    console.log(`[LegalAPI] New DMCA takedown notice filed: ${ticketId} for work "${workTitle}" by "${claimantName}" <${claimantEmail}>`);
+
+    return sendSuccess(res, {
+      ticketId,
+      receivedAt: notice.timestamp,
+      status: 'PENDING_REVIEW',
+      message: 'Notice received. Spotiz takes intellectual property seriously. Our compliance team investigates all notices within 24-48 business hours.',
+      claimantEmail: notice.claimantEmail
+    });
+  } catch (err: any) {
+    console.error('[LegalAPI] Error processing takedown:', err);
+    return sendError(res, 'SERVER_ERROR', 'Failed to record takedown notice. Please try again or contact compliance.', 500);
+  }
+});
+
+// 2. Submit Security Vulnerability / Privacy Inquiry Report
+app.post('/api/legal/security-report', (req, res) => {
+  try {
+    const {
+      reporterName,
+      reporterEmail,
+      reportType,
+      severity,
+      description,
+      stepsToReproduce
+    } = req.body || {};
+
+    if (!reporterEmail || !description) {
+      return sendError(res, 'VALIDATION_ERROR', 'Please provide a valid contact email and a description of the issue.', 400);
+    }
+
+    const reportId = `SEC-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 9000 + 1000)}`;
+    const report = {
+      reportId,
+      timestamp: new Date().toISOString(),
+      status: 'LOGGED',
+      ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown',
+      reporterName: reporterName ? String(reporterName).trim() : 'Anonymous Researcher',
+      reporterEmail: String(reporterEmail).trim(),
+      reportType: reportType || 'vulnerability',
+      severity: severity || 'medium',
+      description: String(description).trim(),
+      stepsToReproduce: stepsToReproduce ? String(stepsToReproduce).trim() : ''
+    };
+
+    securityReports.push(report);
+
+    try {
+      fs.writeFileSync(SECURITY_FILE, JSON.stringify(securityReports, null, 2));
+    } catch (err) {
+      console.warn('[LegalAPI] Could not write security file to disk:', err);
+    }
+
+    console.log(`[LegalAPI] Security/Privacy report received: ${reportId} (${report.reportType}, ${report.severity}) from <${reporterEmail}>`);
+
+    return sendSuccess(res, {
+      reportId,
+      receivedAt: report.timestamp,
+      message: 'Report received. Thank you for responsibly disclosing this finding to help keep Spotiz secure.',
+    });
+  } catch (err: any) {
+    console.error('[LegalAPI] Error processing security report:', err);
+    return sendError(res, 'SERVER_ERROR', 'Failed to record report. Please try again.', 500);
+  }
+});
+
+// 3. Legal & Applet Configuration Status
+app.get('/api/legal/status', (req, res) => {
+  return sendSuccess(res, {
+    app: 'Spotiz',
+    version: '2.4.0',
+    appType: 'Client-side media aggregator & Web Audio synthesis interface',
+    storageModel: 'Local-first (localStorage, sessionStorage, IndexedDB for offline cache)',
+    adSupported: false,
+    thirdPartyAdTrackers: false,
+    takedownChannel: '/api/legal/takedown',
+    securityChannel: '/api/legal/security-report',
+    effectiveDate: '2026-03-15'
+  });
+});
+
 // ================= VITE INTEGRATION =================
 
 
@@ -976,7 +1180,7 @@ function sanitizeMediaUrl(urlStr: string): string {
   return '/pwa-512x512.png';
 }
 
-const currentFilePath = typeof __filename !== 'undefined' ? __filename : (import.meta?.url ? fileURLToPath(import.meta.url) : '');
+const currentFilePath = typeof __filename !== 'undefined' ? __filename : '';
 const isProduction = process.env.NODE_ENV === 'production' || currentFilePath.endsWith('.cjs') || currentFilePath.includes('dist');
 
 async function startServer() {
@@ -1011,6 +1215,24 @@ async function startServer() {
       return res.sendFile(distSwPath);
     }
     res.status(404).set('Content-Type', 'text/plain').send('Service Worker not found');
+  });
+
+  // Explicitly serve Workbox assets required by Service Worker
+  app.get(['/workbox-*.js', '/assets/workbox-*.js'], (req, res) => {
+    const fileName = path.basename(req.path);
+    const distPath = path.join(process.cwd(), 'dist', fileName);
+    if (fs.existsSync(distPath)) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return res.sendFile(distPath);
+    }
+    const distAssetsPath = path.join(process.cwd(), 'dist', 'assets', fileName);
+    if (fs.existsSync(distAssetsPath)) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return res.sendFile(distAssetsPath);
+    }
+    res.status(404).set('Content-Type', 'text/plain').send('Workbox script not found');
   });
 
   app.get('/share/:type/:id', async (req, res, next) => {

@@ -2193,7 +2193,7 @@ tracks.push({
     }
 
     // MULTI-TIER RESOLVER FAILOVER: AudioStreamResolver with proactive validation
-    if (!resolvedStreamInfo && requestedTitle) {
+    if (!resolvedStreamInfo) {
       const fullStream = await AudioStreamResolver.resolveFullTrack(
         trackId,
         requestedTitle,
@@ -2202,7 +2202,7 @@ tracks.push({
         options
       );
 
-      if (fullStream && fullStream.url) {
+      if (fullStream) {
         const fallbacks = [...(fullStream.fallbackUrls || [fullStream.url])];
         if (
           track?.streamUrl &&

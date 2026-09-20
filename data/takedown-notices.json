@@ -1,0 +1,32 @@
+[
+  {
+    "ticketId": "DMCA-MUA54WYT-7536",
+    "timestamp": "2026-09-20T18:19:29.381Z",
+    "status": "PENDING_REVIEW",
+    "ip": "127.0.0.1",
+    "userAgent": "curl/7.88.1",
+    "copyrightOwner": "Test Music Corp",
+    "claimantName": "Alice Smith",
+    "claimantEmail": "alice@testmusiccorp.com",
+    "claimantRole": "Copyright Owner",
+    "workTitle": "Example Song",
+    "infringingWork": "https://spotify2.ai.studio/#track-12345",
+    "jurisdiction": "United States",
+    "electronicSignature": "Alice Smith"
+  },
+  {
+    "ticketId": "DMCA-MUA75NAX-3541",
+    "timestamp": "2026-09-20T19:16:02.745Z",
+    "status": "PENDING_REVIEW",
+    "ip": "127.0.0.1",
+    "userAgent": "node",
+    "copyrightOwner": "Sony Music Entertainment",
+    "claimantName": "Legal Representative",
+    "claimantEmail": "dmca@sonymusic.example.com",
+    "claimantRole": "Exclusive Rights Agent",
+    "workTitle": "Test Track Original Composition",
+    "infringingWork": "Spotiz Track ID 12345",
+    "jurisdiction": "United States",
+    "electronicSignature": "/s/ Legal Representative"
+  }
+]

@@ -5,6 +5,10 @@ import { Track, Artist, Album, Playlist, LyricsData, HomeFeedData, SearchResults
 import { resolveMissingSpotifyThumbnails } from './spotifyThumbnailExtractor';
 import { SpotifySearchService } from './spotifySearchService';
 
+// High-speed in-memory cache for search results (10 min TTL)
+const searchResultCache = new Map<string, { timestamp: number; results: SearchResults }>();
+const SEARCH_CACHE_TTL = 10 * 60 * 1000;
+
 export class MusicService {
   static async getHomeFeed(): Promise<HomeFeedData> {
     const provider = providerManager.getProvider();
@@ -16,6 +20,23 @@ export class MusicService {
   }
 
   static async search(query: string, userId?: string): Promise<SearchResults> {
+    const trimmed = (query || '').trim();
+    if (!trimmed) {
+      return {
+        topResult: null,
+        songs: [],
+        artists: [],
+        albums: [],
+        playlists: [],
+      };
+    }
+
+    const cacheKey = `${trimmed.toLowerCase()}::${userId || 'anon'}`;
+    const cached = searchResultCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < SEARCH_CACHE_TTL)) {
+      return cached.results;
+    }
+
     const provider = providerManager.getProvider();
     let results: SearchResults;
 
@@ -49,6 +70,15 @@ export class MusicService {
     if (results.songs && results.songs.length > 0) {
       results.songs = await smartRankingService.rankSongs(results.songs, userId || 'anonymous', query);
     }
+
+    // Cache results
+    searchResultCache.set(cacheKey, { timestamp: Date.now(), results });
+    // Limit cache size to prevent memory bloat
+    if (searchResultCache.size > 200) {
+      const oldestKey = searchResultCache.keys().next().value;
+      if (oldestKey) searchResultCache.delete(oldestKey);
+    }
+
     return results;
 
   }

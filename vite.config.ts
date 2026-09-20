@@ -7,11 +7,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
-      devOptions: {
-        enabled: false,
-        type: 'module'
-      },
       workbox: {
+        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
         navigateFallback: '/index.html',
         maximumFileSizeToCacheInBytes: 5000000,

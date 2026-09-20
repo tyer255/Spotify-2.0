@@ -4,8 +4,16 @@ import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FastAverageColor } from 'fast-average-color';
 import SkeletonManager from './utils/SkeletonManager';
+import { DomDumper } from './utils/DomDumper';
+import { MobileHeroCarousel } from './utils/MobileHeroCarousel';
+import { ReloadPrompt } from './components/ReloadPrompt';
+import { DesktopEnhancer } from './components/DesktopEnhancer';
+import { LegalSuiteManager } from './components/LegalSuite';
+import { GuestSystemManager } from './components/GuestSystemManager';
+import './utils/mediaSessionGuard';
 import './bundle/index-Bfvfzxe5.js';
 import './bundle/index-M2dOfOkA.css';
+import './styles/liquid-glass.css';
 
 const DynamicProfileBackground = () => {
   useEffect(() => {
@@ -17,125 +25,133 @@ const DynamicProfileBackground = () => {
     }
 
     const interval = setInterval(() => {
+      // If already applied and still present in DOM, do nothing (zero overhead)
+      const existing = document.querySelector('[data-dynamic-bg="true"]');
+      if (existing && document.contains(existing)) return;
+
+      // Quick targeted check before running broader queries
+      const possibleCards = document.querySelectorAll('div.bg-\\[\\#181818\\], .max-w-xl div, .rounded-3xl');
+      if (possibleCards.length === 0) return;
+
       // Find the card container by looking for Spotiz Premium or Log out badges/buttons
-      const premiumSpans = Array.from(document.querySelectorAll('span, p, button')).filter(el => {
-         const text = el.textContent?.trim().toUpperCase() || '';
-         return (text.includes('SPOTIZ PREMIUM') || text.includes('LOG OUT')) && text.length < 50;
-      });
-      
-      for (const el of premiumSpans) {
-        // Find the main profile card container. Usually bg-[#181818] or similar.
-        const card = el.closest('div.bg-\\[\\#181818\\]') || el.closest('.max-w-xl')?.querySelector('div.bg-\\[\\#181818\\]') || el.closest('.rounded-3xl');
-        
-        if (card && !card.hasAttribute('data-dynamic-bg')) {
-          card.setAttribute('data-dynamic-bg', 'true');
-
-          const cardEl = card as HTMLElement;
-          cardEl.style.position = 'relative';
-          cardEl.style.overflow = 'hidden';
-          
-          const bgContainer = document.createElement('div');
-          bgContainer.className = 'profile-dynamic-bg';
-          bgContainer.style.position = 'absolute';
-          bgContainer.style.inset = '0';
-          bgContainer.style.zIndex = '0';
-          bgContainer.style.pointerEvents = 'none';
-          bgContainer.style.transition = 'background 1s ease, opacity 1s ease';
-          bgContainer.style.opacity = '0'; // Start invisible
-          
-          card.insertBefore(bgContainer, card.firstChild);
-
-          // Ensure elements sit on top of the dynamic background
-          Array.from(card.children).forEach(child => {
-             if (child !== bgContainer) {
-               const c = child as HTMLElement;
-               if (getComputedStyle(c).position === 'static') {
-                  c.style.position = 'relative';
-               }
-               c.style.zIndex = '10';
-             }
-          });
-
-          // Find avatar image inside this card or its immediate parent
-          let img = card.querySelector('img');
-          
-          if (!img) {
-            const possibleAvatars = Array.from(document.querySelectorAll('img')).filter(i => 
-              i.src.includes('googleusercontent') || i.src.includes('avatar')
-            );
-            if (possibleAvatars.length > 0) {
-               img = possibleAvatars[0];
-            }
-          }
-
-          const applyColor = (r: number, g: number, b: number) => {
-             // Create a beautiful Spotify-like profile gradient
-             bgContainer.style.background = `
-               radial-gradient(circle at 50% 0%, rgba(${r}, ${g}, ${b}, 0.5) 0%, rgba(24, 24, 24, 0) 80%),
-               linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.3) 0%, rgba(24, 24, 24, 1) 100%)
-             `;
-             bgContainer.style.opacity = '1';
-             
-             // Update the card's actual background to transparent so it doesn't block the gradient
-             cardEl.style.backgroundColor = 'transparent';
-             cardEl.style.backgroundImage = `linear-gradient(180deg, rgba(${Math.max(10, r-30)}, ${Math.max(10, g-30)}, ${Math.max(10, b-30)}, 0.2) 0%, rgba(24, 24, 24, 1) 100%)`;
-             
-             // Apply subtle glow to the wrapper
-             const wrapper = cardEl.parentElement;
-             if (wrapper) {
-                wrapper.style.position = 'relative';
-                let ambientGlow = wrapper.querySelector('.ambient-glow') as HTMLElement;
-                if (!ambientGlow) {
-                   ambientGlow = document.createElement('div');
-                   ambientGlow.className = 'ambient-glow';
-                   ambientGlow.style.position = 'absolute';
-                   ambientGlow.style.top = '-10%';
-                   ambientGlow.style.left = '0';
-                   ambientGlow.style.right = '0';
-                   ambientGlow.style.height = '70%';
-                   ambientGlow.style.zIndex = '-1';
-                   ambientGlow.style.pointerEvents = 'none';
-                   ambientGlow.style.background = `radial-gradient(circle at 50% 0%, rgba(${r}, ${g}, ${b}, 0.15) 0%, rgba(0,0,0,0) 70%)`;
-                   ambientGlow.style.filter = 'blur(40px)';
-                   wrapper.insertBefore(ambientGlow, wrapper.firstChild);
-                }
-             }
-          };
-
-          const fallbackColor = () => applyColor(29, 185, 84); // Spotify green fallback
-          const defaultBlue = () => applyColor(14, 165, 233); // Spotify default user blue
-
-          if (img && fac) {
-             const src = img.src;
-             const imgEl = new Image();
-             imgEl.crossOrigin = 'Anonymous';
-             imgEl.src = src;
-             
-             imgEl.onload = () => {
-                try {
-                  const color = fac!.getColor(imgEl);
-                  applyColor(color.value[0], color.value[1], color.value[2]);
-                } catch(e) {
-                  fallbackColor();
-                }
-             };
-             imgEl.onerror = fallbackColor;
-          } else {
-             // Text avatar fallback (Letter)
-             defaultBlue();
-             
-             // Style the fallback text avatar gracefully if possible
-             const textAvatar = card.querySelector('div.bg-neutral-800') as HTMLElement;
-             if (textAvatar) {
-                textAvatar.style.background = 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)';
-                textAvatar.style.color = '#ffffff';
-                textAvatar.style.border = 'none';
-                textAvatar.style.boxShadow = '0 8px 24px rgba(29, 78, 216, 0.4)';
-             }
-          }
+      let targetCard: HTMLElement | null = null;
+      for (const card of Array.from(possibleCards) as HTMLElement[]) {
+        const text = card.textContent || '';
+        if (text.includes('SPOTIZ PREMIUM') || text.includes('Spotiz Premium') || text.includes('Log out') || text.includes('LOG OUT')) {
+          targetCard = card;
+          break;
         }
       }
-    }, 1000);
+      
+      if (targetCard && !targetCard.hasAttribute('data-dynamic-bg')) {
+        const card = targetCard;
+        card.setAttribute('data-dynamic-bg', 'true');
+
+        const cardEl = card as HTMLElement;
+        cardEl.style.position = 'relative';
+        cardEl.style.overflow = 'hidden';
+        
+        const bgContainer = document.createElement('div');
+        bgContainer.className = 'profile-dynamic-bg';
+        bgContainer.style.position = 'absolute';
+        bgContainer.style.inset = '0';
+        bgContainer.style.zIndex = '0';
+        bgContainer.style.pointerEvents = 'none';
+        bgContainer.style.transition = 'background 1s ease, opacity 1s ease';
+        bgContainer.style.opacity = '0'; // Start invisible
+        
+        card.insertBefore(bgContainer, card.firstChild);
+
+        // Ensure elements sit on top of the dynamic background
+        Array.from(card.children).forEach(child => {
+           if (child !== bgContainer) {
+             const c = child as HTMLElement;
+             if (getComputedStyle(c).position === 'static') {
+                c.style.position = 'relative';
+             }
+             c.style.zIndex = '10';
+           }
+        });
+
+        // Find avatar image inside this card or its immediate parent
+        let img = card.querySelector('img');
+        
+        if (!img) {
+          const possibleAvatars = Array.from(document.querySelectorAll('img')).filter(i => 
+            i.src.includes('googleusercontent') || i.src.includes('avatar')
+          );
+          if (possibleAvatars.length > 0) {
+             img = possibleAvatars[0];
+          }
+        }
+
+        const applyColor = (r: number, g: number, b: number) => {
+           // Create a beautiful Spotify-like profile gradient
+           bgContainer.style.background = `
+             radial-gradient(circle at 50% 0%, rgba(${r}, ${g}, ${b}, 0.5) 0%, rgba(24, 24, 24, 0) 80%),
+             linear-gradient(180deg, rgba(${r}, ${g}, ${b}, 0.3) 0%, rgba(24, 24, 24, 1) 100%)
+           `;
+           bgContainer.style.opacity = '1';
+           
+           // Update the card's actual background to transparent so it doesn't block the gradient
+           cardEl.style.backgroundColor = 'transparent';
+           cardEl.style.backgroundImage = `linear-gradient(180deg, rgba(${Math.max(10, r-30)}, ${Math.max(10, g-30)}, ${Math.max(10, b-30)}, 0.2) 0%, rgba(24, 24, 24, 1) 100%)`;
+           
+           // Apply subtle glow to the wrapper
+           const wrapper = cardEl.parentElement;
+           if (wrapper) {
+              wrapper.style.position = 'relative';
+              let ambientGlow = wrapper.querySelector('.ambient-glow') as HTMLElement;
+              if (!ambientGlow) {
+                 ambientGlow = document.createElement('div');
+                 ambientGlow.className = 'ambient-glow';
+                 ambientGlow.style.position = 'absolute';
+                 ambientGlow.style.top = '-10%';
+                 ambientGlow.style.left = '0';
+                 ambientGlow.style.right = '0';
+                 ambientGlow.style.height = '70%';
+                 ambientGlow.style.zIndex = '-1';
+                 ambientGlow.style.pointerEvents = 'none';
+                 ambientGlow.style.background = `radial-gradient(circle at 50% 0%, rgba(${r}, ${g}, ${b}, 0.15) 0%, rgba(0,0,0,0) 70%)`;
+                 ambientGlow.style.filter = 'blur(40px)';
+                 wrapper.insertBefore(ambientGlow, wrapper.firstChild);
+              }
+           }
+        };
+
+        const fallbackColor = () => applyColor(29, 185, 84); // Spotify green fallback
+        const defaultBlue = () => applyColor(14, 165, 233); // Spotify default user blue
+
+        if (img && fac) {
+           const src = img.src;
+           const imgEl = new Image();
+           imgEl.crossOrigin = 'Anonymous';
+           imgEl.src = src;
+           
+           imgEl.onload = () => {
+              try {
+                const color = fac!.getColor(imgEl);
+                applyColor(color.value[0], color.value[1], color.value[2]);
+              } catch(e) {
+                fallbackColor();
+              }
+           };
+           imgEl.onerror = fallbackColor;
+        } else {
+           // Text avatar fallback (Letter)
+           defaultBlue();
+           
+           // Style the fallback text avatar gracefully if possible
+           const textAvatar = card.querySelector('div.bg-neutral-800') as HTMLElement;
+           if (textAvatar) {
+              textAvatar.style.background = '#60a5fa';
+              textAvatar.style.color = '#ffffff';
+              textAvatar.style.border = 'none';
+              textAvatar.style.boxShadow = '0 8px 24px rgba(96, 165, 250, 0.4)';
+           }
+        }
+      }
+    }, 2000);
 
     return () => clearInterval(interval);
   }, []);
@@ -143,136 +159,8 @@ const DynamicProfileBackground = () => {
   return null;
 }
 
-const LoginPrompt = () => {
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      // Don't show if already dismissed in this session
-      if (sessionStorage.getItem('guest_prompt_shown')) {
-        return;
-      }
-
-      // Wait a bit for the app to initialize its IndexedDB
-      await new Promise(resolve => setTimeout(resolve, 2500));
-
-      // Check IndexedDB for Firebase Auth state
-      try {
-        const request = indexedDB.open('firebaseLocalStorageDb');
-        request.onsuccess = (event) => {
-          const db = (event.target as IDBOpenDBRequest).result;
-          if (!db.objectStoreNames.contains('firebaseLocalStorage')) {
-            setShow(true);
-            return;
-          }
-          const tx = db.transaction('firebaseLocalStorage', 'readonly');
-          const store = tx.objectStore('firebaseLocalStorage');
-          const countReq = store.count();
-          countReq.onsuccess = () => {
-            if (countReq.result === 0) {
-              setShow(true);
-            }
-          };
-          countReq.onerror = () => {
-            setShow(true);
-          };
-        };
-        request.onerror = () => {
-          setShow(true);
-        };
-      } catch (err) {
-        setShow(true);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  const handleDismiss = () => {
-    setShow(false);
-    sessionStorage.setItem('guest_prompt_shown', 'true');
-  };
-
-  const handleLoginClick = () => {
-    handleDismiss();
-    
-    // Attempt to navigate to the profile tab, assuming the app listens to history state or we can click a tab
-    // Let's try to push state to the profile view if we can
-    try {
-      if (window.history.state) {
-        const currentIndex = typeof window.history.state.viewIndex === 'number' ? window.history.state.viewIndex : 0;
-        window.history.pushState({ viewIndex: currentIndex + 1, viewKey: 'profile' }, "");
-        window.dispatchEvent(new PopStateEvent('popstate', { state: { viewIndex: currentIndex + 1, viewKey: 'profile' } }));
-      }
-    } catch (e) {
-      // Ignore
-    }
-
-    // Try finding the profile button visually and clicking it (bottom nav or top nav)
-    setTimeout(() => {
-      const allButtons = Array.from(document.querySelectorAll('button, div'));
-      const profileBtn = allButtons.find(el => {
-         const html = el.innerHTML;
-         return html.includes('M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2') || // Lucide User
-                html.includes('circle cx="12" cy="7" r="4"'); // Lucide User circle
-      });
-      if (profileBtn) {
-        (profileBtn as HTMLElement).click();
-      }
-    }, 100);
-  };
-
-  if (!show) return null;
-
-  return (
-    <AnimatePresence>
-      {show && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-sm overflow-hidden bg-[#181818] border border-white/10 rounded-2xl shadow-2xl p-6 md:p-8 flex flex-col items-center text-center"
-          >
-            <button 
-              onClick={handleDismiss}
-              className="absolute top-4 right-4 p-2 text-neutral-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-full transition-colors cursor-pointer"
-              title="Dismiss"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="w-16 h-16 bg-[#1DB954]/10 rounded-full flex items-center justify-center mb-5">
-               <svg viewBox="0 0 24 24" width="32" height="32" fill="#1DB954">
-                 <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.503 17.308c-.216.353-.674.468-1.027.252-2.812-1.718-6.352-2.107-10.522-1.155-.404.092-.806-.157-.899-.561-.092-.404.157-.806.561-.899 4.568-1.044 8.487-.601 11.635 1.336.353.216.468.674.252 1.027zm1.47-3.267c-.272.443-.852.585-1.295.313-3.219-1.979-8.127-2.551-11.935-1.394-.499.152-1.028-.133-1.18-.632-.152-.499.133-1.028.632-1.18 4.357-1.322 9.773-.687 13.465 1.598.443.272.585.852.313 1.295zm.126-3.41c-3.86-2.292-10.231-2.503-13.918-1.383-.593.18-1.222-.154-1.402-.747-.18-.593.154-1.222.747-1.402 4.238-1.286 11.278-1.042 15.728 1.597.534.317.708 1.008.391 1.542-.317.534-1.008.708-1.546.393z"/>
-               </svg>
-            </div>
-            
-            <h2 className="text-xl font-bold text-white mb-2 tracking-tight">Experience More</h2>
-            <p className="text-neutral-400 mb-6 leading-relaxed text-sm">
-              Log in to save your favorite songs, create custom playlists, and sync your music across all devices.
-            </p>
-
-            <button 
-              onClick={handleLoginClick}
-              className="w-full py-3 bg-[#1DB954] hover:bg-[#1ed760] text-black font-bold text-sm rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
-            >
-              Log In to Spotiz
-            </button>
-            
-            <button 
-              onClick={handleDismiss}
-              className="mt-4 text-xs font-semibold text-neutral-400 hover:text-white transition-colors uppercase tracking-wider cursor-pointer"
-            >
-              Not Now
-            </button>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-};
+// Login popup completely removed in favor of login-free Guest ID system
+const LoginPrompt = () => null;
 
 const ThumbnailEnhancer = () => {
   useEffect(() => {
@@ -298,68 +186,178 @@ const ThumbnailEnhancer = () => {
 
     (window as any).getUltraHighResUrl = upgradeUrl;
 
+    let isInspecting = false;
+    let inspectScheduled = false;
+
     const inspectThumbnails = () => {
-      // Find fullscreen artwork container and ensure crisp rendering
-      const artImgs = document.querySelectorAll<HTMLImageElement>('#fullscreen-artwork-container img, [data-artwork-img="true"]');
-      artImgs.forEach(img => {
-        img.style.imageRendering = '-webkit-optimize-contrast';
-        img.style.filter = 'none';
-        img.style.transform = 'none';
-        
-        const currentSrc = img.src || img.getAttribute('src') || '';
-        const upgraded = upgradeUrl(currentSrc);
-        if (upgraded && upgraded !== currentSrc) {
-          img.src = upgraded;
-        }
-
-        if (!img.getAttribute('data-error-handled')) {
-          img.setAttribute('data-error-handled', 'true');
-          img.addEventListener('error', () => {
-            if (img.src.includes('maxresdefault.jpg')) {
-              img.src = img.src.replace('maxresdefault.jpg', 'hq720.jpg');
-            } else if (img.src.includes('hq720.jpg')) {
-              img.src = img.src.replace('hq720.jpg', 'hqdefault.jpg');
-            }
-          });
-        }
-      });
-
-      // Find canvas artwork fallback divs and strip blur filters and scale distortion
-      const fallbackDivs = document.querySelectorAll<HTMLElement>('#canvas-artwork-fallback div');
-      fallbackDivs.forEach(div => {
-        if (div.className.includes('blur-')) {
-          div.className = div.className.replace(/blur-[a-z0-9]+/g, '').replace('scale-125', '').replace('transform-gpu', '').trim();
-        }
-        if (div.style.filter && div.style.filter.includes('blur')) {
-          div.style.filter = 'none';
-        }
-        const bgImg = div.style.backgroundImage;
-        if (bgImg && bgImg.startsWith('url(')) {
-          const rawUrl = bgImg.slice(4, -1).replace(/["']/g, '');
-          const upgraded = upgradeUrl(rawUrl);
-          if (upgraded !== rawUrl) {
-            div.style.backgroundImage = `url("${upgraded}")`;
+      inspectScheduled = false;
+      if (isInspecting) return;
+      isInspecting = true;
+      try {
+        // Find fullscreen artwork container and ensure crisp rendering
+        const artImgs = document.querySelectorAll<HTMLImageElement>('#fullscreen-artwork-container img, [data-artwork-img="true"]');
+        artImgs.forEach(img => {
+          if (img.style.imageRendering !== '-webkit-optimize-contrast') {
+            img.style.imageRendering = '-webkit-optimize-contrast';
           }
-        }
-      });
+          if (img.style.filter !== 'none') {
+            img.style.filter = 'none';
+          }
+          
+          const currentSrc = img.src || img.getAttribute('src') || '';
+          const upgraded = upgradeUrl(currentSrc);
+          if (upgraded && upgraded !== currentSrc) {
+            img.src = upgraded;
+          }
+
+          if (!img.getAttribute('data-error-handled')) {
+            img.setAttribute('data-error-handled', 'true');
+            img.addEventListener('error', () => {
+              if (img.src.includes('maxresdefault.jpg')) {
+                img.src = img.src.replace('maxresdefault.jpg', 'hq720.jpg');
+              } else if (img.src.includes('hq720.jpg')) {
+                img.src = img.src.replace('hq720.jpg', 'hqdefault.jpg');
+              }
+            });
+          }
+        });
+
+        // Find canvas artwork fallback divs and strip blur filters and scale distortion
+        const fallbackDivs = document.querySelectorAll<HTMLElement>('#canvas-artwork-fallback div');
+        fallbackDivs.forEach(div => {
+          if (div.className.includes('blur-')) {
+            div.className = div.className.replace(/blur-[a-z0-9]+/g, '').replace('scale-125', '').replace('transform-gpu', '').trim();
+          }
+          if (div.style.filter && div.style.filter.includes('blur')) {
+            div.style.filter = 'none';
+          }
+          const bgImg = div.style.backgroundImage;
+          if (bgImg && bgImg.startsWith('url(')) {
+            const rawUrl = bgImg.slice(4, -1).replace(/["']/g, '');
+            const upgraded = upgradeUrl(rawUrl);
+            if (upgraded !== rawUrl) {
+              div.style.backgroundImage = `url("${upgraded}")`;
+            }
+          }
+        });
+      } finally {
+        isInspecting = false;
+      }
     };
 
-    inspectThumbnails();
-    const interval = setInterval(inspectThumbnails, 400);
+    const scheduleInspect = () => {
+      if (!inspectScheduled) {
+        inspectScheduled = true;
+        requestAnimationFrame(inspectThumbnails);
+      }
+    };
 
-    const observer = new MutationObserver(() => {
-      inspectThumbnails();
-    });
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['src', 'style', 'class'] });
+    scheduleInspect();
+    const interval = setInterval(scheduleInspect, 3000);
 
     return () => {
       clearInterval(interval);
-      observer.disconnect();
     };
   }, []);
 
   return null;
 };
+
+// Global safety handler for PWA / Update Refresh button clicks & automatic update checks
+if (typeof window !== 'undefined') {
+  // Throttled SW update check (at most once every 10 minutes to prevent loops)
+  if ('serviceWorker' in navigator) {
+    let lastSWCheck = 0;
+    const checkSWUpdate = () => {
+      const now = Date.now();
+      try {
+        const applied = sessionStorage.getItem('spotiz_update_applied');
+        if (applied && now - parseInt(applied, 10) < 15 * 60 * 1000) return;
+      } catch (_) {}
+
+      if (now - lastSWCheck < 10 * 60 * 1000) return;
+      lastSWCheck = now;
+
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(reg => reg.update().catch(() => {}));
+      }).catch(() => {});
+    };
+
+    window.addEventListener('focus', checkSWUpdate);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') checkSWUpdate();
+    });
+    setInterval(checkSWUpdate, 10 * 60 * 1000);
+  }
+
+  document.addEventListener('click', async (e) => {
+    const target = (e.target as HTMLElement)?.closest('button');
+    if (!target) return;
+    const txt = (target.textContent || '').trim().toLowerCase();
+    const title = (target.getAttribute('title') || '').toLowerCase();
+    const ariaLabel = (target.getAttribute('aria-label') || '').toLowerCase();
+
+    // Support dismissing the update notification
+    if (title === 'dismiss' || ariaLabel === 'dismiss' || target.classList.contains('dismiss-update-btn')) {
+      try {
+        sessionStorage.setItem('spotiz_update_dismissed', Date.now().toString());
+      } catch (_) {}
+      const popup = target.closest('.fixed');
+      if (popup) {
+        (popup as HTMLElement).style.opacity = '0';
+        setTimeout(() => {
+          (popup as HTMLElement).style.display = 'none';
+        }, 300);
+      }
+      return;
+    }
+
+    if (txt.includes('refresh for latest version') || txt.includes('refresh to update') || txt.includes('update available')) {
+      // Record that user triggered the update to prevent repeated loop on reload
+      try {
+        sessionStorage.setItem('spotiz_update_applied', Date.now().toString());
+        sessionStorage.setItem('spotiz_update_dismissed', Date.now().toString());
+        localStorage.setItem('spotiz_last_sw_update', Date.now().toString());
+      } catch (_) {}
+
+      // Provide immediate feedback on the clicked button and hide popup
+      target.style.opacity = '0.8';
+      target.style.pointerEvents = 'none';
+      const popup = target.closest('.fixed');
+      if (popup) {
+        (popup as HTMLElement).style.opacity = '0';
+      }
+
+      // Perform true hard refresh: wipe all CacheStorage entries so fresh bundle files are loaded
+      if ('caches' in window) {
+        try {
+          const cacheKeys = await caches.keys();
+          await Promise.all(cacheKeys.map(key => caches.delete(key)));
+        } catch (_) {}
+      }
+
+      // Signal all service worker registrations to skip waiting
+      if ('serviceWorker' in navigator) {
+        try {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const reg of regs) {
+            if (reg.waiting) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+          }
+        } catch (_) {}
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          window.location.reload();
+        }, { once: true });
+      }
+
+      // Guaranteed fallback reload after 350ms
+      setTimeout(() => {
+        window.location.reload();
+      }, 350);
+    }
+  }, true);
+}
 
 // Delay mounting slightly to let the main bundle's createRoot finish (since the main bundle also renders to document.getElementById('root'))
 setTimeout(() => {
@@ -370,9 +368,13 @@ setTimeout(() => {
     createRoot(popupRoot).render(
       <>
         <ThumbnailEnhancer />
+        <MobileHeroCarousel />
         <SkeletonManager />
         <DynamicProfileBackground />
-        <LoginPrompt />
+        <DesktopEnhancer />
+        <GuestSystemManager />
+        <ReloadPrompt />
+        <LegalSuiteManager />
       </>
     );
   }
