@@ -1,17 +1,17 @@
-# [App Name] Privacy Policy
+# Spotiz Privacy Policy
 
-**Effective Date:** [Effective Date]  
-**Last Updated:** [Last Updated Date]
+**Effective Date:** September 20, 2026  
+**Last Updated:** September 20, 2026
 
-[Developer / Organization Name] ("we", "our", or "us") respects your privacy. This Privacy Policy describes how [App Name] ("the application") processes, stores, and handles information when you install and use the software.
+Spotiz Team ("we", "our", or "us") respects your privacy. This Privacy Policy describes how Spotiz ("the application") processes, stores, and handles information when you install and use the software.
 
-[App Name] is designed primarily as a **local-first client application**. The vast majority of your settings, preferences, profiles, and cached data reside directly on your local device.
+Spotiz is designed primarily as a **local-first client application**. The vast majority of your settings, preferences, profiles, and cached data reside directly on your local device.
 
 ---
 
 ## 1. Information Handled Locally on Your Device
 
-To provide a personalized, functional experience, [App Name] may store configuration files and local databases directly on your personal device.
+To provide a personalized, functional experience, Spotiz may store configuration files and local databases directly on your personal device.
 
 Depending on the features you configure and use, locally stored information may include:
 
@@ -28,33 +28,33 @@ Depending on the features you configure and use, locally stored information may 
 
 ## 2. Local User Profiles
 
-[App Name] may offer local user profile capabilities allowing multiple configurations on a single installation.
+Spotiz may offer local user profile capabilities allowing multiple configurations on a single installation.
 
 - Profile data is saved locally on your machine;
-- [App Name] does not operate a centralized user registration system or require a cloud account to use core application features;
-- Local profile names and settings are not publicly published by [App Name].
+- Spotiz does not operate a centralized user registration system or require a cloud account to use core application features;
+- Local profile names and settings are not publicly published by Spotiz.
 
 ---
 
 <!-- OPTIONAL FEATURE: External Metadata Enrichment. Customize or remove if not applicable. -->
-## 3. External Metadata Enrichment (e.g., [Metadata Service Name, e.g., TMDB])
+## 3. External Metadata Enrichment (e.g., MusicBrainz / JioSaavn / Deezer)
 
-If you enable external metadata enrichment (e.g., connecting to [Metadata Service Name, e.g., The Movie Database (TMDB) / MusicBrainz / TVMaze]), [App Name] makes direct HTTP requests to the third-party metadata service from your device.
+If you enable external metadata enrichment (e.g., connecting to MusicBrainz / JioSaavn / Deezer), Spotiz makes direct HTTP requests to the third-party metadata service from your device.
 
 When metadata requests occur:
 
 - **Data Transmitted:** Search queries, content titles, media identifiers, release years, or language preferences necessary to match and fetch metadata;
 - **Network Data:** The external metadata provider receives your IP address and standard HTTP request headers;
 - **API Keys:** If you provide your own API key, it is included in requests to authenticate with the provider;
-- **Client-Side Key Masking:** Although [App Name] may mask API keys visually in the user interface to prevent casual observation, credentials stored on a local client application can potentially be inspected by individuals with physical or administrative access to the device.
+- **Client-Side Key Masking:** Although Spotiz may mask API keys visually in the user interface to prevent casual observation, credentials stored on a local client application can potentially be inspected by individuals with physical or administrative access to the device.
 
-For information on how the metadata provider handles data, please consult the respective privacy policy of [Metadata Service Name].
+For information on how the metadata provider handles data, please consult the respective privacy policy of MusicBrainz, JioSaavn, and Deezer.
 
 ---
 
 ## 4. Addons, Plugins, Providers, and External Network Requests
 
-[App Name] allows you to connect to third-party providers, addons, repositories, feeds, and external APIs.
+Spotiz allows you to connect to third-party providers, addons, repositories, feeds, and external APIs.
 
 When you install, enable, browse, search, or stream from an external integration, your device communicates directly with the servers hosting that integration.
 
@@ -66,35 +66,35 @@ Depending on the integration and feature used, the destination server may receiv
 - Standard internet network data, including your public IP address, User-Agent, and connection timestamps;
 - Any custom authentication headers or tokens required by that specific provider.
 
-**Independent Operators:** Unless explicitly stated otherwise, external integrations, scrapers, and repositories are developed and operated by independent third parties. [App Name] does not control, inspect, or manage the data practices, logging, or policies of third-party servers. We encourage you to review the privacy policies of any third-party service you choose to configure.
+**Independent Operators:** Unless explicitly stated otherwise, external integrations, scrapers, and repositories are developed and operated by independent third parties. Spotiz does not control, inspect, or manage the data practices, logging, or policies of third-party servers. We encourage you to review the privacy policies of any third-party service you choose to configure.
 
 ---
 
 <!-- OPTIONAL FEATURE: Discord Rich Presence / Activity Sharing. Customize or remove if not applicable. -->
 ## 5. Discord Rich Presence and Activity Integrations
 
-[App Name] may include optional integration with Discord Rich Presence or desktop activity protocols.
+Spotiz may include optional integration with Discord Rich Presence or desktop activity protocols.
 
 When enabled:
 
-- [App Name] communicates locally with the Discord desktop client running on your machine via local inter-process communication (IPC);
+- Spotiz communicates locally with the Discord desktop client running on your machine via local inter-process communication (IPC);
 - Activity details (such as the title of the media currently playing, elapsed playback time, and application status) may be sent to Discord for display on your public profile;
-- **No Credentials Transmitted:** [App Name] never asks for, reads, or transmits your Discord account password, user token, or authentication secret;
-- **User Control:** You may disable Discord Rich Presence at any time in [App Name]'s settings. The visibility of your presence to others is also subject to your Discord account privacy settings.
+- **No Credentials Transmitted:** Spotiz never asks for, reads, or transmits your Discord account password, user token, or authentication secret;
+- **User Control:** You may disable Discord Rich Presence at any time in Spotiz's settings. The visibility of your presence to others is also subject to your Discord account privacy settings.
 
 ---
 
 ## 6. Media Playback & Stream Data
 
-To deliver playback controls, resume functionality, and playlist management, [App Name] tracks playback state locally (e.g., timestamps, volume, playback rate).
+To deliver playback controls, resume functionality, and playlist management, Spotiz tracks playback state locally (e.g., timestamps, volume, playback rate).
 
-When streaming media, playback requests are sent directly from your device to the designated media server or content host. [App Name] does not route media streams through a proprietary central intermediary server, and does not maintain centralized logs of your viewing or listening activity.
+When streaming media, playback requests are sent directly from your device to the designated media server or content host. Spotiz does not route media streams through a proprietary central intermediary server, and does not maintain centralized logs of your viewing or listening activity.
 
 ---
 
-## 7. Information [App Name] Does Not Collect
+## 7. Information Spotiz Does Not Collect
 
-[App Name] is designed with data minimization in mind. We do not intentionally collect, store, or solicit:
+Spotiz is designed with data minimization in mind. We do not intentionally collect, store, or solicit:
 
 - Government-issued identification numbers;
 - Financial account, debit, or credit card information;
@@ -114,7 +114,7 @@ If you choose to submit a bug report, support request, or crash diagnostic throu
 
 ## 9. Data Sharing Disclosures
 
-- **No Sale of Personal Data:** [App Name] does not sell, rent, monetize, or trade your personal data or usage habits to third-party advertisers or data brokers;
+- **No Sale of Personal Data:** Spotiz does not sell, rent, monetize, or trade your personal data or usage habits to third-party advertisers or data brokers;
 - **Direct Third-Party Communications:** When you use features requiring external data (e.g., fetching metadata, parsing web feeds, checking for software updates, or retrieving streams), your client connects directly to the relevant service provider. Each external service operates according to its own privacy policy.
 
 ---
@@ -125,7 +125,7 @@ All application data stored locally remains on your device until:
 
 1. You manually remove a profile, clear history, or reset settings within the application;
 2. You clear the application's local cache or configuration directory via your operating system;
-3. You uninstall [App Name] and delete its application data folder.
+3. You uninstall Spotiz and delete its application data folder.
 
 For information on data retention by external third-party services you communicate with, please refer directly to their privacy documentation.
 
@@ -145,7 +145,7 @@ Users are responsible for:
 
 ## 12. Your Privacy Choices
 
-You have full control over your privacy settings within [App Name]:
+You have full control over your privacy settings within Spotiz:
 
 - **Disable Activity Sharing:** Toggle Discord Rich Presence or external activity sharing off;
 - **Disable Metadata Enrichment:** Disable external metadata API queries;
@@ -156,7 +156,7 @@ You have full control over your privacy settings within [App Name]:
 
 ## 13. Children's Privacy
 
-[App Name] does not knowingly collect or solicit personal information from children under the age of 13 (or under the applicable age threshold defined by regional laws such as the GDPR). If you believe that personal data of a minor has been improperly collected, please contact us so appropriate measures can be taken.
+Spotiz does not knowingly collect or solicit personal information from children under the age of 13 (or under the applicable age threshold defined by regional laws such as the GDPR). If you believe that personal data of a minor has been improperly collected, please contact us so appropriate measures can be taken.
 
 ---
 
@@ -164,7 +164,7 @@ You have full control over your privacy settings within [App Name]:
 
 This Privacy Policy may be updated periodically to reflect new features, architectural improvements, or changes in legal regulations.
 
-The "Effective Date" and "Last Updated" headers at the top of this document will indicate the version in effect. Continued use of [App Name] following the publication of an updated policy indicates your acceptance of the revised practices.
+The "Effective Date" and "Last Updated" headers at the top of this document will indicate the version in effect. Continued use of Spotiz following the publication of an updated policy indicates your acceptance of the revised practices.
 
 ---
 
@@ -172,9 +172,9 @@ The "Effective Date" and "Last Updated" headers at the top of this document will
 
 If you have questions, comments, or concerns regarding this Privacy Policy or our data practices, please reach out to us:
 
-- **Repository:** [Repository URL]
-- **Support / Inquiries:** [Contact Email / Support URL]
-- **Website:** [Official Website URL]
+- **Repository:** https://github.com/spotiz/spotiz
+- **Support / Inquiries:** In-App Privacy Portal & Repository Issues
+- **Website:** https://spotiz.app
 
 ---
 
@@ -187,6 +187,6 @@ If you have questions, comments, or concerns regarding this Privacy Policy or ou
 
 ---
 
-**[App Name]**  
-*[Tagline, e.g., Your modular media interface.]*  
-Maintained by [Developer / Organization Name]
+**Spotiz**  
+*High-Fidelity Progressive Web App Music Streaming & Discovery*  
+Maintained by Spotiz Team

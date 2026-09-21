@@ -165,7 +165,7 @@ export const GuestSystemManager: React.FC = () => {
       // 2. Ensure Profile header displays clean light blue avatar circle & guest ID
       const headerCard = document.getElementById('profile-header-card');
       if (headerCard) {
-        // A. Avatar: Light blue circle with crisp white capital G in center
+        // A. Avatar: Vibrant blue circle with thick bold black capital G in center
         const avatarBtn = headerCard.querySelector('#profile-avatar-btn');
         if (avatarBtn) {
           // Remove any duplicate or legacy injected .avatar-g-initial elements
@@ -177,11 +177,24 @@ export const GuestSystemManager: React.FC = () => {
           if (!img || img.naturalWidth === 0) {
             const circleDiv = avatarBtn.querySelector('div.rounded-full') as HTMLElement | null;
             if (circleDiv) {
-              circleDiv.style.backgroundColor = '#60a5fa';
+              circleDiv.style.backgroundColor = '#4285F4';
+              const svg = circleDiv.querySelector('svg');
+              if (svg) {
+                const text = svg.querySelector('text');
+                if (text) {
+                  text.setAttribute('fill', '#000000');
+                  text.setAttribute('font-weight', '900');
+                  text.setAttribute('font-size', '76');
+                  text.textContent = 'G';
+                }
+              }
               const span = circleDiv.querySelector('span');
               if (span) {
-                span.style.color = '#ffffff';
-                span.style.fontWeight = '700';
+                span.style.color = '#000000';
+                span.style.fontWeight = '900';
+                span.style.fontSize = 'clamp(4.5rem, 58%, 6.5rem)';
+                span.style.lineHeight = '1';
+                span.style.userSelect = 'none';
                 span.textContent = 'G';
               }
             }

@@ -1,6 +1,6 @@
-# [App Name] Security Policy
+# Spotiz Security Policy
 
-Security is a high priority for the [App Name] project. We appreciate the responsible efforts of security researchers, developers, and users in helping us maintain the security and privacy of the software.
+Security is a high priority for the Spotiz project. We appreciate the responsible efforts of security researchers, developers, and users in helping us maintain the security and privacy of the software.
 
 If you discover a security vulnerability, please report it privately and responsibly so we can investigate and address the issue before public disclosure.
 
@@ -8,7 +8,7 @@ If you discover a security vulnerability, please report it privately and respons
 
 ## Supported Versions
 
-Security fixes and maintenance patches are generally provided for the latest stable release of [App Name].
+Security fixes and maintenance patches are generally provided for the latest stable release of Spotiz.
 
 | Version | Security Support Status |
 |---|---|
@@ -16,24 +16,23 @@ Security fixes and maintenance patches are generally provided for the latest sta
 | Previous Minor Release | ⚠️ Limited Support (Critical vulnerabilities only) |
 | Development / Nightly / Alpha Builds | ❌ Not Supported (Use at your own risk) |
 
-Users are strongly encouraged to keep [App Name] updated to the latest official stable release.
+Users are strongly encouraged to keep Spotiz updated to the latest official stable release.
 
 ---
 
 ## Reporting a Security Vulnerability
 
-If you believe you have found a security vulnerability in [App Name], please report it **privately**. Do not open a public issue on GitHub or discuss the vulnerability publicly until a patch is released.
+If you believe you have found a security vulnerability in Spotiz, please report it **privately**. Do not open a public issue on GitHub or discuss the vulnerability publicly until a patch is released.
 
 ### How to Report Privately
 
-- **Preferred Channel:** [Private Security Advisory Link, e.g., GitHub Security Advisory / Tally Form / Email, e.g., security@example.com]
-- **Contact Email:** [Security Contact Email / Form URL]
+- **Preferred Channel:** GitHub Security Advisories (https://github.com/spotiz/spotiz/security/advisories) or Repository Security Inquiries
 
 ### Please Include in Your Report
 
 To help us triage and resolve the issue quickly, please provide:
 
-1. **Affected Software Version:** Exact [App Name] version number and build commit hash (if known);
+1. **Affected Software Version:** Exact Spotiz version number and build commit hash (if known);
 2. **Environment Details:** Operating system and architecture (e.g., Windows 11 x64, macOS Sonoma ARM64, Ubuntu 24.04 x86_64, Android 14);
 3. **Description:** A detailed explanation of the vulnerability and its potential security impact;
 4. **Steps to Reproduce:** Step-by-step reproduction instructions or a minimal proof-of-concept (PoC);
@@ -74,54 +73,54 @@ Please distinguish between security vulnerabilities and ordinary software defect
 - Ordinary application crashes without security implications;
 - Feature requests and performance optimizations.
 
-Public Issue Tracker: [Repository URL]/issues
+Public Issue Tracker: https://github.com/spotiz/spotiz/issues
 
 ---
 
 ## Release Verification & Binary Integrity
 
-Official releases of [App Name] may provide cryptographic SHA-256 checksums to verify installer and binary integrity.
+Official releases of Spotiz may provide cryptographic SHA-256 checksums to verify installer and binary integrity.
 
 You can verify downloaded release files using standard terminal commands:
 
 ### Windows (PowerShell)
 ```powershell
-Get-FileHash ".\\[App-Installer-Filename].msi" -Algorithm SHA256
+Get-FileHash ".\\Spotiz-PWA.msi" -Algorithm SHA256
 ```
 
 ### Linux (Bash)
 ```bash
-sha256sum ./[App-Installer-Filename].AppImage
+sha256sum ./Spotiz-PWA.AppImage
 ```
 
 ### macOS (Terminal)
 ```bash
-shasum -a 256 ./[App-Installer-Filename].dmg
+shasum -a 256 ./Spotiz-PWA.dmg
 ```
 
-Compare the calculated hash against the official checksum published on the release page at [Repository URL]/releases.
+Compare the calculated hash against the official checksum published on the release page at https://github.com/spotiz/spotiz/releases.
 
 ---
 
 ## Third-Party Addon and Provider Security Boundaries
 
-[App Name] supports modular integrations, addons, scrapers, and external APIs.
+Spotiz supports modular integrations, addons, scrapers, and external APIs.
 
-1. **Vulnerabilities in [App Name]'s Integration Engine:**  
-   If an integration exposes a flaw in [App Name]'s own handling—such as improper input sanitization, unsafe sandbox execution, or credential leakage—please report it to the [App Name] security team as described above.
+1. **Vulnerabilities in Spotiz's Integration Engine:**  
+   If an integration exposes a flaw in Spotiz's own handling—such as improper input sanitization, unsafe sandbox execution, or credential leakage—please report it to the Spotiz security team as described above.
 
 2. **Vulnerabilities in Independent Third-Party Services:**  
    If a security flaw exists solely within an independent third-party server, website, or API that an addon connects to, report the issue directly to the maintainer or operator of that external service.
 
 3. **Safe Testing Requirement:**  
-   Do not intentionally exploit third-party servers, scrape unauthorized endpoints, or compromise external services while testing [App Name] integrations.
+   Do not intentionally exploit third-party servers, scrape unauthorized endpoints, or compromise external services while testing Spotiz integrations.
 
 ---
 
 ## Contact Information
 
-- **Private Security Reports:** [Contact Email / Support URL]
-- **Public Bug Tracker:** [Repository URL]/issues
-- **Project Website:** [Official Website URL]
+- **Private Security Reports:** GitHub Security Advisories or Repository Security Portal
+- **Public Bug Tracker:** https://github.com/spotiz/spotiz/issues
+- **Project Website:** https://spotiz.app
 
-We appreciate your assistance in keeping [App Name] secure for the entire community.
+We appreciate your assistance in keeping Spotiz secure for the entire community.

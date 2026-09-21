@@ -1147,7 +1147,8 @@ app.get('/api/legal/status', (req, res) => {
     thirdPartyAdTrackers: false,
     takedownChannel: '/api/legal/takedown',
     securityChannel: '/api/legal/security-report',
-    effectiveDate: '2026-03-15'
+    effectiveDate: '2026-09-20',
+    lastUpdatedDate: '2026-09-20'
   });
 });
 

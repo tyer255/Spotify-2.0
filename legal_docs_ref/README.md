@@ -28,16 +28,16 @@ Search across all files in this repository for the following placeholders and re
 
 | Placeholder | Description | Example |
 |---|---|---|
-| `[App Name]` | The name of your application | `NovaPlayer`, `StreamFetch`, `DataFlow` |
-| `[Developer / Organization Name]` | Project team, company, or maintainer name | `Acme Studios`, `Nova Contributors` |
-| `[Official Website URL]` | Your primary project website or landing page | `https://example.com` |
-| `[Repository URL]` | The public code repository URL | `https://github.com/example/app` |
-| `[Contact Email / Support URL]` | Official contact form, issue tracker, or email | `https://example.com/support` or `support@example.com` |
-| `[License Name]` | The open-source or proprietary license you use | `GNU General Public License v3.0`, `MIT License` |
-| `[License File / Reference]` | Reference to your license file | `LICENSE` |
-| `[Governing Law Jurisdiction / Country]` | Legal jurisdiction for contract interpretation | `State of California, United States` or `England and Wales` |
-| `[Effective Date]` | The date terms/policies become active | `1 October 2026` |
-| `[Last Updated Date]` | The date the document was last modified | `1 October 2026` |
+| `Spotiz` | The name of your application | `NovaPlayer`, `StreamFetch`, `DataFlow` |
+| `Spotiz Team` | Project team, company, or maintainer name | `Acme Studios`, `Nova Contributors` |
+| `https://spotiz.app` | Your primary project website or landing page | `https://example.com` |
+| `https://github.com/spotiz/spotiz` | The public code repository URL | `https://github.com/example/app` |
+| `https://github.com/spotiz/spotiz/issues` | Official contact form, issue tracker, or support channel | `https://example.com/support` or `support@example.com` |
+| `MIT License` | The open-source or proprietary license you use | `GNU General Public License v3.0`, `MIT License` |
+| `LICENSE` | Reference to your license file | `LICENSE` |
+| `applicable laws and international copyright standards` | Legal jurisdiction for contract interpretation | `State of California, United States` or `England and Wales` |
+| `September 20, 2026` | The date terms/policies become active | `1 October 2026` |
+| `September 20, 2026` | The date the document was last modified | `1 October 2026` |
 
 ---
 
